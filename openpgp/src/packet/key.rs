@@ -1789,6 +1789,72 @@ impl<P, R> Key<P, R>
                     "Key: Expected X448 public key, got {:?}", self.mpis())).into())
             },
 
+            MLKEM768_X25519 => if let mpi::PublicKey::MLKEM768_X25519 {
+                ecdh: ecdh_public, mlkem: mlkem_public,
+            } = self.mpis()
+            {
+                let (ecdh_secret, ecdh_ciphertext) =
+                    Backend::x25519_generate_key()?;
+                let ecdh_keyshare = Backend::x25519_shared_point(
+                    &ecdh_secret, ecdh_public)?;
+
+                let (mlkem_ciphertext, mlkem_keyshare) =
+                    Backend::mlkem768_encapsulate(mlkem_public)?;
+
+                let kek = crate::crypto::asymmetric::multi_key_combine(
+                    &mlkem_keyshare,
+                    &ecdh_keyshare,
+                    ecdh_ciphertext.as_ref(),
+                    ecdh_public.as_ref(),
+                    PublicKeyAlgorithm::MLKEM768_X25519)?;
+
+                let esk = aes_key_wrap(SymmetricAlgorithm::AES256,
+                                       kek.as_protected(),
+                                       data.as_protected())?.into();
+                Ok(mpi::Ciphertext::MLKEM768_X25519 {
+                    ecdh: Box::new(ecdh_ciphertext),
+                    mlkem: mlkem_ciphertext,
+                    esk,
+                })
+            } else {
+                Err(Error::MalformedPacket(format!(
+                    "Key: Expected MLKEM768_X25519 public key, got {:?}",
+                    self.mpis())).into())
+            },
+
+            MLKEM1024_X448 => if let mpi::PublicKey::MLKEM1024_X448 {
+                ecdh: ecdh_public, mlkem: mlkem_public,
+            } = self.mpis()
+            {
+                let (ecdh_secret, ecdh_ciphertext) =
+                    Backend::x448_generate_key()?;
+                let ecdh_keyshare = Backend::x448_shared_point(
+                    &ecdh_secret, ecdh_public)?;
+
+                let (mlkem_ciphertext, mlkem_keyshare) =
+                    Backend::mlkem1024_encapsulate(mlkem_public)?;
+
+                let kek = crate::crypto::asymmetric::multi_key_combine(
+                    &mlkem_keyshare,
+                    &ecdh_keyshare,
+                    ecdh_ciphertext.as_ref(),
+                    ecdh_public.as_ref(),
+                    PublicKeyAlgorithm::MLKEM1024_X448)?;
+
+                let esk = aes_key_wrap(SymmetricAlgorithm::AES256,
+                                       kek.as_protected(),
+                                       data.as_protected())?.into();
+                Ok(mpi::Ciphertext::MLKEM1024_X448 {
+                    ecdh: Box::new(ecdh_ciphertext),
+                    mlkem: mlkem_ciphertext,
+                    esk,
+                })
+            } else {
+                Err(Error::MalformedPacket(format!(
+                    "Key: Expected MLKEM1024_X448 public key, got {:?}",
+                    self.mpis())).into())
+            },
+
             RSASign | DSA | ECDSA | EdDSA | Ed25519 | Ed448
                 | MLDSA65_Ed25519 | MLDSA87_Ed448
                 | SLHDSA128s | SLHDSA128f | SLHDSA256s =>

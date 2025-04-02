@@ -207,6 +207,22 @@ impl mpi::PublicKey {
                 },
             }),
 
+            MLKEM768_X25519 => {
+                let mut ecdh = Box::new([0; 32]);
+                php.parse_bytes_into("x25519_public", ecdh.as_mut())?;
+                let mut mlkem = Box::new([0; 1184]);
+                php.parse_bytes_into("mlkem768_public", mlkem.as_mut())?;
+                Ok(mpi::PublicKey::MLKEM768_X25519 { ecdh, mlkem })
+            },
+
+            MLKEM1024_X448 => {
+                let mut ecdh = Box::new([0; 56]);
+                php.parse_bytes_into("x448_public", ecdh.as_mut())?;
+                let mut mlkem = Box::new([0; 1568]);
+                php.parse_bytes_into("mlkem1024_public", mlkem.as_mut())?;
+                Ok(mpi::PublicKey::MLKEM1024_X448 { ecdh, mlkem })
+            },
+
             Unknown(_) | Private(_) => {
                 let mut mpis = Vec::new();
                 while let Ok(mpi) = MPI::parse("unknown_len",
@@ -415,6 +431,22 @@ impl mpi::SecretKeyMaterial {
                 },
             }),
 
+            MLKEM768_X25519 => {
+                let mut ecdh: Protected = vec![0; 32].into();
+                php.parse_bytes_into("x25519_secret", &mut ecdh)?;
+                let mut mlkem: Protected = vec![0; 64].into();
+                php.parse_bytes_into("mlkem_secret", &mut mlkem)?;
+                Ok(mpi::SecretKeyMaterial::MLKEM768_X25519 { ecdh, mlkem })
+            },
+
+            MLKEM1024_X448 => {
+                let mut ecdh: Protected = vec![0; 56].into();
+                php.parse_bytes_into("x448_secret", &mut ecdh)?;
+                let mut mlkem: Protected = vec![0; 64].into();
+                php.parse_bytes_into("mlkem_secret", &mut mlkem)?;
+                Ok(mpi::SecretKeyMaterial::MLKEM1024_X448 { ecdh, mlkem })
+            },
+
             Unknown(_) | Private(_) => {
                 let mut mpis = Vec::new();
                 while let Ok(mpi) = ProtectedMPI::parse("unknown_len",
@@ -567,6 +599,28 @@ impl mpi::Ciphertext {
                 let key = Vec::from(&php.parse_bytes("x448_esk", key_len)?
                                     [..key_len]);
                 Ok(mpi::Ciphertext::X448 { e: Box::new(e), key: key.into() })
+            },
+
+            MLKEM768_X25519 => {
+                let mut ecdh = Box::new([0; 32]);
+                php.parse_bytes_into("x25519_ciphertext", ecdh.as_mut())?;
+                let mut mlkem = Box::new([0; 1088]);
+                php.parse_bytes_into("mlkem768_ciphertext", mlkem.as_mut())?;
+                let esk_len = php.parse_u8("esk_len")? as usize;
+                let esk = Vec::from(&php.parse_bytes("esk", esk_len)?
+                                    [..esk_len]).into();
+                Ok(mpi::Ciphertext::MLKEM768_X25519 { ecdh, mlkem, esk })
+            },
+
+            MLKEM1024_X448 => {
+                let mut ecdh = Box::new([0; 56]);
+                php.parse_bytes_into("x448_ciphertext", ecdh.as_mut())?;
+                let mut mlkem = Box::new([0; 1568]);
+                php.parse_bytes_into("mlkem1024_ciphertext", mlkem.as_mut())?;
+                let esk_len = php.parse_u8("esk_len")? as usize;
+                let esk = Vec::from(&php.parse_bytes("esk", esk_len)?
+                                    [..esk_len]).into();
+                Ok(mpi::Ciphertext::MLKEM1024_X448 { ecdh, mlkem, esk })
             },
 
             Unknown(_) | Private(_) => {
@@ -754,6 +808,8 @@ impl mpi::Signature {
             }
 
             RSAEncrypt | ElGamalEncrypt | ECDH | X25519 | X448
+                | MLKEM768_X25519
+                | MLKEM1024_X448
                 => Err(Error::InvalidArgument(
                     format!("not a signature algorithm: {:?}", algo)).into()),
         }

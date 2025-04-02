@@ -550,6 +550,30 @@ impl<R> Key4<key::PublicParts, R>
                 n: mpi::MPI::new(n),
             })
     }
+
+    /// Creates an OpenPGP public key packet from existing
+    /// ML-KEM768+X25519 key material.
+    ///
+    /// Note: in OpenPGP, ML-KEM keys are composite keys and include
+    /// an X25519 key to provide a pre-quantum security fallback.
+    ///
+    /// ML-KEM768 keys must be exactly 1184 bytes, and X25519 keys
+    /// must be exactly 32 bytes.
+    ///
+    /// The key will have its creation date set to `ctime` or the
+    /// current time if `None` is given.
+    pub fn import_public_mlkem768_x25519<T>(mlkem: &[u8], ecdh: &[u8], ctime: T)
+        -> Result<Self>
+    where
+        T: Into<Option<time::SystemTime>>
+    {
+        Ok(Key4::new(ctime.into().unwrap_or_else(crate::now),
+                     PublicKeyAlgorithm::MLKEM768_X25519,
+                     mpi::PublicKey::MLKEM768_X25519 {
+                         ecdh: Box::new(ecdh.try_into()?),
+                         mlkem: Box::new(mlkem.try_into()?),
+                     })?)
+    }
 }
 
 impl<R> Key4<SecretParts, R>
@@ -830,6 +854,27 @@ impl<R> Key4<SecretParts, R>
             },
             mpi::SecretKeyMaterial::Ed448 {
                 x: private,
+            }.into())
+    }
+
+
+    /// Generates a new MLKEM768+X25519 key.
+    pub fn generate_mlkem768_x25519() -> Result<Self> {
+        use crate::crypto::backend::{Backend, interface::Asymmetric};
+
+        let (ecdh_secret, ecdh_public) = Backend::x25519_generate_key()?;
+        let (mlkem_secret, mlkem_public) = Backend::mlkem768_generate_key()?;
+
+        Self::with_secret(
+            crate::now(),
+            PublicKeyAlgorithm::MLKEM768_X25519,
+            mpi::PublicKey::MLKEM768_X25519 {
+                ecdh: Box::new(ecdh_public),
+                mlkem: mlkem_public,
+            },
+            mpi::SecretKeyMaterial::MLKEM768_X25519 {
+                ecdh: ecdh_secret,
+                mlkem: mlkem_secret,
             }.into())
     }
 
@@ -1247,7 +1292,9 @@ mod tests {
                 Key4::generate_rsa(b).ok()
             })).chain(vec![1024, 2048, 3072, 4096].into_iter().filter_map(|b| {
                 Key4::generate_elgamal(b).ok()
-            }));
+            })).chain(
+                Key4::generate_mlkem768_x25519().ok()
+            );
 
         for key in keys.into_iter() {
             let key: Key<key::SecretParts, key::UnspecifiedRole> = key.into();

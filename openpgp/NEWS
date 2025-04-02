@@ -51,6 +51,21 @@
    - policy::AsymmetricAlgorithm::SLHDSA128s
    - policy::AsymmetricAlgorithm::SLHDSA128f
    - policy::AsymmetricAlgorithm::SLHDSA256s
+   - Key6::generate_mlkem768_x25519
+   - Key4::import_public_mlkem768_x25519
+   - Key6::import_public_mlkem768_x25519
+   - Key6::generate_mlkem1024_x448
+   - Key6::import_public_mlkem1024_x448
+   - mpi::PublicKey::MLKEM768_X25519
+   - mpi::PublicKey::MLKEM1024_X448
+   - mpi::SecretKeyMaterial::MLKEM768_X25519
+   - mpi::SecretKeyMaterial::MLKEM1024_X448
+   - mpi::Signature::MLKEM768_X25519
+   - mpi::Signature::MLKEM1024_X448
+   - PublicKeyAlgorithm::MLKEM768_X25519
+   - PublicKeyAlgorithm::MLKEM1024_X448
+   - policy::AsymmetricAlgorithm::MLKEM768_X25519
+   - policy::AsymmetricAlgorithm::MLKEM1024_X448
 
 * Changes in 2.1.0
 ** Notable fixes

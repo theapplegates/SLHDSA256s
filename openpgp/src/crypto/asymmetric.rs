@@ -412,9 +412,112 @@ impl Decryptor for KeyPair {
                         self.public(), &S, ciphertext, plaintext_len)
                 },
 
+                (
+                    mpi::PublicKey::MLKEM768_X25519 {
+                        ecdh: ecdh_public, ..
+                    },
+                    mpi::SecretKeyMaterial::MLKEM768_X25519 {
+                        ecdh: ecdh_secret, mlkem: mlkem_secret,
+                    },
+                    mpi::Ciphertext::MLKEM768_X25519 {
+                        ecdh: ecdh_ciphertext, mlkem: mlkem_ciphertext, esk,
+                    },
+                ) => {
+                    let ecdh_keyshare = Backend::x25519_shared_point(
+                        ecdh_secret, ecdh_ciphertext)?;
+
+                    let mlkem_keyshare = Backend::mlkem768_decapsulate(
+                        mlkem_secret, mlkem_ciphertext)?;
+
+                    let kek = multi_key_combine(
+                        &mlkem_keyshare,
+                        &ecdh_keyshare,
+                        ecdh_ciphertext.as_ref(),
+                        ecdh_public.as_ref(),
+                        PublicKeyAlgorithm::MLKEM768_X25519)?;
+
+                    Ok(aes_key_unwrap(SymmetricAlgorithm::AES256,
+                                      kek.as_protected(),
+                                      esk)?.into())
+                },
+
+                (
+                    mpi::PublicKey::MLKEM1024_X448 {
+                        ecdh: ecdh_public, ..
+                    },
+                    mpi::SecretKeyMaterial::MLKEM1024_X448 {
+                        ecdh: ecdh_secret, mlkem: mlkem_secret,
+                    },
+                    mpi::Ciphertext::MLKEM1024_X448 {
+                        ecdh: ecdh_ciphertext, mlkem: mlkem_ciphertext, esk,
+                    },
+                ) => {
+                    let ecdh_keyshare = Backend::x448_shared_point(
+                        ecdh_secret, ecdh_ciphertext)?;
+
+                    let mlkem_keyshare = Backend::mlkem1024_decapsulate(
+                        mlkem_secret, mlkem_ciphertext)?;
+
+                    let kek = multi_key_combine(
+                        &mlkem_keyshare,
+                        &ecdh_keyshare,
+                        ecdh_ciphertext.as_ref(),
+                        ecdh_public.as_ref(),
+                        PublicKeyAlgorithm::MLKEM1024_X448)?;
+
+                    Ok(aes_key_unwrap(SymmetricAlgorithm::AES256,
+                                      kek.as_protected(),
+                                      esk)?.into())
+                },
+
                 (_public, secret, _ciphertext) =>
                     self.decrypt_backend(secret, ciphertext, plaintext_len),
             }
         })
     }
+}
+
+/// Combines PQC and classical algorithms.
+///
+/// See [Section 4.2.1 of draft-ietf-openpgp-pqc-08].
+///
+/// [Section 4.2.1 of draft-ietf-openpgp-pqc-08]: https://www.ietf.org/archive/id/draft-ietf-openpgp-pqc-08.html#kem-key-combiner
+pub(crate) fn multi_key_combine(mlkem_key: &[u8],
+                                ecdh_key: &[u8],
+                                ecdh_ciphertext: &[u8],
+                                ecdh_public: &[u8],
+                                pk_algo: PublicKeyAlgorithm)
+                                -> Result<SessionKey>
+{
+    //   multiKeyCombine(
+    //       mlkemKeyShare, ecdhKeyShare,
+    //       ecdhCipherText, ecdhPublicKey,
+    //       algId
+    //   )
+    //
+    //   Input:
+    //   mlkemKeyShare   - the ML-KEM key share encoded as an octet string
+    //   ecdhKeyShare    - the ECDH key share encoded as an octet string
+    //   ecdhCipherText  - the ECDH ciphertext encoded as an octet string
+    //   ecdhPublicKey   - the ECDH public key of the recipient as an octet string
+    //   algId           - the OpenPGP algorithm ID of the public-key encryption algorithm
+    //
+    // KEK = SHA3-256(
+    //           mlkemKeyShare || ecdhKeyShare ||
+    //           ecdhCipherText || ecdhPublicKey ||
+    //           algId || domSep || len(domSep)
+    //       )
+
+    let mut hash = HashAlgorithm::SHA3_256.context()?.for_digest();
+    hash.update(mlkem_key);
+    hash.update(ecdh_key);
+    hash.update(ecdh_ciphertext);
+    hash.update(ecdh_public);
+    hash.update(&[pk_algo.into()]);
+    // Domain separation and length octet.
+    hash.update(b"OpenPGPCompositeKDFv1\x15");
+
+    let mut kek = SessionKey::from(vec![0; 32]);
+    hash.digest(&mut kek)?;
+    Ok(kek)
 }

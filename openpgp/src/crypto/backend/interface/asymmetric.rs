@@ -246,6 +246,64 @@ pub trait Asymmetric {
             PublicKeyAlgorithm::SLHDSA256s).into())
     }
 
+    /// Generates a ML-KEM-768 key pair.
+    fn mlkem768_generate_key() -> Result<(Protected, Box<[u8; 1184]>)> {
+        // XXX: This is not quite the right error, because we can only
+        // use the composite algorithm name in the error message.
+        Err(Error::UnsupportedPublicKeyAlgorithm(
+            PublicKeyAlgorithm::MLKEM768_X25519).into())
+    }
+
+    /// Generates and encapsulates a secret using ML-KEM-768.
+    fn mlkem768_encapsulate(_public: &[u8; 1184])
+                            -> Result<(Box<[u8; 1088]>, Protected)>
+    {
+        // XXX: This is not quite the right error, because we can only
+        // use the composite algorithm name in the error message.
+        Err(Error::UnsupportedPublicKeyAlgorithm(
+            PublicKeyAlgorithm::MLKEM768_X25519).into())
+    }
+
+    /// Decapsulates a secret using ML-KEM-768.
+    fn mlkem768_decapsulate(_secret: &Protected,
+                            _ciphertext: &[u8; 1088])
+                            -> Result<Protected>
+    {
+        // XXX: This is not quite the right error, because we can only
+        // use the composite algorithm name in the error message.
+        Err(Error::UnsupportedPublicKeyAlgorithm(
+            PublicKeyAlgorithm::MLKEM768_X25519).into())
+    }
+
+    /// Generates a ML-KEM-1024 key pair.
+    fn mlkem1024_generate_key() -> Result<(Protected, Box<[u8; 1568]>)> {
+        // XXX: This is not quite the right error, because we can only
+        // use the composite algorithm name in the error message.
+        Err(Error::UnsupportedPublicKeyAlgorithm(
+            PublicKeyAlgorithm::MLKEM1024_X448).into())
+    }
+
+    /// Generates and encapsulates a secret using ML-KEM-1024.
+    fn mlkem1024_encapsulate(_public: &[u8; 1568])
+                            -> Result<(Box<[u8; 1568]>, Protected)>
+    {
+        // XXX: This is not quite the right error, because we can only
+        // use the composite algorithm name in the error message.
+        Err(Error::UnsupportedPublicKeyAlgorithm(
+            PublicKeyAlgorithm::MLKEM1024_X448).into())
+    }
+
+    /// Decapsulates a secret using ML-KEM-1024.
+    fn mlkem1024_decapsulate(_secret: &Protected,
+                            _ciphertext: &[u8; 1568])
+                            -> Result<Protected>
+    {
+        // XXX: This is not quite the right error, because we can only
+        // use the composite algorithm name in the error message.
+        Err(Error::UnsupportedPublicKeyAlgorithm(
+            PublicKeyAlgorithm::MLKEM1024_X448).into())
+    }
+
     /// Generates a DSA key pair.
     ///
     /// `p_bits` denotes the desired size of the parameter `p`.

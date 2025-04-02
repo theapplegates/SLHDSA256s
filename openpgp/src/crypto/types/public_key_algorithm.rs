@@ -76,6 +76,12 @@ pub enum PublicKeyAlgorithm {
     /// SLH-DSA signature algorithm 256 bit, small signatures.
     SLHDSA256s,
 
+    /// Composite KEM using ML-KEM-768 and X25519.
+    MLKEM768_X25519,
+
+    /// Composite KEM using ML-KEM-1024 and X448.
+    MLKEM1024_X448,
+
     /// Private algorithm identifier.
     Private(u8),
     /// Unknown algorithm identifier.
@@ -84,7 +90,7 @@ pub enum PublicKeyAlgorithm {
 assert_send_and_sync!(PublicKeyAlgorithm);
 
 #[allow(deprecated)]
-pub(crate) const PUBLIC_KEY_ALGORITHM_VARIANTS: [PublicKeyAlgorithm; 18] = [
+pub(crate) const PUBLIC_KEY_ALGORITHM_VARIANTS: [PublicKeyAlgorithm; 20] = [
     PublicKeyAlgorithm::RSAEncryptSign,
     PublicKeyAlgorithm::RSAEncrypt,
     PublicKeyAlgorithm::RSASign,
@@ -103,6 +109,8 @@ pub(crate) const PUBLIC_KEY_ALGORITHM_VARIANTS: [PublicKeyAlgorithm; 18] = [
     PublicKeyAlgorithm::SLHDSA128s,
     PublicKeyAlgorithm::SLHDSA128f,
     PublicKeyAlgorithm::SLHDSA256s,
+    PublicKeyAlgorithm::MLKEM768_X25519,
+    PublicKeyAlgorithm::MLKEM1024_X448,
 ];
 
 impl PublicKeyAlgorithm {
@@ -162,6 +170,8 @@ impl PublicKeyAlgorithm {
                      | ElGamalEncryptSign
                      | X25519
                      | X448
+                     | MLKEM768_X25519
+                     | MLKEM1024_X448
                      | Private(_)
                      | Unknown(_)
             )
@@ -218,6 +228,8 @@ impl From<u8> for PublicKeyAlgorithm {
             32 => SLHDSA128s,
             33 => SLHDSA128f,
             34 => SLHDSA256s,
+            35 => MLKEM768_X25519,
+            36 => MLKEM1024_X448,
             100..=110 => Private(u),
             u => Unknown(u),
         }
@@ -247,6 +259,8 @@ impl From<PublicKeyAlgorithm> for u8 {
             SLHDSA128s => 32,
             SLHDSA128f => 33,
             SLHDSA256s => 34,
+            MLKEM768_X25519 => 35,
+            MLKEM1024_X448 => 36,
             Private(u) => u,
             Unknown(u) => u,
         }
@@ -300,6 +314,10 @@ impl fmt::Display for PublicKeyAlgorithm {
                     f.write_str("SLH-DSA signature algorithm 128 bit, fast signatures"),
                 SLHDSA256s =>
                     f.write_str("SLH-DSA signature algorithm 256 bit, small signatures"),
+                MLKEM768_X25519 =>
+                    f.write_str("Composite KEM using ML-KEM-768 and X25519"),
+                MLKEM1024_X448 =>
+                    f.write_str("Composite KEM using ML-KEM-1024 and X448"),
                 Private(u) =>
                     f.write_fmt(format_args!("Private/Experimental public key algorithm {}", u)),
                 Unknown(u) =>
@@ -325,6 +343,8 @@ impl fmt::Display for PublicKeyAlgorithm {
                 SLHDSA128s => f.write_str("SLHDSA128s"),
                 SLHDSA128f => f.write_str("SLHDSA128f"),
                 SLHDSA256s => f.write_str("SLHDSA256s"),
+                MLKEM768_X25519 => f.write_str("ML-KEM-768+X25519"),
+                MLKEM1024_X448 => f.write_str("ML-KEM-1024+X448"),
                 Private(u) =>
                     f.write_fmt(format_args!("Private algo {}", u)),
                 Unknown(u) =>

@@ -1029,6 +1029,16 @@ impl Marshal for crypto::mpi::PublicKey {
                 w.write_all(public.as_ref())?;
             },
 
+            MLKEM768_X25519 { ecdh, mlkem } => {
+                w.write_all(ecdh.as_ref())?;
+                w.write_all(mlkem.as_ref())?;
+            },
+
+            MLKEM1024_X448 { ecdh, mlkem } => {
+                w.write_all(ecdh.as_ref())?;
+                w.write_all(mlkem.as_ref())?;
+            },
+
             Unknown { ref mpis, ref rest } => {
                 for mpi in mpis.iter() {
                     mpi.serialize(w)?;
@@ -1081,6 +1091,9 @@ impl MarshalInto for crypto::mpi::PublicKey {
             SLHDSA128s { .. } => 32,
             SLHDSA128f { .. } => 32,
             SLHDSA256s { .. } => 64,
+
+            MLKEM768_X25519 { .. } => 32 + 1184,
+            MLKEM1024_X448 { .. } => 56 + 1568,
 
             Unknown { ref mpis, ref rest } => {
                 mpis.iter().map(|mpi| mpi.serialized_len()).sum::<usize>()
@@ -1154,6 +1167,16 @@ impl Marshal for crypto::mpi::SecretKeyMaterial {
                 w.write_all(secret.as_ref())?;
             },
 
+            MLKEM768_X25519 { ecdh, mlkem } => {
+                w.write_all(ecdh.as_ref())?;
+                w.write_all(mlkem.as_ref())?;
+            },
+
+            MLKEM1024_X448 { ecdh, mlkem } => {
+                w.write_all(ecdh.as_ref())?;
+                w.write_all(mlkem.as_ref())?;
+            },
+
             Unknown { ref mpis, ref rest } => {
                 for mpi in mpis.iter() {
                     mpi.serialize(w)?;
@@ -1206,6 +1229,9 @@ impl MarshalInto for crypto::mpi::SecretKeyMaterial {
             SLHDSA128s { .. } => 64,
             SLHDSA128f { .. } => 64,
             SLHDSA256s { .. } => 128,
+
+            MLKEM768_X25519 { .. } => 32 + 64,
+            MLKEM1024_X448 { .. } => 56 + 64,
 
             Unknown { ref mpis, ref rest } => {
                 mpis.iter().map(|mpi| mpi.serialized_len()).sum::<usize>()
@@ -1280,6 +1306,18 @@ impl Marshal for crypto::mpi::Ciphertext {
                 write_field_with_u8_size(w, "Key", key)?;
             }
 
+            MLKEM768_X25519 { ecdh, mlkem, esk } => {
+                w.write_all(ecdh.as_ref())?;
+                w.write_all(mlkem.as_ref())?;
+                write_field_with_u8_size(w, "ESK", esk)?;
+            },
+
+            MLKEM1024_X448 { ecdh, mlkem, esk } => {
+                w.write_all(ecdh.as_ref())?;
+                w.write_all(mlkem.as_ref())?;
+                write_field_with_u8_size(w, "ESK", esk)?;
+            },
+
             Unknown { ref mpis, ref rest } => {
                 for mpi in mpis.iter() {
                     mpi.serialize(w)?;
@@ -1315,6 +1353,12 @@ impl MarshalInto for crypto::mpi::Ciphertext {
             X448 { key, .. } => {
                 56 + 1 + key.len()
             }
+
+            MLKEM768_X25519 { esk, .. } =>
+                32 + 1088 + 1 + esk.len(),
+
+            MLKEM1024_X448 { esk, .. } =>
+                56 + 1568 + 1 + esk.len(),
 
             Unknown { ref mpis, ref rest } => {
                 mpis.iter().map(|mpi| mpi.serialized_len()).sum::<usize>()

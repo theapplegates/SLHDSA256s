@@ -3738,6 +3738,8 @@ impl ArbitraryBounded for Signature4 {
             ElGamalEncryptSign |
             RSAEncrypt | ElGamalEncrypt | ECDH |
             X25519 | X448 |
+            MLKEM768_X25519 |
+            MLKEM1024_X448 |
             Private(_) | Unknown(_) => unreachable!(),
         };
 

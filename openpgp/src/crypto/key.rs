@@ -105,6 +105,30 @@ impl<R> Key6<SecretParts, R>
             mpi::SecretKeyMaterial::SLHDSA256s { secret }.into())
     }
 
+    /// Generates a new MLKEM768+X25519 key.
+    pub fn generate_mlkem768_x25519() -> Result<Self> {
+        Key4::generate_mlkem768_x25519()
+            .map(Key6::from_common)
+    }
+
+    /// Generates a new MLKEM1024+X448 key.
+    pub fn generate_mlkem1024_x448() -> Result<Self> {
+        let (ecdh_secret, ecdh_public) = Backend::x448_generate_key()?;
+        let (mlkem_secret, mlkem_public) = Backend::mlkem1024_generate_key()?;
+
+        Self::with_secret(
+            crate::now(),
+            PublicKeyAlgorithm::MLKEM1024_X448,
+            mpi::PublicKey::MLKEM1024_X448 {
+                ecdh: Box::new(ecdh_public),
+                mlkem: mlkem_public,
+            },
+            mpi::SecretKeyMaterial::MLKEM1024_X448 {
+                ecdh: ecdh_secret,
+                mlkem: mlkem_secret,
+            }.into())
+    }
+
     /// Generates a new RSA key with a public modulos of size `bits`.
     pub fn generate_rsa(bits: usize) -> Result<Self> {
         Key4::generate_rsa(bits)

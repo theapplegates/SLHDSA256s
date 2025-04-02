@@ -50,6 +50,8 @@ impl Asymmetric for super::Backend {
             MLDSA65_Ed25519 | MLDSA87_Ed448 => false,
             SLHDSA128s | SLHDSA128f | SLHDSA256s =>
                 false,
+            MLKEM768_X25519 | MLKEM1024_X448 =>
+                false,
             ElGamalEncrypt | ElGamalEncryptSign |
             Private(_) | Unknown(_)
                 => false,
@@ -618,8 +620,11 @@ impl<P: key::KeyParts, R: key::KeyRole> Key<P, R> {
                     format!("{} is not an encryption algorithm", self.pk_algo())
                 ).into()),
 
+            X25519 | // Handled in common code.
+            X448 | // Handled in common code.
             ElGamalEncrypt | ElGamalEncryptSign |
-            X25519 | X448 |
+            MLKEM768_X25519 | // Handled in common code.
+            MLKEM1024_X448 | // Handled in common code.
             Private(_) | Unknown(_) =>
                 Err(Error::UnsupportedPublicKeyAlgorithm(self.pk_algo()).into()),
         }

@@ -560,6 +560,58 @@ where R: KeyRole,
                               })?,
         })
     }
+
+    /// Creates an OpenPGP public key packet from existing
+    /// ML-KEM768+X25519 key material.
+    ///
+    /// Note: in OpenPGP, ML-KEM keys are composite keys and include
+    /// an X25519 key to provide a pre-quantum security fallback.
+    ///
+    /// ML-KEM768 keys must be exactly 1184 bytes, and X25519 keys
+    /// must be exactly 32 bytes.
+    ///
+    /// The key will have its creation date set to `ctime` or the
+    /// current time if `None` is given.
+    pub fn import_public_mlkem768_x25519<T>(mlkem: &[u8], ecdh: &[u8], ctime: T)
+        -> Result<Self>
+    where
+        T: Into<Option<time::SystemTime>>
+    {
+        Ok(Key6 {
+            common: Key4::new(ctime.into().unwrap_or_else(crate::now),
+                              PublicKeyAlgorithm::MLKEM768_X25519,
+                              mpi::PublicKey::MLKEM768_X25519 {
+                                  ecdh: Box::new(ecdh.try_into()?),
+                                  mlkem: Box::new(mlkem.try_into()?),
+                              })?,
+        })
+    }
+
+    /// Creates an OpenPGP public key packet from existing
+    /// ML-KEM1024+X448 key material.
+    ///
+    /// Note: in OpenPGP, ML-KEM keys are composite keys and include
+    /// an X448 key to provide a pre-quantum security fallback.
+    ///
+    /// ML-KEM1024 keys must be exactly 1568 bytes, and X448 keys must
+    /// be exactly 56 bytes.
+    ///
+    /// The key will have its creation date set to `ctime` or the
+    /// current time if `None` is given.
+    pub fn import_public_mlkem1024_x448<T>(mlkem: &[u8], ecdh: &[u8], ctime: T)
+        -> Result<Self>
+    where
+        T: Into<Option<time::SystemTime>>
+    {
+        Ok(Key6 {
+            common: Key4::new(ctime.into().unwrap_or_else(crate::now),
+                              PublicKeyAlgorithm::MLKEM1024_X448,
+                              mpi::PublicKey::MLKEM1024_X448 {
+                                  ecdh: Box::new(ecdh.try_into()?),
+                                  mlkem: Box::new(mlkem.try_into()?),
+                              })?,
+        })
+    }
 }
 
 impl<R> Key6<SecretParts, R>
@@ -1045,6 +1097,15 @@ mod tests {
                 Key6::generate_ecc(false, cv).ok()
             }).chain(vec![1024, 2048, 3072, 4096].into_iter().filter_map(|b| {
                 Key6::generate_rsa(b).ok()
+            })).chain([
+                (PublicKeyAlgorithm::MLKEM768_X25519, Key6::generate_mlkem768_x25519 as fn() -> Result<_>),
+                (PublicKeyAlgorithm::MLKEM1024_X448, Key6::generate_mlkem1024_x448),
+            ].into_iter().filter_map(|(algo, gen)| {
+                if algo.is_supported() {
+                    Some(gen().expect(&format!("{} is supported", algo)))
+                } else {
+                    None
+                }
             }));
 
         for key in keys.into_iter() {
@@ -1420,6 +1481,55 @@ JC6thFQ9+JWj
 
             let imported_key = Key6::import_public_slhdsa256s(
                 &public[..], creation_time)
+                .expect("Can import key");
+
+            assert_eq!(key.parts_into_public(), imported_key);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn import_public_mlkem() -> Result<()> {
+        if PublicKeyAlgorithm::MLKEM768_X25519.is_supported() {
+            let key: Key6<SecretParts, UnspecifiedRole>
+                = Key6::generate_mlkem768_x25519()
+                .expect("failed to generate ML-KEM768 key, but it is supported.");
+
+            assert_eq!(key.pk_algo(), PublicKeyAlgorithm::MLKEM768_X25519);
+            let creation_time = key.creation_time();
+            let mpis = key.mpis();
+            let crate::crypto::mpi::PublicKey::MLKEM768_X25519 {
+                ecdh,
+                mlkem,
+            } = &mpis else {
+                panic!("Key generate generated the wrong key");
+            };
+
+            let imported_key = Key6::import_public_mlkem768_x25519(
+                &mlkem[..], &ecdh[..], creation_time)
+                .expect("Can import key");
+
+            assert_eq!(key.parts_into_public(), imported_key);
+        }
+
+        if PublicKeyAlgorithm::MLKEM1024_X448.is_supported() {
+            let key: Key6<SecretParts, UnspecifiedRole>
+                = Key6::generate_mlkem1024_x448()
+                .expect("failed to generate ML-KEM1024 key, but it is supported.");
+
+            assert_eq!(key.pk_algo(), PublicKeyAlgorithm::MLKEM1024_X448);
+            let creation_time = key.creation_time();
+            let mpis = key.mpis();
+            let crate::crypto::mpi::PublicKey::MLKEM1024_X448 {
+                ecdh,
+                mlkem,
+            } = &mpis else {
+                panic!("Key generate generated the wrong key");
+            };
+
+            let imported_key = Key6::import_public_mlkem1024_x448(
+                &mlkem[..], &ecdh[..], creation_time)
                 .expect("Can import key");
 
             assert_eq!(key.parts_into_public(), imported_key);

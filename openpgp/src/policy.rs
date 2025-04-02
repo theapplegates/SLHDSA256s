@@ -714,7 +714,7 @@ a_cutoff_list!(SubpacketTagCutoffList, SubpacketTag, 40,
                    ACCEPT,                 // 39. PreferredAEADCiphersuites.
                ]);
 
-a_cutoff_list!(AsymmetricAlgorithmCutoffList, AsymmetricAlgorithm, 29,
+a_cutoff_list!(AsymmetricAlgorithmCutoffList, AsymmetricAlgorithm, 31,
                [
                    Some(Timestamp::Y2014M2), // 0. RSA1024.
                    ACCEPT,                   // 1. RSA2048.
@@ -745,6 +745,8 @@ a_cutoff_list!(AsymmetricAlgorithmCutoffList, AsymmetricAlgorithm, 29,
                    ACCEPT,                   // 26. SLHDSA128s.
                    ACCEPT,                   // 27. SLHDSA128f.
                    ACCEPT,                   // 28. SLHDSA256s.
+                   ACCEPT,                   // 29. MLKEM768_X25519.
+                   ACCEPT,                   // 30. MLKEM1024_X448.
                ]);
 
 a_cutoff_list!(SymmetricAlgorithmCutoffList, SymmetricAlgorithm, 14,
@@ -1611,6 +1613,11 @@ impl<'a> Policy for StandardPolicy<'a> {
             (PublicKeyAlgorithm::SLHDSA256s, _) =>
                 AsymmetricAlgorithm::SLHDSA256s,
 
+            (PublicKeyAlgorithm::MLKEM768_X25519, _) =>
+                AsymmetricAlgorithm::MLKEM768_X25519,
+            (PublicKeyAlgorithm::MLKEM1024_X448, _) =>
+                AsymmetricAlgorithm::MLKEM1024_X448,
+
             (PublicKeyAlgorithm::Private(_), _)
                 | (PublicKeyAlgorithm::Unknown(_), _)
                 => AsymmetricAlgorithm::Unknown,
@@ -1764,12 +1771,18 @@ pub enum AsymmetricAlgorithm {
     /// SLH-DSA signature algorithm 256 bit, small signatures.
     SLHDSA256s,
 
+    /// Composite KEM using ML-KEM-768 and X25519.
+    MLKEM768_X25519,
+
+    /// Composite KEM using ML-KEM-1024 and X448.
+    MLKEM1024_X448,
+
     /// Unknown algorithm.
     Unknown,
 }
 assert_send_and_sync!(AsymmetricAlgorithm);
 
-const ASYMMETRIC_ALGORITHM_VARIANTS: [AsymmetricAlgorithm; 29] = [
+const ASYMMETRIC_ALGORITHM_VARIANTS: [AsymmetricAlgorithm; 31] = [
     AsymmetricAlgorithm::RSA1024,
     AsymmetricAlgorithm::RSA2048,
     AsymmetricAlgorithm::RSA3072,
@@ -1799,6 +1812,8 @@ const ASYMMETRIC_ALGORITHM_VARIANTS: [AsymmetricAlgorithm; 29] = [
     AsymmetricAlgorithm::SLHDSA128s,
     AsymmetricAlgorithm::SLHDSA128f,
     AsymmetricAlgorithm::SLHDSA256s,
+    AsymmetricAlgorithm::MLKEM768_X25519,
+    AsymmetricAlgorithm::MLKEM1024_X448,
 ];
 
 impl AsymmetricAlgorithm {
@@ -1850,6 +1865,8 @@ impl From<AsymmetricAlgorithm> for u8 {
             SLHDSA128s => 26,
             SLHDSA128f => 27,
             SLHDSA256s => 28,
+            MLKEM768_X25519 => 29,
+            MLKEM1024_X448 => 30,
             Unknown => 255,
         }
     }

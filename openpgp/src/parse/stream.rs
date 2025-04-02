@@ -3454,6 +3454,25 @@ pub(crate) mod test {
             ("messages/encrypted/x448.sec.pgp",
              "messages/encrypted/x448.msg.pgp",
              "Hello World!\n"),
+
+            ("pqc/v6-eddsa-sample-sk.pgp",
+             "pqc/v6-eddsa-sample-message.pgp",
+             "Testing\n"),
+            ("pqc/v4-eddsa-sample-sk.pgp",
+             "pqc/v4-eddsa-sample-message-v1.pgp",
+             "Testing\n"),
+            ("pqc/v4-eddsa-sample-sk.pgp",
+             "pqc/v4-eddsa-sample-message-v2.pgp",
+             "Testing\n"),
+            ("pqc/v6-mldsa-65-sample-sk.pgp",
+             "pqc/v6-mldsa-65-sample-message.pgp",
+             "Testing\n"),
+            ("pqc/v6-mldsa-87-sample-sk.pgp",
+             "pqc/v6-mldsa-87-sample-message.pgp",
+             "Testing\n"),
+            ("pqc/v6-slhdsa-128s-sample-sk.pgp",
+             "pqc/v6-slhdsa-128s-sample-message.pgp",
+             "Testing\n"),
         ] {
             eprintln!("Test vector {:?}...", key_file);
             let key = Cert::from_bytes(crate::tests::file(key_file))?;
