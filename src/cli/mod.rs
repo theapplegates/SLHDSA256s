@@ -106,6 +106,7 @@ pub mod output;
 pub mod packet;
 pub mod pki;
 pub mod sign;
+pub mod toc;
 pub mod verify;
 pub mod version;
 
@@ -612,5 +613,6 @@ pub enum SqSubcommands {
     Packet(packet::Command),
 
     Config(config::Command),
+    Toc(toc::Command),
     Version(version::Command),
 }

@@ -28,6 +28,7 @@ pub mod key;
 pub mod network;
 pub mod packet;
 pub mod pki;
+pub mod toc;
 pub mod verify;
 pub mod version;
 
@@ -69,6 +70,9 @@ pub fn dispatch(sq: Sq, command: SqCommand, matches: &ArgMatches) -> Result<()>
 
         SqSubcommands::Config(command) =>
             config::dispatch(sq, command),
+
+        SqSubcommands::Toc(command) =>
+            toc::dispatch(sq, command),
 
         SqSubcommands::Version(command) =>
             version::dispatch(sq, command),
