@@ -1,0 +1,37 @@
+[package]
+name = "sequoia"
+description = "A high-Level library for Sequoia PGP"
+version = "0.1.0"
+documentation = "https://docs.rs/sequoia"
+homepage = "https://sequoia-pgp.org/"
+keywords = ["cryptography", "openpgp", "pgp", "encryption", "signing"]
+categories = ["cryptography", "authentication"]
+authors.workspace = true
+repository.workspace = true
+readme.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[badges]
+gitlab = { repository = "sequoia-pgp/sequoia-sq" }
+maintenance = { status = "actively-developed" }
+
+[dependencies]
+sequoia-openpgp = { version = "2", default-features = false, features = ["compression"] }
+
+[build-dependencies]
+
+[dev-dependencies]
+
+[target.'cfg(not(windows))'.dev-dependencies]
+# Enables a crypto backend for the tests:
+sequoia-openpgp = { version = "2", default-features = false, features = ["crypto-nettle", "__implicit-crypto-backend-for-tests"]  }
+
+[target.'cfg(windows)'.dev-dependencies]
+# Enables a crypto backend for the tests:
+sequoia-openpgp = { version = "2", default-features = false, features = ["crypto-cng", "__implicit-crypto-backend-for-tests"] }
+
+[package.metadata.docs.rs]
+# Enables a crypto backend for the docs.rs generation:
+features = ["sequoia-openpgp/default"]
