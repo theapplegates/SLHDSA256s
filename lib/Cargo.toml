@@ -18,11 +18,14 @@ gitlab = { repository = "sequoia-pgp/sequoia-sq" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
+anyhow = "1.0.18"
+sequoia-directories = "0.1"
 sequoia-openpgp = { version = "2", default-features = false, features = ["compression"] }
 
 [build-dependencies]
 
 [dev-dependencies]
+tempfile = "3.1"
 
 [target.'cfg(not(windows))'.dev-dependencies]
 # Enables a crypto backend for the tests:
