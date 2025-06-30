@@ -26,6 +26,7 @@ docker-build-push:
   before_script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
   script:
+    - cd tool
     - >
       docker build
       --no-cache
@@ -63,8 +64,8 @@ pages:
     - echo "/sequoia-sq/man /sequoia-sqv/man/$(/tmp/assets/man-pages/man2html.sh --html-root) 302" >> public/_redirects
 
     - mkdir public/subplot
-    - pandoc -s -o public/subplot/sq-subplot.html sq-subplot.md
-    - pandoc -s -o public/subplot/sq-subplot.pdf sq-subplot.md
+    - pandoc -s -o public/subplot/sq-subplot.html tool/sq-subplot.md
+    - pandoc -s -o public/subplot/sq-subplot.pdf tool/sq-subplot.md
 
     - echo "/sequoia-sq/ /sequoia-sq/man/sq.1.html 302" > public/_redirects
     - echo "/sequoia-sq/impl /sequoia-sq/impl/sq/index.html 302" >> public/_redirects
