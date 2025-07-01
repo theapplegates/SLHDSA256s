@@ -178,7 +178,7 @@ fn paths(sq: Sq, _: inspect::paths::Command) -> Result<()> {
         Ok(())
     };
 
-    if let Some(home) = &sq.home {
+    if let Some(home) = &sq.sequoia.home() {
         p(home.location(), "home directory",
           "This holds the configuration file, and, unless overridden, \
            the certificate store and key store.",

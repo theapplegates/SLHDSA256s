@@ -56,7 +56,7 @@ fn get(sq: Sq, cmd: config::get::Command) -> Result<()> {
 
     // Then, look in the default configuration.  But, we are careful
     // to filter out anything overridden in the actual configuration.
-    let default = ConfigFile::default_config(sq.home.as_ref())?;
+    let default = ConfigFile::default_config(sq.sequoia.home())?;
     let r1 = Node::traverse(&*default.as_item() as _, &path)
         .map_err(Into::into)
         .and_then(
@@ -171,7 +171,7 @@ fn set(mut sq: Sq, cmd: config::set::Command) -> Result<()> {
             if let Err(Error::KeyNotFound(_)) = node.get_mut(&last) {
                 // The node doesn't exist, see if it exists in the
                 // default configuration.
-                let default = ConfigFile::default_config(sq.home.as_ref())?;
+                let default = ConfigFile::default_config(sq.sequoia.home())?;
                 let v = Node::traverse(&*default.as_item() as _, &path).ok()
                     .and_then(|n| n.get(&last).ok())
                     .and_then(|n| n.as_array())
@@ -211,7 +211,7 @@ fn set(mut sq: Sq, cmd: config::set::Command) -> Result<()> {
 
     // The updated config verified, now persist it.
     config.persist(
-        sq.home.as_ref().ok_or(anyhow::anyhow!("No home directory given"))?)?;
+        sq.sequoia.home().ok_or(anyhow::anyhow!("No home directory given"))?)?;
 
     Ok(())
 }
@@ -219,7 +219,7 @@ fn set(mut sq: Sq, cmd: config::set::Command) -> Result<()> {
 /// Implements `sq config template`.
 fn template(sq: Sq, cmd: config::template::Command) -> Result<()> {
     let mut sink = cmd.output.create_safe(&sq)?;
-    ConfigFile::default_template(sq.home.as_ref())?
+    ConfigFile::default_template(sq.sequoia.home())?
         .dump(&mut sink)?;
 
     Ok(())

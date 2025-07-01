@@ -3839,6 +3839,7 @@ dependencies = [
  "roff",
  "rpassword",
  "rusqlite",
+ "sequoia",
  "sequoia-autocrypt",
  "sequoia-cert-store",
  "sequoia-directories",

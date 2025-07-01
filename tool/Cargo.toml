@@ -39,6 +39,7 @@ humantime = "2"
 indicatif = "0.17"
 once_cell = "1.17"
 reqwest = { version = ">=0.12, <0.13", features = ["hickory-dns", "stream"] }
+sequoia = { path = "../lib" }
 sequoia-cert-store = { version = "0.7", default-features = false }
 sequoia-ipc = { version = "0.36", default-features = false }
 sequoia-keystore = { version = "0.7" }

@@ -48,6 +48,8 @@ use wot::store::Store as _;
 use sequoia_keystore as keystore;
 use keystore::Protection;
 
+use sequoia::Sequoia;
+
 use crate::cli;
 use crate::cli::types::CertDesignators;
 use crate::cli::types::FileStdinOrKeyHandle;
@@ -125,6 +127,8 @@ type WotStore<'store, 'rstore>
 pub struct Sq<'store, 'rstore>
     where 'store: 'rstore
 {
+    pub sequoia: Sequoia,
+
     pub config_file: crate::config::ConfigFile,
     pub config: crate::config::Config,
 
@@ -138,7 +142,6 @@ pub struct Sq<'store, 'rstore>
     pub time_is_now: bool,
     pub policy: &'rstore P<'rstore>,
     pub policy_as_of: SystemTime,
-    pub home: Option<sequoia_directories::Home>,
     pub cert_store_path: Option<StateDirectory>,
     pub keyrings: Vec<PathBuf>,
     // Map from key fingerprint to cert fingerprint and the key.
@@ -184,14 +187,14 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
     fn no_rw_cert_store(&self) -> bool {
         self.cert_store_path.as_ref()
             .map(|s| s.is_none())
-            .unwrap_or(self.home.is_none())
+            .unwrap_or(self.sequoia.stateless())
     }
 
     /// Returns whether the key store is disabled.
     fn no_key_store(&self) -> bool {
         self.key_store_path.as_ref()
             .map(|s| s.is_none())
-            .unwrap_or(self.home.is_none())
+            .unwrap_or(self.sequoia.stateless())
     }
 
     /// Returns the cert store's base directory, if it is enabled.
@@ -199,7 +202,7 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
         let default = || if let Ok(path) = std::env::var("PGP_CERT_D") {
             Some(PathBuf::from(path))
         } else {
-            self.home.as_ref()
+            self.sequoia.home()
                 .map(|h| h.data_dir(sequoia_directories::Component::CertD))
         };
 
@@ -327,7 +330,7 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
 
         // Sync certs from GnuPG's state if we are using the user's
         // default home directory.
-        if self.home.as_ref().map(|h| h.is_default_location())
+        if self.sequoia.home().map(|h| h.is_default_location())
             .unwrap_or(false)
             && std::env::var("GNUPGHOME").is_err()
         {
@@ -426,7 +429,7 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
     /// If the key store is disabled, returns `Ok(None)`.
     pub fn key_store_path(&self) -> Result<Option<PathBuf>> {
         let default = || {
-            Ok(self.home.as_ref()
+            Ok(self.sequoia.home()
                .map(|h| h.data_dir(sequoia_directories::Component::Keystore)))
         };
 

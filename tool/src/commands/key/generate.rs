@@ -190,7 +190,7 @@ pub fn generate(
 
         rev_cert
     } else if on_keystore {
-        if let Some(home) = &sq.home {
+        if let Some(home) = sq.sequoia.home() {
             let dir = home.data_dir(sequoia_directories::Component::Other(
                 "revocation-certificates".into()));
             std::fs::create_dir_all(&dir)

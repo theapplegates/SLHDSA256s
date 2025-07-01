@@ -547,7 +547,7 @@ pub fn list(sq: Sq, mut cmd: cli::key::list::Command) -> Result<()> {
             "There are no secret keys."));
 
         if sq.key_store_path.is_some()
-            || ! sq.home.as_ref()
+            || ! sq.sequoia.home()
             .map(|h| h.is_default_location()).unwrap_or(false)
         {
             hint = hint.hint(format_args!(

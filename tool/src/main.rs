@@ -22,6 +22,8 @@ use openpgp::Cert;
 use openpgp::parse::Parse;
 use openpgp::cert::prelude::*;
 
+use sequoia::Sequoia;
+
 use clap::FromArgMatches;
 
 // XXX: This could be its own crate, or preferably integrated into
@@ -337,8 +339,17 @@ fn real_main() -> Result<()> {
         password_cache.push(password.into());
     };
 
+    let mut sequoia = Sequoia::builder();
+    if let Some(home) = home {
+        sequoia.home(home);
+    } else {
+        sequoia.stateless();
+    }
+    let sequoia = sequoia.build()?;
+
     #[allow(deprecated)]
     let sq = Sq {
+        sequoia,
         config_file,
         config,
         overwrite: c.overwrite,
@@ -347,7 +358,6 @@ fn real_main() -> Result<()> {
         time_is_now,
         policy_as_of,
         policy: &policy,
-        home,
         cert_store_path: c.cert_store.clone(),
         keyrings: c.keyring.clone(),
         keyring_tsks: Default::default(),

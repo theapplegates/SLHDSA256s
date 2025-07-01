@@ -272,7 +272,7 @@ fn explain_configuration(sink: &mut dyn io::Write, sq: &Sq)
     }
 
     // The inline policy, if any.
-    let config_file = sq.home.as_ref().map(ConfigFile::file_name);
+    let config_file = sq.sequoia.home().map(ConfigFile::file_name);
     if let Some(config) = &config_file {
         if config.exists() && [
             "policy.hash_algorithms",
