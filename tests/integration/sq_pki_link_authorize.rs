@@ -111,7 +111,7 @@ fn sq_pki_link_authorize_then_authenticate() {
             true, // bob@example.org
             true);// bob@other.org
 
-        // The user authorizes the CA with the regex contraint "example".
+        // The user authorizes the CA with the regex constraint "example".
         sq.tick(1);
         sq.pki_link_authorize(&maybe_all(&["--regex", "example"]),
                               ca.key_handle(),
@@ -124,7 +124,7 @@ fn sq_pki_link_authorize_then_authenticate() {
             true,  // bob@example.org
             false);// bob@other.org
 
-        // The user authorizes the CA with the domain contraint
+        // The user authorizes the CA with the domain constraint
         // "example.org".
         sq.tick(1);
         sq.pki_link_authorize(&maybe_all(&["--domain", "example.org"]),
@@ -138,7 +138,7 @@ fn sq_pki_link_authorize_then_authenticate() {
             true,  // bob@example.org
             false);// bob@other.org
 
-        // The user authorizes the CA with the regex contraint "other".
+        // The user authorizes the CA with the regex constraint "other".
         sq.tick(1);
         sq.pki_link_authorize(&maybe_all(&["--regex", "other"]),
                               ca.key_handle(),
@@ -151,7 +151,7 @@ fn sq_pki_link_authorize_then_authenticate() {
             false, // bob@example.org
             true); // bob@other.org
 
-        // The user authorizes the CA with the regex contraint "bob".
+        // The user authorizes the CA with the regex constraint "bob".
         sq.tick(1);
         sq.pki_link_authorize(&maybe_all(&["--regex", "bob"]),
                               ca.key_handle(),
@@ -164,7 +164,7 @@ fn sq_pki_link_authorize_then_authenticate() {
             true,  // bob@example.org
             true); // bob@other.org
 
-        // The user authorizes the CA with the regex contraint "bob" or
+        // The user authorizes the CA with the regex constraint "bob" or
         // "alice".
         sq.tick(1);
         sq.pki_link_authorize(&maybe_all(&["--regex", "bob",
@@ -212,7 +212,7 @@ fn sq_pki_link_authorize_then_authenticate() {
             true); // bob@other.org
 
 
-        // The user authorizes the CA with the regex contraint "zoo".
+        // The user authorizes the CA with the regex constraint "zoo".
         sq.tick(1);
         sq.pki_link_authorize(&maybe_all(&["--regex", "zoo"]),
                               ca.key_handle(),
@@ -225,7 +225,7 @@ fn sq_pki_link_authorize_then_authenticate() {
             false, // bob@example.org
             false);// bob@other.org
 
-        // The user authorizes the CA with the domain contraint "example".
+        // The user authorizes the CA with the domain constraint "example".
         sq.tick(1);
         sq.pki_link_authorize(&maybe_all(&["--domain", "example"]),
                               ca.key_handle(),

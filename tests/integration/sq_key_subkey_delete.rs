@@ -35,7 +35,7 @@ where H: Into<FileOrKeyHandle>,
             panic!("Failed, but should have succeeded: {}", err)
         }
         (false, Ok(_)) => {
-            panic!("Succeded, but should have failed")
+            panic!("Succeeded, but should have failed")
         }
         (false, Err(_)) => return,
     };

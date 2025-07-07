@@ -173,7 +173,7 @@ fn sq_key_revoke() -> Result<()> {
 }
 
 #[test]
-fn sq_key_revoke_thirdparty() -> Result<()> {
+fn sq_key_revoke_third_party() -> Result<()> {
     let sq = Sq::new();
 
     let time = sq.now();
@@ -181,7 +181,7 @@ fn sq_key_revoke_thirdparty() -> Result<()> {
     let (_cert, cert_path, _cert_rev)
         = sq.key_generate(&[], &["alice"]);
 
-    let (_thirdparty_cert, thirdparty_path, _cert_rev)
+    let (_third_party_cert, third_party_path, _cert_rev)
         = sq.key_generate(&[], &["bob <bob@example.org>"]);
 
     let message = "message";
@@ -189,7 +189,7 @@ fn sq_key_revoke_thirdparty() -> Result<()> {
     // revoke for various reasons, with or without notations added, or with
     // a revocation whose reference time is one hour after the creation of the
     // certificate
-    for ((reason, reason_str, notations, revocation_time), cert_path, thirdparty_path) in [
+    for ((reason, reason_str, notations, revocation_time), cert_path, third_party_path) in [
         (
             ReasonForRevocation::KeyCompromised,
             "compromised",
@@ -252,11 +252,11 @@ fn sq_key_revoke_thirdparty() -> Result<()> {
             // Two valid keys.
             (test,
              cert_path.clone(),
-             thirdparty_path.clone()),
+             third_party_path.clone()),
             // The revokee is invalid (SHA-1).
             (test,
              artifact("keys/only-sha1-priv.pgp"),
-             thirdparty_path.clone()),
+             third_party_path.clone()),
             // The revoker is invalid (SHA-1).
             (test,
              cert_path.clone(),
@@ -264,13 +264,13 @@ fn sq_key_revoke_thirdparty() -> Result<()> {
         ]
     }) {
         let cert = Cert::from_file(&cert_path).expect("valid cert");
-        let thirdparty_cert
-            = Cert::from_file(&thirdparty_path).expect("valid cert");
+        let third_party_cert
+            = Cert::from_file(&third_party_path).expect("valid cert");
 
-        let thirdparty_valid_cert = thirdparty_cert
+        let third_party_valid_cert = third_party_cert
             .with_policy(NULL_POLICY, Some(time.into()))?;
-        let thirdparty_fingerprint
-            = &thirdparty_valid_cert.clone().fingerprint();
+        let third_party_fingerprint
+            = &third_party_valid_cert.clone().fingerprint();
 
         for keystore in [false, true].into_iter() {
             let revocation = sq.scratch_file(Some(&format!(
@@ -292,7 +292,7 @@ fn sq_key_revoke_thirdparty() -> Result<()> {
                 // When using the keystore, we need to import the key.
 
                 sq.cert_import(&cert_path);
-                sq.key_import(&thirdparty_path);
+                sq.key_import(&third_party_path);
             }
 
             let revocation_cert = sq.key_revoke(
@@ -302,9 +302,9 @@ fn sq_key_revoke_thirdparty() -> Result<()> {
                     FileOrKeyHandle::from(&cert_path)
                 },
                 if keystore {
-                    FileOrKeyHandle::from(thirdparty_cert.key_handle())
+                    FileOrKeyHandle::from(third_party_cert.key_handle())
                 } else {
-                    FileOrKeyHandle::from(&thirdparty_path)
+                    FileOrKeyHandle::from(&third_party_path)
                 },
                 reason_str,
                 message,
@@ -325,17 +325,17 @@ fn sq_key_revoke_thirdparty() -> Result<()> {
                 // it is a key revocation
                 assert_eq!(sig.typ(), SignatureType::KeyRevocation);
 
-                // the issuer is a thirdparty revoker
+                // the issuer is a third party revoker
                 assert_eq!(
                     sig.get_issuers().into_iter().next().as_ref(),
-                    Some(&thirdparty_fingerprint.clone().into())
+                    Some(&third_party_fingerprint.clone().into())
                 );
 
                 // the revocation can be verified
                 if sig
                     .clone()
                     .verify_primary_key_revocation(
-                        thirdparty_cert.primary_key().key(),
+                        third_party_cert.primary_key().key(),
                         cert.primary_key().key(),
                     )
                     .is_err()

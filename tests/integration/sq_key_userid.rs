@@ -190,7 +190,7 @@ fn sq_key_userid_revoke() -> Result<()> {
 }
 
 #[test]
-fn sq_key_userid_revoke_thirdparty() -> Result<()> {
+fn sq_key_userid_revoke_third_party() -> Result<()> {
     let sq = Sq::new();
     let time = sq.now();
 
@@ -231,11 +231,11 @@ fn sq_key_userid_revoke_thirdparty() -> Result<()> {
     ] {
         for keystore in [false, true].into_iter() {
             let (cert, cert_path, _rev_path) = sq.key_generate(&[], userids);
-            let (thirdparty_cert, thirdparty_path, _rev_path)
+            let (third_party_cert, third_party_path, _rev_path)
                 = sq.key_generate(&[], &["bob <bob@example.org>"]);
-            let thirdparty_valid_cert = thirdparty_cert
+            let third_party_valid_cert = third_party_cert
                 .with_policy(STANDARD_POLICY, Some(time.into()))?;
-            let thirdparty_fingerprint = thirdparty_valid_cert.fingerprint();
+            let third_party_fingerprint = third_party_valid_cert.fingerprint();
 
             let message = "message";
 
@@ -257,7 +257,7 @@ fn sq_key_userid_revoke_thirdparty() -> Result<()> {
             if keystore {
                 // When using the keystore, we need to import the key.
 
-                for path in &[ &cert_path, &thirdparty_path ] {
+                for path in &[ &cert_path, &third_party_path ] {
                     sq.key_import(path);
                 }
             }
@@ -275,12 +275,12 @@ fn sq_key_userid_revoke_thirdparty() -> Result<()> {
             if keystore {
                 cmd.args([
                     "--cert", &cert.fingerprint().to_string(),
-                    "--revoker", &thirdparty_cert.fingerprint().to_string(),
+                    "--revoker", &third_party_cert.fingerprint().to_string(),
                 ]);
             } else {
                 cmd.arg("--output").arg(&revocation)
                     .arg("--cert-file").arg(&cert_path)
-                    .arg("--revoker-file").arg(&thirdparty_path);
+                    .arg("--revoker-file").arg(&third_party_path);
             }
 
             for (k, v) in notations {
@@ -332,17 +332,17 @@ fn sq_key_userid_revoke_thirdparty() -> Result<()> {
                             SignatureType::CertificationRevocation
                         );
 
-                        // the issuer is a thirdparty revoker
+                        // the issuer is a third party revoker
                         assert_eq!(
                             sig.get_issuers().into_iter().next().as_ref(),
-                            Some(&thirdparty_fingerprint.clone().into())
+                            Some(&third_party_fingerprint.clone().into())
                         );
 
                         // the revocation can be verified
                         if sig
                             .clone()
                             .verify_userid_revocation(
-                                thirdparty_cert.primary_key().key(),
+                                third_party_cert.primary_key().key(),
                                 revocation_cert.primary_key().key(),
                                 &UserID::from(*userid_revoke),
                             )

@@ -102,7 +102,7 @@ fn sq_pki_vouch_authorize_then_authenticate() {
         true, // bob@example.org
         true);// bob@other.org
 
-    // Otto authorizes to the CA with the regex contraint "example".
+    // Otto authorizes to the CA with the regex constraint "example".
     let certification = sq.scratch_file(None);
     sq.tick(1);
     sq.pki_vouch_authorize(&["--regex", "example", "--all"],
@@ -118,7 +118,7 @@ fn sq_pki_vouch_authorize_then_authenticate() {
         true,  // bob@example.org
         false);// bob@other.org
 
-    // Otto authorizes to the CA with the domain contraint "example.org".
+    // Otto authorizes to the CA with the domain constraint "example.org".
     let certification = sq.scratch_file(None);
     sq.tick(1);
     sq.pki_vouch_authorize(&["--domain", "example.org", "--all"],
@@ -134,7 +134,7 @@ fn sq_pki_vouch_authorize_then_authenticate() {
         true,  // bob@example.org
         false);// bob@other.org
 
-    // Otto authorizes to the CA with the regex contraint "other".
+    // Otto authorizes to the CA with the regex constraint "other".
     let certification = sq.scratch_file(None);
     sq.tick(1);
     sq.pki_vouch_authorize(&["--regex", "other", "--all"],
@@ -150,7 +150,7 @@ fn sq_pki_vouch_authorize_then_authenticate() {
         false, // bob@example.org
         true); // bob@other.org
 
-    // Otto authorizes to the CA with the regex contraint "bob".
+    // Otto authorizes to the CA with the regex constraint "bob".
     let certification = sq.scratch_file(None);
     sq.tick(1);
     sq.pki_vouch_authorize(&["--regex", "bob", "--all"],
@@ -166,7 +166,7 @@ fn sq_pki_vouch_authorize_then_authenticate() {
         true,  // bob@example.org
         true); // bob@other.org
 
-    // Otto authorizes to the CA with the regex contraint "bob" or "alice".
+    // Otto authorizes to the CA with the regex constraint "bob" or "alice".
     let certification = sq.scratch_file(None);
     sq.tick(1);
     sq.pki_vouch_authorize(&["--regex", "bob", "--regex", "alice", "--all"],
@@ -219,7 +219,7 @@ fn sq_pki_vouch_authorize_then_authenticate() {
         true); // bob@other.org
 
 
-    // Otto authorizes to the CA with the regex contraint "zoo".
+    // Otto authorizes to the CA with the regex constraint "zoo".
     let certification = sq.scratch_file(None);
     sq.tick(1);
     sq.pki_vouch_authorize(&["--regex", "zoo", "--all"],
@@ -235,7 +235,7 @@ fn sq_pki_vouch_authorize_then_authenticate() {
         false, // bob@example.org
         false);// bob@other.org
 
-    // Otto authorizes to the CA with the domain contraint "example".
+    // Otto authorizes to the CA with the domain constraint "example".
     let certification = sq.scratch_file(None);
     sq.tick(1);
     sq.pki_vouch_authorize(&["--domain", "example", "--all"],

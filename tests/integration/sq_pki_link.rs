@@ -1097,7 +1097,7 @@ fn link_retract_userid_designators() {
     assert!(sq.pki_authenticate(
         &[], &fpr, UserIDArg::UserID("<alice@example.org>")).is_ok());
 
-    // We can unlink it using --email, because that doesn't hvae to
+    // We can unlink it using --email, because that doesn't have to
     // match on self-signed user IDs.
     sq.tick(1);
     assert!(sq.pki_link_retract_maybe(
@@ -1114,7 +1114,7 @@ fn link_retract_userid_designators() {
     assert!(sq.pki_authenticate(
         &[], &fpr, UserIDArg::UserID("<alice@some.org>")).is_ok());
 
-    // We can unlink it using --email: that matchs on self-signed user
+    // We can unlink it using --email: that matches on self-signed user
     // IDs.
     sq.tick(1);
     assert!(sq.pki_link_retract_maybe(
