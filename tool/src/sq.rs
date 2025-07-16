@@ -28,7 +28,7 @@ use openpgp::packet::key::PublicParts;
 use openpgp::packet::prelude::*;
 use openpgp::parse::Parse;
 use openpgp::policy::Policy;
-use openpgp::policy::StandardPolicy as P;
+use openpgp::policy::StandardPolicy;
 use openpgp::policy::NullPolicy;
 use openpgp::types::KeyFlags;
 use openpgp::types::RevocationStatus;
@@ -121,12 +121,10 @@ impl std::fmt::Display for TrustThreshold {
 
 
 // A shorthand for our store type.
-type WotStore<'store, 'rstore>
-    = wot::store::CertStore<'store, 'rstore, cert_store::CertStore<'store>>;
+type WotStore
+    = wot::store::CertStore<'static, 'static, cert_store::CertStore<'static>>;
 
-pub struct Sq<'store, 'rstore>
-    where 'store: 'rstore
-{
+pub struct Sq {
     pub sequoia: Sequoia,
 
     pub config_file: crate::config::ConfigFile,
@@ -140,7 +138,7 @@ pub struct Sq<'store, 'rstore>
 
     pub time: SystemTime,
     pub time_is_now: bool,
-    pub policy: &'rstore P<'rstore>,
+    pub policy: StandardPolicy<'static>,
     pub policy_as_of: SystemTime,
     pub cert_store_path: Option<StateDirectory>,
     pub keyrings: Vec<PathBuf>,
@@ -151,7 +149,7 @@ pub struct Sq<'store, 'rstore>
 
     /// This will be set if the cert store has not been disabled, OR
     /// --keyring is passed.
-    pub cert_store: OnceCell<WotStore<'store, 'rstore>>,
+    pub cert_store: OnceCell<WotStore>,
 
     // The value of --trust-root.
     pub trust_roots: Vec<Fingerprint>,
@@ -172,10 +170,10 @@ pub struct Sq<'store, 'rstore>
     pub password_cache: Mutex<Vec<Password>>,
 }
 
-impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
+impl Sq {
     /// Returns the policy.
-    pub fn policy(&self) -> &P<'rstore> {
-        self.policy
+    pub fn policy(&self) -> &StandardPolicy<'static> {
+        &self.policy
     }
 
     /// Returns the current time.
@@ -231,7 +229,7 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
     ///
     /// If the cert store is disabled, returns `Ok(None)`.  If it is not yet
     /// open, opens it.
-    pub fn cert_store(&self) -> Result<Option<&WotStore<'store, 'rstore>>> {
+    pub fn cert_store(&self) -> Result<Option<&WotStore>> {
         if self.no_rw_cert_store()
             && self.keyrings.is_empty()
         {
@@ -351,7 +349,7 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
         }
 
         let cert_store = WotStore::from_store(
-            cert_store, self.policy, self.time);
+            cert_store, Box::new(self.policy().clone()) as Box::<dyn Policy>, self.time());
 
         let _ = self.cert_store.set(cert_store);
 
@@ -367,7 +365,7 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
     /// Returns the cert store.
     ///
     /// If the cert store is disabled, returns an error.
-    pub fn cert_store_or_else(&self) -> Result<&WotStore<'store, 'rstore>> {
+    pub fn cert_store_or_else<'s>(&'s self) -> Result<&'s WotStore> {
         self.cert_store().and_then(|cert_store| cert_store.ok_or_else(|| {
             Self::no_cert_store_err().into()
         }))
@@ -378,7 +376,7 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
     ///
     /// If the cert direcgory is disabled, returns an error.
     pub fn certd_or_else(&self)
-        -> Result<&cert_store::store::certd::CertD<'store>>
+        -> Result<&cert_store::store::certd::CertD<'static>>
     {
         const NO_CERTD_ERR: &str =
             "A local trust root and other special certificates are \
@@ -397,7 +395,7 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
     ///
     /// The trust roots are already set appropriately.
     pub fn wot_query(&self)
-        -> Result<wot::NetworkBuilder<&WotStore<'store, 'rstore>>>
+        -> Result<wot::NetworkBuilder<&WotStore>>
     {
         let cert_store = self.cert_store_or_else()?;
         let network = wot::NetworkBuilder::rooted(cert_store,
@@ -896,7 +894,7 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
     }
 
     /// Returns the local trust root, creating it if necessary.
-    pub fn local_trust_root(&self) -> Result<Arc<LazyCert<'store>>> {
+    pub fn local_trust_root(&self) -> Result<Arc<LazyCert<'static>>> {
         self.certd_or_else()?.trust_root().map(|(cert, _created)| {
             cert
         })

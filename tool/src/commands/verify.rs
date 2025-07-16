@@ -101,10 +101,8 @@ pub fn verify(sq: Sq,
 }
 
 
-pub struct VHelper<'c, 'store, 'rstore>
-    where 'store: 'rstore
-{
-    pub sq: &'c Sq<'store, 'rstore>,
+pub struct VHelper<'c> {
+    pub sq: &'c Sq,
     signatures: usize,
 
     /// Require signatures to be made by this set of certs.
@@ -128,8 +126,8 @@ pub struct VHelper<'c, 'store, 'rstore>
     pub quiet: bool,
 }
 
-impl<'c, 'store, 'rstore> VHelper<'c, 'store, 'rstore> {
-    pub fn new(sq: &'c Sq<'store, 'rstore>, signatures: usize,
+impl<'c> VHelper<'c> {
+    pub fn new(sq: &'c Sq, signatures: usize,
                designated_signers: Vec<Cert>)
                -> Self
     {
@@ -452,9 +450,7 @@ impl<'c, 'store, 'rstore> VHelper<'c, 'store, 'rstore> {
     }
 }
 
-impl<'c, 'store, 'rstore> VerificationHelper for VHelper<'c, 'store, 'rstore>
-    where 'store: 'rstore
-{
+impl<'c> VerificationHelper for VHelper<'c> {
     fn get_certs(&mut self, ids: &[openpgp::KeyHandle]) -> Result<Vec<Cert>> {
         let mut certs = BTreeMap::new();
 

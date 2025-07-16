@@ -237,15 +237,15 @@ impl Node {
     }
 }
 
-pub struct PacketDumper<'a, 'b, 'c> {
-    sq: &'a Sq<'b, 'c>,
+pub struct PacketDumper<'a> {
+    sq: &'a Sq,
     width: usize,
     mpis: bool,
     root: Option<Node>,
 }
 
-impl<'a, 'b, 'c> PacketDumper<'a, 'b, 'c> {
-    pub fn new(sq: &'a Sq<'b, 'c>, width: usize, mpis: bool) -> Self {
+impl<'a> PacketDumper<'a> {
+    pub fn new(sq: &'a Sq, width: usize, mpis: bool) -> Self {
         PacketDumper {
             sq,
             width,

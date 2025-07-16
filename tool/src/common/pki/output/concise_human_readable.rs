@@ -226,19 +226,19 @@ pub fn print_path(output: &mut dyn std::io::Write,
 
 /// The concise human-readable specific implementation of an
 /// OutputNetwork
-pub struct ConciseHumanReadableOutputNetwork<'a, 'store, 'rstore> {
+pub struct ConciseHumanReadableOutputNetwork<'a> {
     output: &'a mut dyn std::io::Write,
-    sq: &'a Sq<'store, 'rstore>,
+    sq: &'a Sq,
     paths: bool,
     required_amount: usize,
     current_cert: Option<Cert>,
     bindings_shown: usize,
 }
 
-impl<'a, 'store, 'rstore> ConciseHumanReadableOutputNetwork<'a, 'store, 'rstore> {
+impl<'a> ConciseHumanReadableOutputNetwork<'a> {
     /// Creates a new ConciseHumanReadableOutputNetwork
     pub fn new(output: &'a mut dyn std::io::Write,
-               sq: &'a Sq<'store, 'rstore>,
+               sq: &'a Sq,
                required_amount: usize, paths: bool)
         -> Self
     {
@@ -253,7 +253,7 @@ impl<'a, 'store, 'rstore> ConciseHumanReadableOutputNetwork<'a, 'store, 'rstore>
     }
 }
 
-impl OutputType for ConciseHumanReadableOutputNetwork<'_, '_, '_> {
+impl OutputType for ConciseHumanReadableOutputNetwork<'_> {
     fn add_cert(&mut self, fingerprint: &Fingerprint) -> Result<()> {
         let first_shown = self.current_cert.is_none();
 

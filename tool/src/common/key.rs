@@ -109,7 +109,7 @@ where
 ///
 /// This also has the benefit that newly created keys also show up in
 /// the cert listing.
-pub fn certify_generated<'store, 'rstore>(sq: &Sq<'store, 'rstore>,
+pub fn certify_generated(sq: &Sq,
                                           cert: &Cert)
     -> Result<Cert>
 {

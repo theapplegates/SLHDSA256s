@@ -87,8 +87,8 @@ pub fn dispatch(sq: Sq, command: cli::sign::Command) -> Result<()> {
     Ok(())
 }
 
-pub fn sign<'a, 'store, 'rstore>(
-    sq: Sq<'store, 'rstore>,
+pub fn sign<'a>(
+    sq: Sq,
     input: &'a mut (dyn BufferedReader<Cookie> + Sync + Send),
     output: &'a FileOrStdout,
     signers: Vec<(openpgp::Cert, Box<dyn crypto::Signer + Send + Sync>)>,
@@ -123,8 +123,8 @@ pub fn sign<'a, 'store, 'rstore>(
     }
 }
 
-fn sign_data<'a, 'store, 'rstore>(
-    sq: Sq<'store, 'rstore>,
+fn sign_data<'a>(
+    sq: Sq,
     input: &'a mut (dyn BufferedReader<Cookie> + Sync + Send),
     output_path: &'a FileOrStdout,
     mut signers: Vec<(openpgp::Cert, Box<dyn crypto::Signer + Send + Sync>)>,
@@ -238,8 +238,8 @@ fn sign_data<'a, 'store, 'rstore>(
     Ok(())
 }
 
-fn sign_message<'a, 'store, 'rstore>(
-    sq: Sq<'store, 'rstore>,
+fn sign_message<'a>(
+    sq: Sq,
     input: &'a mut (dyn BufferedReader<Cookie> + Sync + Send),
     output: &'a FileOrStdout,
     signers: Vec<(openpgp::Cert, Box<dyn crypto::Signer + Send + Sync>)>,
@@ -265,8 +265,8 @@ fn sign_message<'a, 'store, 'rstore>(
     Ok(())
 }
 
-fn sign_message_<'a, 'store, 'rstore>(
-    sq: Sq<'store, 'rstore>,
+fn sign_message_<'a>(
+    sq: Sq,
     input: &'a mut (dyn BufferedReader<Cookie> + Sync + Send),
     mut signers: Vec<(openpgp::Cert, Box<dyn crypto::Signer + Send + Sync>)>,
     mode: Mode,

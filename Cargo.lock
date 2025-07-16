@@ -2255,7 +2255,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc2f4eb4bc735547cfed7c0a4922cbd04a4655978c09b54f1f7b228750664c34"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -3857,7 +3857,7 @@ dependencies = [
  "termcolor",
  "terminal_size",
  "textwrap",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "tokio",
  "toml_edit",
  "typenum",
@@ -3865,9 +3865,9 @@ dependencies = [
 
 [[package]]
 name = "sequoia-wot"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7725fa3249ea6f786362408e7fc9ebd86e9250633991d97a2bd64d1197dce490"
+checksum = "a63dfb4727485747f504ec23bfe77e44b02724612f5b90ddf111acabd3c11e49"
 dependencies = [
  "anyhow",
  "chrono",

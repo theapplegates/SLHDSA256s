@@ -315,12 +315,11 @@ fn certify(sq: &Sq,
 ///
 /// If a certificate cannot be certified for whatever reason, a
 /// diagnostic is emitted, and the certificate is returned as is.
-pub fn certify_downloads<'store, 'rstore>(sq: &Sq<'store, 'rstore>,
+pub fn certify_downloads(sq: &Sq,
                                           emit_provenance_messages: bool,
-                                          ca: Arc<LazyCert<'store>>,
+                                          ca: Arc<LazyCert<'static>>,
                                           certs: Vec<Cert>, email: Option<&str>)
     -> Vec<Cert>
-    where 'store: 'rstore
 {
     let ca = || -> Result<_> {
         let ca = ca.to_cert()?;
@@ -573,9 +572,8 @@ impl Method {
     //
     // This doesn't return an error, because not all methods have
     // shadow CAs, and a missing CA is not a hard error.
-    fn ca<'store, 'rstore>(&self, sq: &Sq<'store, 'rstore>)
-        -> Option<Arc<LazyCert<'store>>>
-        where 'store: 'rstore
+    fn ca(&self, sq: &Sq)
+        -> Option<Arc<LazyCert<'static>>>
     {
         make_qprintln!(sq.quiet());
 
@@ -702,8 +700,8 @@ impl Response {
     /// If `silent_errors` is given, then failure messages are
     /// suppressed unless --verbose is given, or there was not a
     /// single successful result.
-    async fn collect<'store, 'rstore>(
-        sq: &Sq<'store, 'rstore>,
+    async fn collect(
+        sq: &Sq,
         mut responses: JoinSet<Response>,
         certs: &mut BTreeMap<Fingerprint, (Cert, BTreeSet<Method>)>,
         certify: bool,
@@ -711,8 +709,6 @@ impl Response {
         pb: &mut ProgressBar,
     )
         -> Result<Vec<Fingerprint>>
-    where
-        'store: 'rstore
     {
         let mut new = Vec::new();
 
@@ -792,7 +788,7 @@ impl Response {
     }
 
     /// Either writes out a keyring or imports the certs.
-    fn import_or_emit(sq: Sq<'_, '_>,
+    fn import_or_emit(sq: Sq,
                       output: Option<FileOrStdout>,
                       binary: bool,
                       certs: BTreeMap<Fingerprint, (Cert, BTreeSet<Method>)>)

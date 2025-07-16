@@ -265,9 +265,9 @@ pub enum AuthenticateContext {
 ///
 /// If `gossip` is specified, paths that are not rooted are still
 /// shown (with a trust amount of 0, of course).
-pub fn authenticate<'store, 'rstore, Q>(
+pub fn authenticate<Q>(
     o: &mut dyn std::io::Write,
-    sq: &Sq<'store, 'rstore>,
+    sq: &Sq,
     context: AuthenticateContext,
     queries: Vec<Q>,
     gossip: bool,
@@ -276,8 +276,8 @@ pub fn authenticate<'store, 'rstore, Q>(
     trust_amount: Option<TrustAmount<usize>>,
     show_paths: bool,
 ) -> Result<()>
-where 'store: 'rstore,
-      Q: Into<Query>
+where
+    Q: Into<Query>,
 {
     tracer!(TRACE, "authenticate");
 

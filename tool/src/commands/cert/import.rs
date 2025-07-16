@@ -27,11 +27,7 @@ use crate::common::ui;
 use crate::commands::autocrypt;
 use crate::output::import::ImportStats;
 
-pub fn dispatch<'store, 'rstore>(sq: Sq<'store, 'rstore>,
-                                 cmd: import::Command)
-    -> Result<()>
-where 'store: 'rstore
-{
+pub fn dispatch(sq: Sq, cmd: import::Command) -> Result<()> {
     // We're going to save the input to the certificate store.
     // Make sure it is enabled.
     sq.cert_store_or_else()?;

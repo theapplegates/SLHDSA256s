@@ -88,10 +88,8 @@ pub fn dispatch(sq: Sq, command: cli::decrypt::Command) -> Result<()> {
     result
 }
 
-pub struct Helper<'c, 'store, 'rstore>
-    where 'store: 'rstore
-{
-    vhelper: VHelper<'c, 'store, 'rstore>,
+pub struct Helper<'c> {
+    vhelper: VHelper<'c>,
     secret_keys: HashMap<KeyID, (Cert, Key<key::SecretParts, key::UnspecifiedRole>)>,
     key_identities: HashMap<KeyID, Arc<Cert>>,
     session_keys: Vec<cli::types::SessionKey>,
@@ -103,26 +101,22 @@ pub struct Helper<'c, 'store, 'rstore>
     decryptor: RefCell<Option<Fingerprint>>,
 }
 
-impl<'c, 'store, 'rstore> std::ops::Deref for Helper<'c, 'store, 'rstore>
-    where 'store: 'rstore
-{
-    type Target = VHelper<'c, 'store, 'rstore>;
+impl<'c> std::ops::Deref for Helper<'c> {
+    type Target = VHelper<'c>;
 
     fn deref(&self) -> &Self::Target {
         &self.vhelper
     }
 }
 
-impl<'c, 'store, 'rstore> std::ops::DerefMut for Helper<'c, 'store, 'rstore> {
+impl<'c> std::ops::DerefMut for Helper<'c> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.vhelper
     }
 }
 
-impl<'c, 'store, 'rstore> Helper<'c, 'store, 'rstore>
-    where 'store: 'rstore
-{
-    pub fn new(sq: &'c Sq<'store, 'rstore>,
+impl<'c> Helper<'c> {
+    pub fn new(sq: &'c Sq,
                signatures: usize, certs: Vec<Cert>, secrets: Vec<Cert>,
                session_keys: Vec<cli::types::SessionKey>,
                dump_session_key: bool)
@@ -215,9 +209,7 @@ impl<'c, 'store, 'rstore> Helper<'c, 'store, 'rstore>
     }
 }
 
-impl<'c, 'store, 'rstore> VerificationHelper for Helper<'c, 'store, 'rstore>
-    where 'store: 'rstore
-{
+impl<'c> VerificationHelper for Helper<'c> {
     fn get_certs(&mut self, ids: &[openpgp::KeyHandle]) -> Result<Vec<Cert>> {
         self.vhelper.get_certs(ids)
     }
@@ -226,9 +218,7 @@ impl<'c, 'store, 'rstore> VerificationHelper for Helper<'c, 'store, 'rstore>
     }
 }
 
-impl<'c, 'store, 'rstore> DecryptionHelper for Helper<'c, 'store, 'rstore>
-    where 'store: 'rstore
-{
+impl<'c> DecryptionHelper for Helper<'c> {
     fn decrypt(&mut self, pkesks: &[PKESK], skesks: &[SKESK],
                sym_algo: Option<SymmetricAlgorithm>,
                decrypt: &mut dyn FnMut(Option<SymmetricAlgorithm>, &SessionKey) -> bool)

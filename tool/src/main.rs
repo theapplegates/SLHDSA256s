@@ -310,12 +310,15 @@ fn real_main() -> Result<()> {
 
     let mut policy = config.policy(policy_as_of)?;
 
-    let known_notations_store = c.known_notation.clone();
-    let known_notations = known_notations_store
-        .iter()
-        .map(|n| n.as_str())
-        .collect::<Vec<&str>>();
-    policy.good_critical_notations(&known_notations);
+    let known_notations_store =
+        Box::leak(c.known_notation.clone().into_boxed_slice());
+    let known_notations =
+        Box::leak(known_notations_store
+                  .iter()
+                  .map(|n| n.as_str())
+                  .collect::<Vec<&str>>()
+                  .into_boxed_slice());
+    policy.good_critical_notations(known_notations);
 
     let mut password_cache = Vec::new();
     for password_file in &c.password_file {
@@ -343,7 +346,7 @@ fn real_main() -> Result<()> {
         time,
         time_is_now,
         policy_as_of,
-        policy: &policy,
+        policy,
         cert_store_path: c.cert_store.clone(),
         keyrings: c.keyring.clone(),
         keyring_tsks: Default::default(),
