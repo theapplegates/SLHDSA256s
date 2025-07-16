@@ -51,7 +51,7 @@ where P: cert_designator::ArgumentPrefix,
     let (cert, cert_handle)
         = sq.resolve_cert(&cert, TrustThreshold::Full)?;
 
-    let vc = cert.with_policy(sq.policy, sq.time)?;
+    let vc = cert.with_policy(sq.policy(), sq.time)?;
 
     let keys = if let Some(keys) = keys {
         sq.resolve_keys(&vc, &cert_handle, &keys, false)?

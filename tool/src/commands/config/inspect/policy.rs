@@ -38,21 +38,21 @@ pub fn dispatch(sq: Sq, _: inspect::policy::Command) -> Result<()> {
 
     explain(sink, "Asymmetric algorithms",
 	    AsymmetricAlgorithm::variants(),
-	    |a| sq.policy.asymmetric_algo_cutoff(a))?;
+	    |a| sq.policy().asymmetric_algo_cutoff(a))?;
 
     explain(sink, "Symmetric algorithms",
 	    SymmetricAlgorithm::variants(),
-	    |a| sq.policy.symmetric_algo_cutoff(a))?;
+	    |a| sq.policy().symmetric_algo_cutoff(a))?;
 
     explain(sink, "AEAD algorithms",
 	    AEADAlgorithm::variants(),
-	    |a| sq.policy.aead_algo_cutoff(a))?;
+	    |a| sq.policy().aead_algo_cutoff(a))?;
 
     // Now the hashes, which are more complicated.
-    explain_hashes(sink, sq.policy)?;
+    explain_hashes(sink, sq.policy())?;
 
     // Then, the packets with their versions.
-    explain_packets(sink, sq.policy)?;
+    explain_packets(sink, sq.policy())?;
 
     // Finally, explain where this policy was loaded from.
     explain_configuration(sink, &sq)?;

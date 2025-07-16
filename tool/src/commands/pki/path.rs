@@ -27,7 +27,7 @@ pub fn path(sq: Sq, c: Command)
     if let Ok((cert, _cert_handle))
         = sq.resolve_cert(&target.into(), TrustThreshold::Full)
     {
-        if let Ok(vc) = cert.with_policy(sq.policy, sq.time) {
+        if let Ok(vc) = cert.with_policy(sq.policy(), sq.time) {
             if let Ok(userids) = userids.resolve(&vc) {
                 assert_eq!(userids.len(), 1);
                 userid = Some(userids.into_iter().next().unwrap());
@@ -53,7 +53,7 @@ pub fn path(sq: Sq, c: Command)
 
     let o = &mut std::io::stdout();
 
-    let r = q.lint_path(&path, userid.userid(), required_amount, sq.policy);
+    let r = q.lint_path(&path, userid.userid(), required_amount, sq.policy());
 
     let target_kh = path.last().expect("have one");
 

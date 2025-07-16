@@ -30,7 +30,7 @@ pub fn bind(sq: Sq, command: cli::key::subkey::bind::Command) -> Result<()>
         null_policy_ = unsafe { openpgp::policy::NullPolicy::new() };
         &null_policy_
     } else {
-        sq.policy
+        sq.policy()
     };
 
     // Find the corresponding keys.
@@ -347,7 +347,7 @@ pub fn bind(sq: Sq, command: cli::key::subkey::bind::Command) -> Result<()>
 
     let cert = cert.clone().insert_packets(packets.clone())?.0;
 
-    let vc = cert.with_policy(sq.policy, None).expect("still valid");
+    let vc = cert.with_policy(sq.policy(), None).expect("still valid");
     for pair in packets[..].chunks(2) {
         let newkey: &Key<key::PublicParts, key::UnspecifiedRole> = match pair[0]
         {

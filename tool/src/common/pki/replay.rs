@@ -148,7 +148,7 @@ pub fn replay(sq: &Sq, o: &mut dyn std::io::Write, indent: &str,
 
         // Skip if cert is invalid, expired, or revoked, or
         // user ID is revoked.
-        let vc = match cert.with_policy(sq.policy, sq.time) {
+        let vc = match cert.with_policy(sq.policy(), sq.time) {
             Ok(vc) => vc,
             Err(err) => {
                 wwriteln!(stream = o,
@@ -187,7 +187,7 @@ pub fn replay(sq: &Sq, o: &mut dyn std::io::Write, indent: &str,
         let ua = cert.userids().find(|u| u.userid() == &userid);
         if let Some(ua) = ua.as_ref() {
             if let RevocationStatus::Revoked(sigs)
-                = ua.revocation_status(sq.policy, sq.time)
+                = ua.revocation_status(sq.policy(), sq.time)
             {
                 let sig = sigs.into_iter().next().expect("have one");
                 if let Some((reason, message)) = sig.reason_for_revocation()
@@ -238,7 +238,7 @@ pub fn replay(sq: &Sq, o: &mut dyn std::io::Write, indent: &str,
                    ct_str,
                    err);
                 reasons.push((ct_str, err));
-            } else if let Err(err) = sq.policy.signature(
+            } else if let Err(err) = sq.policy().signature(
                 &certification,
                 HashAlgoSecurity::CollisionResistance)
             {
@@ -276,7 +276,7 @@ pub fn replay(sq: &Sq, o: &mut dyn std::io::Write, indent: &str,
 
                 if let Some(ua) = ua.as_ref() {
                     for preexisting in ua.active_certifications_by_key(
-                        sq.policy, sq.time, &target_pk)
+                        sq.policy(), sq.time, &target_pk)
                     {
                         let preexisting_ct = if let Some(ct)
                             = preexisting.signature_creation_time()

@@ -121,7 +121,7 @@ where
                         })
                         .unwrap_or(true)
                         && sig.get_issuers().iter().any(|i| i.aliases(&issuer_kh))
-                        && sq.policy.signature(
+                        && sq.policy().signature(
                             sig, HashAlgoSecurity::CollisionResistance).is_ok()
                 } else {
                     false

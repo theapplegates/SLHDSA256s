@@ -328,7 +328,7 @@ The certifier is the same as the certificate to certify."));
                     }
                 } else {
                     if let RevocationStatus::Revoked(_)
-                        = ua.revocation_status(sq.policy, sq.time)
+                        = ua.revocation_status(sq.policy(), sq.time)
                     {
                         // It's revoked.
                         if user_supplied_userids {

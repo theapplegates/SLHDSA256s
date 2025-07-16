@@ -87,7 +87,7 @@ pub fn import_certs(sq: &mut Sq, source: &mut Box<dyn BufferedReader<Cookie>>,
         vec![], vec![], false);
     helper.quiet(true);
 
-    let policy = sq.policy.clone();
+    let policy = sq.policy().clone();
     let dup = Dup::with_cookie(source, Cookie::default());
     let mut decryptor = match DecryptorBuilder::from_buffered_reader(dup)?
         .with_policy(&policy, None, helper)

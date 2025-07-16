@@ -167,7 +167,7 @@ fn userid_add(
     }
 
     let vcert = cert
-        .with_policy(sq.policy, sq.time)
+        .with_policy(sq.policy(), sq.time)
         .with_context(|| {
             format!("Certificate {} is not valid", cert.fingerprint())
         })?;
@@ -196,7 +196,7 @@ fn userid_add(
     let mut symmetric_algorithms: Vec<_> =
         sb.preferred_symmetric_algorithms().unwrap_or(&[]).to_vec();
     symmetric_algorithms
-        .retain(|algo| sq.policy.symmetric_algorithm(*algo).is_ok());
+        .retain(|algo| sq.policy().symmetric_algorithm(*algo).is_ok());
     if symmetric_algorithms.is_empty() {
         symmetric_algorithms.push(Default::default());
     }
@@ -207,7 +207,7 @@ fn userid_add(
         sb.preferred_hash_algorithms().unwrap_or(&[]).to_vec();
     hash_algorithms.retain(|algo| {
         sq
-            .policy
+            .policy()
             .hash_cutoff(*algo, HashAlgoSecurity::CollisionResistance)
             .map(|cutoff| cutoff.lt(&SystemTime::now()))
             .unwrap_or(true)
@@ -301,7 +301,7 @@ pub fn userid_revoke(
     // the current policy.  Users can still revoke user IDs whose
     // binding signature relies on weak cryptography using
     // `--add-user`.
-    let vcert = cert.with_policy(sq.policy, sq.time)
+    let vcert = cert.with_policy(sq.policy(), sq.time)
         .with_context(|| {
             format!("The certificate is not valid under the current \
                      policy.  Consider revoking the whole certificate \

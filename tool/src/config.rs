@@ -625,7 +625,7 @@ impl ConfigFile {
 
         // First, start with our configuration, and drop most of the
         // policy with the exception of the path.
-        let p = ConfiguredStandardPolicy::from_policy(sq.policy.clone());
+        let p = ConfiguredStandardPolicy::from_policy(sq.policy().clone());
         let mut doc = self.doc.clone();
         doc.remove("policy");
 

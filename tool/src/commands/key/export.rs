@@ -24,7 +24,7 @@ pub fn dispatch(sq: Sq, command: cli::key::export::Command)
     let mut results = Vec::new();
 
     for cert in certs.into_iter() {
-        let vc = Cert::with_policy(&cert, sq.policy, sq.time)
+        let vc = Cert::with_policy(&cert, sq.policy(), sq.time)
             .with_context(|| {
                 format!("The certificate {} is not valid under the \
                          current policy.  Use sq key subkey export --key \

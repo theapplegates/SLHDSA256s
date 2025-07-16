@@ -64,7 +64,7 @@ pub fn dispatch(
     }
 
     let mut old_cert = sq.resolve_cert(&command.cert, TrustThreshold::Full)?.0;
-    let old_vc = old_cert.with_policy(sq.policy, sq.time)?;
+    let old_vc = old_cert.with_policy(sq.policy(), sq.time)?;
 
     // Common key flags.  If this is a shared key, mark it as such.
     assert!(! (command.own_key && command.shared_key));
@@ -377,7 +377,7 @@ pub fn dispatch(
 
         for ua in old_cert.userids() {
             for sig in ua.active_certifications_by_key(
-                sq.policy,
+                sq.policy(),
                 sq.time,
                 trust_root.primary_key().key())
             {

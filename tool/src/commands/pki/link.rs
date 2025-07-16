@@ -34,7 +34,7 @@ pub fn add(sq: Sq, c: link::AddCommand)
     let (cert, _source)
         = sq.resolve_cert(&c.cert, TrustThreshold::Full)?;
 
-    let vc = cert.with_policy(sq.policy, Some(sq.time))?;
+    let vc = cert.with_policy(sq.policy(), Some(sq.time))?;
     let userids = c.userids.resolve(&vc)?;
 
     let notations = c.signature_notations.parse()?;
@@ -85,7 +85,7 @@ pub fn authorize(sq: Sq, c: link::AuthorizeCommand)
     let (cert, _source)
         = sq.resolve_cert(&c.cert, TrustThreshold::Full)?;
 
-    let vc = cert.with_policy(sq.policy, Some(sq.time))?;
+    let vc = cert.with_policy(sq.policy(), Some(sq.time))?;
     let userids = c.userids.resolve(&vc)?;
 
     let notations = c.signature_notations.parse()?;

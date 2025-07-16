@@ -71,7 +71,7 @@ pub fn dispatch(sq: Sq, command: cli::encrypt::Command) -> Result<()> {
 
     encrypt(
         &sq,
-        sq.policy,
+        sq.policy(),
         command.input,
         output,
         command.recipients.with_passwords(),

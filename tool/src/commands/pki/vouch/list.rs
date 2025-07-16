@@ -104,7 +104,7 @@ pub fn list(sq: Sq, c: list::Command)
                 Some(err)
             } else {
                 // Check the policy.
-                if let Err(err) = sq.policy.signature(
+                if let Err(err) = sq.policy().signature(
                     &certification,
                     HashAlgoSecurity::CollisionResistance)
                 {

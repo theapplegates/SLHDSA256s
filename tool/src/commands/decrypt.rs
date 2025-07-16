@@ -135,7 +135,7 @@ impl<'c, 'store, 'rstore> Helper<'c, 'store, 'rstore>
             let cert = Arc::new(tsk.clone().strip_secret_key_material());
             for ka in tsk.keys().secret()
                 // XXX: Should use the message's creation time that we do not know.
-                .with_policy(sq.policy, sq.time)
+                .with_policy(sq.policy(), sq.time)
                 .for_transport_encryption().for_storage_encryption()
             {
                 let id: KeyID = ka.key().fingerprint().into();
@@ -614,7 +614,7 @@ pub fn decrypt(sq: Sq,
     let helper = Helper::new(&sq, signatures, certs,
                              secrets, sk, dump_session_key);
     let mut decryptor = DecryptorBuilder::from_reader(input)?
-        .with_policy(sq.policy, None, helper)
+        .with_policy(sq.policy(), None, helper)
         .context("Decryption failed")?;
 
     io::copy(&mut decryptor, output).context("Decryption failed")?;

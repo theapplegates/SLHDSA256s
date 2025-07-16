@@ -25,7 +25,7 @@ pub fn dispatch(sq: Sq, command: Command) -> Result<()>
     let cert =
         sq.resolve_cert(&command.cert, TrustThreshold::Full)?.0;
 
-    let valid_cert = cert.with_policy(sq.policy, sq.time)?;
+    let valid_cert = cert.with_policy(sq.policy(), sq.time)?;
 
     let validity = command
         .expiration
