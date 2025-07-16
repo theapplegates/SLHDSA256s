@@ -138,7 +138,6 @@ pub struct Sq {
 
     pub time: SystemTime,
     pub time_is_now: bool,
-    pub policy: StandardPolicy<'static>,
     pub policy_as_of: SystemTime,
     pub cert_store_path: Option<StateDirectory>,
     pub keyrings: Vec<PathBuf>,
@@ -173,7 +172,7 @@ pub struct Sq {
 impl Sq {
     /// Returns the policy.
     pub fn policy(&self) -> &StandardPolicy<'static> {
-        &self.policy
+        self.sequoia.policy()
     }
 
     /// Returns the current time.

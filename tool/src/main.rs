@@ -335,6 +335,7 @@ fn real_main() -> Result<()> {
     } else {
         sequoia.stateless();
     }
+    sequoia.policy(policy);
     let sequoia = sequoia.build()?;
 
     let sq = Sq {
@@ -346,7 +347,6 @@ fn real_main() -> Result<()> {
         time,
         time_is_now,
         policy_as_of,
-        policy,
         cert_store_path: c.cert_store.clone(),
         keyrings: c.keyring.clone(),
         keyring_tsks: Default::default(),

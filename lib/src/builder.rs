@@ -3,6 +3,7 @@ use std::path::Path;
 
 use crate::Result;
 use crate::Sequoia;
+use crate::openpgp;
 
 enum Home {
     /// Use the default home directory.
@@ -32,6 +33,9 @@ enum Home {
 pub struct SequoiaBuilder {
     /// The home directory.
     home: Home,
+
+    /// The OpenPGP policy.
+    policy: openpgp::policy::StandardPolicy<'static>,
 }
 
 impl SequoiaBuilder {
@@ -39,6 +43,7 @@ impl SequoiaBuilder {
     pub fn new() -> Self {
         SequoiaBuilder {
             home: Home::Default,
+            policy: openpgp::policy::StandardPolicy::new(),
         }
     }
 
@@ -121,6 +126,14 @@ impl SequoiaBuilder {
         self
     }
 
+    /// Sets the OpenPGP policy.
+    pub fn policy(&mut self, p: openpgp::policy::StandardPolicy<'static>)
+                  -> &mut Self
+    {
+        self.policy = p;
+        self
+    }
+
     /// Instantiate a new context based on the builder's
     /// configuration.
     pub fn build(&self) -> Result<Sequoia> {
@@ -139,6 +152,7 @@ impl SequoiaBuilder {
 
         Ok(Sequoia {
             home,
+            policy: self.policy.clone(),
         })
     }
 }

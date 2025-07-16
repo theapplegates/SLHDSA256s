@@ -8,6 +8,7 @@ use anyhow::Result;
 
 /// Re-export.
 pub use sequoia_directories;
+pub use sequoia_openpgp as openpgp;
 
 mod builder;
 pub use builder::SequoiaBuilder;
@@ -18,6 +19,9 @@ pub struct Sequoia {
     /// If `None`, then the `Sequoia` instance should operate in
     /// stateless mode.
     home: Option<Cow<'static, sequoia_directories::Home>>,
+
+    /// The OpenPGP policy.
+    policy: openpgp::policy::StandardPolicy<'static>,
 }
 
 impl Sequoia {
@@ -43,5 +47,10 @@ impl Sequoia {
     /// stateless mode.
     pub fn stateless(&self) -> bool {
         self.home.is_none()
+    }
+
+    /// Returns the OpenPGP policy.
+    pub fn policy(&self) -> &openpgp::policy::StandardPolicy<'static> {
+        &self.policy
     }
 }
