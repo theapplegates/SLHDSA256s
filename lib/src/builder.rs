@@ -102,7 +102,7 @@ impl SequoiaBuilder {
     /// # Examples
     ///
     /// Create a [`Sequoia`] context that operates in stateless mode
-    /// (i.e., with a home directory):
+    /// (i.e., without a home directory):
     ///
     /// ```rust
     /// use sequoia::SequoiaBuilder;
