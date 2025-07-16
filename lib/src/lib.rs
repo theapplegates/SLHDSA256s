@@ -13,10 +13,10 @@ mod builder;
 pub use builder::SequoiaBuilder;
 
 pub struct Sequoia {
-    // The home directory.
-    //
-    // If `None`, then the `Sequoia` instance should operate in
-    // stateless mode.
+    /// The home directory.
+    ///
+    /// If `None`, then the `Sequoia` instance should operate in
+    /// stateless mode.
     home: Option<Cow<'static, sequoia_directories::Home>>,
 }
 

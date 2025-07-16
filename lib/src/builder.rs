@@ -30,7 +30,7 @@ enum Home {
 /// # Ok(()) }
 /// ```
 pub struct SequoiaBuilder {
-    // The home directory.
+    /// The home directory.
     home: Home,
 }
 
