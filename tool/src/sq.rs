@@ -368,35 +368,6 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
         }))
     }
 
-    /// Returns a mutable reference to the cert store.
-    ///
-    /// If the cert store is disabled, returns None.  If it is not yet
-    /// open, opens it.
-    pub fn cert_store_mut(&mut self)
-        -> Result<Option<&mut WotStore<'store, 'rstore>>>
-    {
-        if self.no_rw_cert_store() {
-            return Err(Self::no_cert_store_err().into());
-        }
-
-        // self.cert_store() will do any required initialization, but
-        // it will return an immutable reference.
-        self.cert_store()?;
-        Ok(self.cert_store.get_mut())
-    }
-
-    /// Returns a mutable reference to the cert store.
-    ///
-    /// If the cert store is disabled, returns an error.
-    #[allow(unused)]
-    pub fn cert_store_mut_or_else(&mut self)
-        -> Result<&mut WotStore<'store, 'rstore>>
-    {
-        self.cert_store_mut().and_then(|cert_store| cert_store.ok_or_else(|| {
-            Self::no_cert_store_err().into()
-        }))
-    }
-
     /// Returns a reference to the underlying certificate directory,
     /// if it is configured.
     ///
