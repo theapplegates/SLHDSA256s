@@ -25,8 +25,7 @@ use sequoia_cert_store::{
 };
 
 use crate::{
-    Sq,
-    print_error_chain,
+    Sequoia,
 };
 
 /// Controls tracing in this module.
@@ -48,7 +47,7 @@ pub fn gnupghome() -> Result<PathBuf> {
 }
 
 /// Syncs certificates from GnuPG.
-pub fn sync_from_gnupg<'store>(sq: &Sq, cert_store: &CertStore<'store>)
+pub fn sync_from_gnupg<'store>(sq: &Sequoia, cert_store: &CertStore<'store>)
                                -> Result<()> {
     tracer!(TRACE, "sync_from_gnupg");
 
@@ -144,21 +143,17 @@ pub fn sync_from_gnupg<'store>(sq: &Sq, cert_store: &CertStore<'store>)
                 for cert in certs.into_iter() {
                     let keyid = cert.keyid();
                     if let Err(err) = cert_store.update(Arc::new(cert)) {
-                        if sq.verbose() {
-                            let err = anyhow::Error::from(err)
-                                .context(format!(
-                                    "Reading {} from {:?}",
-                                    keyid, resource.path));
-                            print_error_chain(&err);
-                        }
+                        let err = anyhow::Error::from(err)
+                            .context(format!(
+                                "Reading {} from {:?}",
+                                keyid, resource.path));
+                        sq.warn_err(&err);
 
                         continue;
                     }
                 }
             }
-            Err(err) => if sq.verbose() {
-                print_error_chain(&err);
-            },
+            Err(err) => sq.warn_err(&err),
         }
 
         if let Some(modified) = modified {
@@ -185,7 +180,7 @@ pub enum Kind {
 }
 
 /// Initialize a keyring.
-fn initialize_keyring<'store, P>(sq: &Sq, file: fs::File, path: P)
+fn initialize_keyring<'store, P>(sq: &Sequoia, file: fs::File, path: P)
                                  -> Result<Vec<LazyCert<'store>>>
 where
     P: AsRef<Path>,
@@ -198,14 +193,10 @@ where
         let iter = match RawCertParser::from_reader(file) {
             Ok(iter) => iter,
             Err(err) => {
-                if sq.verbose() {
-                    let err = anyhow::Error::from(err).context(
-                        format!("Loading keyring {:?}", path));
-                    print_error_chain(&err);
-                    return Err(err);
-                } else {
-                    return Err(err);
-                }
+                let err = anyhow::Error::from(err).context(
+                    format!("Loading keyring {}", path.display()));
+                sq.warn_err(&err);
+                return Err(err);
             }
         };
 
@@ -213,11 +204,9 @@ where
             match cert {
                 Ok(cert) => Some(LazyCert::from(cert)),
                 Err(err) => {
-                    if sq.verbose() {
-                        let err = anyhow::Error::from(err).context(format!(
-                            "While parsing cert from keyring {:?}", path));
-                        print_error_chain(&err);
-                    }
+                    let err = anyhow::Error::from(err).context(format!(
+                        "While parsing cert from keyring {}", path.display()));
+                    sq.warn_err(&err);
 
                     None
                 }
@@ -229,7 +218,7 @@ where
 }
 
 /// Initialize a keybox.
-fn initialize_keybox<'store, P>(sq: &Sq, file: fs::File, path: P)
+fn initialize_keybox<'store, P>(sq: &Sequoia, file: fs::File, path: P)
                                 -> Result<Vec<LazyCert<'store>>>
 where
     P: AsRef<Path>,
@@ -238,19 +227,15 @@ where
 
     tracer!(TRACE, "KeyDB::initialize_keybox");
     let path = path.as_ref();
-    t!("loading keybox {:?}", path);
+    t!("loading keybox {}", path.display());
 
     let iter = match Keybox::from_reader(file) {
         Ok(iter) => iter,
         Err(err) => {
-            if sq.verbose() {
-                let err = anyhow::Error::from(err).context(format!(
-                    "While opening keybox at {:?}", path));
-                print_error_chain(&err);
-                return Err(err);
-            } else {
-                return Err(err);
-            }
+            let err = anyhow::Error::from(err).context(
+                format!("Loading keybox {}", path.display()));
+            sq.warn_err(&err);
+            return Err(err);
         }
     };
 
@@ -258,11 +243,9 @@ where
         let record = match record {
             Ok(record) => record,
             Err(err) => {
-                if sq.verbose() {
-                    let err = anyhow::Error::from(err).context(format!(
-                        "While parsing a record from keybox {:?}", path));
-                    print_error_chain(&err);
-                }
+                let err = anyhow::Error::from(err).context(format!(
+                    "While parsing record from keybox {}", path.display()));
+                sq.warn_err(&err);
 
                 return None;
             }
@@ -272,11 +255,9 @@ where
             match record.cert() {
                 Ok(cert) => Some(LazyCert::from(cert)),
                 Err(err) => {
-                    if sq.verbose() {
-                        let err = anyhow::Error::from(err).context(format!(
-                            "While parsing a cert from keybox {:?}", path));
-                        print_error_chain(&err);
-                    }
+                    let err = anyhow::Error::from(err).context(format!(
+                        "While parsing cert from keybox {}", path.display()));
+                    sq.warn_err(&err);
 
                     None
                 }

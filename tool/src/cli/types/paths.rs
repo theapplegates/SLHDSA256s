@@ -2,43 +2,9 @@
 
 use std::path::PathBuf;
 
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 
-/// Either an absolute path, or a default path.
-///
-/// Even though this type is homomorphic to [`Option<PathBuf>`], we
-/// need a new type for this, because clap handles [`Option`]s
-/// differently, and we cannot return [`Option<PathBuf>`] from
-/// `TypedValueParser::parse_ref`.
-#[derive(Clone, Debug)]
-pub enum StateDirectory {
-    /// An absolute path.
-    Absolute(PathBuf),
-
-    /// The default path.
-    Default,
-
-    /// Explicitly disable this state.
-    None,
-}
-
-impl StateDirectory {
-    /// Returns whether this state has been disabled.
-    #[allow(dead_code)]
-    pub fn is_none(&self) -> bool {
-        matches!(self, StateDirectory::None)
-    }
-
-    /// Returns the absolute path, or `None` if the default path is to
-    /// be used.
-    pub fn path(&self) -> Result<Option<PathBuf>> {
-        match self {
-            StateDirectory::Absolute(p) => Ok(Some(p.clone())),
-            StateDirectory::Default => Ok(None),
-            StateDirectory::None => Err(anyhow!("state is disabled")),
-        }
-    }
-}
+pub use sequoia::types::StateDirectory;
 
 /// A value parser for absolute directories with explicit default.
 ///

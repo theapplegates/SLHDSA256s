@@ -22,7 +22,6 @@ maintenance = { status = "actively-developed" }
 aho-corasick = "1"
 buffered-reader = { version = "1.4", default-features = false, features = ["compression"] }
 dirs = "5"
-filetime = "0.2"
 fs_extra = "1"
 sequoia-directories = "0.1"
 sequoia-openpgp = { version = "2", default-features = false, features = ["compression"] }
@@ -72,6 +71,7 @@ chrono = "0.4.38"
 dirs = "5"
 roff = "0.2.1"
 serde = { version = "1.0.137", features = ["derive"] }
+sequoia = { path = "../lib" }
 sequoia-directories = "0.1"
 sequoia-man = "0.3"
 sequoia-openpgp = { version = "2", default-features = false, features = ["compression"] }

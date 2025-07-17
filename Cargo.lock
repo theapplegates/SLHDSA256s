@@ -3527,9 +3527,16 @@ name = "sequoia"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "dirs 5.0.1",
+ "filetime",
+ "rusqlite",
+ "sequoia-cert-store",
  "sequoia-directories",
+ "sequoia-ipc",
  "sequoia-openpgp",
+ "sequoia-wot",
  "tempfile",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -3825,7 +3832,6 @@ dependencies = [
  "clap_lex",
  "culpa",
  "dirs 5.0.1",
- "filetime",
  "fs_extra",
  "futures-util",
  "gethostname",

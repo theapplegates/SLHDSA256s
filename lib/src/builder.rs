@@ -1,9 +1,10 @@
 use std::borrow::Cow;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use crate::Result;
 use crate::Sequoia;
+use crate::StateDirectory;
 use crate::Time;
 use crate::openpgp;
 
@@ -41,6 +42,15 @@ pub struct SequoiaBuilder {
 
     /// The current time.
     time: Time,
+
+    /// Overrides the path to the cert store.
+    cert_store_path: Option<crate::types::StateDirectory>,
+
+    /// Additional keyrings to read.
+    keyrings: Vec<PathBuf>,
+
+    /// Additional trust roots.
+    trust_roots: Vec<openpgp::Fingerprint>,
 }
 
 impl SequoiaBuilder {
@@ -50,6 +60,9 @@ impl SequoiaBuilder {
             home: Home::Default,
             policy: openpgp::policy::StandardPolicy::new(),
             time: Default::default(),
+            cert_store_path: Default::default(),
+            keyrings: Default::default(),
+            trust_roots: Default::default(),
         }
     }
 
@@ -132,6 +145,28 @@ impl SequoiaBuilder {
         self
     }
 
+    /// Overrides the cert store location.
+    pub fn cert_store_path(&mut self, p: StateDirectory) -> &mut Self {
+        self.cert_store_path = Some(p);
+        self
+    }
+
+    /// Adds the given keyring to Sequoia's virtual cert store.
+    pub fn add_keyring<P>(&mut self, p: P) -> &mut Self
+    where
+        P: AsRef<Path>,
+    {
+        self.keyrings.push(p.as_ref().to_path_buf());
+        self
+    }
+
+    /// Adds the given fingerprint as trust root.
+    pub fn add_trust_root(&mut self, fp: openpgp::Fingerprint) -> &mut Self {
+        self.trust_roots.push(fp);
+        self
+    }
+
+
     /// Sets the OpenPGP policy.
     pub fn policy(&mut self, p: openpgp::policy::StandardPolicy<'static>)
                   -> &mut Self
@@ -172,6 +207,12 @@ impl SequoiaBuilder {
             home,
             policy: self.policy.clone(),
             time: self.time.clone(),
+            cert_store_path: self.cert_store_path.clone(),
+            cert_store: Default::default(),
+            keyrings: self.keyrings.clone(),
+            keyring_tsks: Default::default(),
+            trust_roots: self.trust_roots.clone(),
+            trust_root_local: Default::default(),
         })
     }
 }

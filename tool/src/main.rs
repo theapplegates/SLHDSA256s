@@ -48,7 +48,6 @@ use cli::types::Version;
 use cli::types::paths::StateDirectory;
 
 mod commands;
-pub mod compat;
 pub mod config;
 pub mod output;
 pub use output::Model;
@@ -343,6 +342,18 @@ fn real_main() -> Result<()> {
         sequoia.fix_time();
     };
 
+    if let Some(p) = c.cert_store.clone() {
+        sequoia.cert_store_path(p);
+    }
+
+    for p in &c.keyring {
+        sequoia.add_keyring(p);
+    }
+
+    for root in c.trust_roots.clone() {
+        sequoia.add_trust_root(root);
+    }
+
     let sequoia = sequoia.build()?;
 
     let sq = Sq {
@@ -352,12 +363,6 @@ fn real_main() -> Result<()> {
         overwrite: c.overwrite,
         batch: c.batch,
         policy_as_of,
-        cert_store_path: c.cert_store.clone(),
-        keyrings: c.keyring.clone(),
-        keyring_tsks: Default::default(),
-        cert_store: OnceCell::new(),
-        trust_roots: c.trust_roots.clone(),
-        trust_root_local: Default::default(),
         key_store_path: c.key_store.clone(),
         key_store: OnceCell::new(),
         password_cache: password_cache.into(),
