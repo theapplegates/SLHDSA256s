@@ -123,19 +123,6 @@ where
     Ok(certs)
 }
 
-/// Prints a warning if the user supplied "help" or "-help" to an
-/// positional argument.
-///
-/// This should be used wherever a positional argument is followed by
-/// an optional positional argument.
-#[allow(dead_code)]
-fn help_warning(arg: &str) {
-    if arg == "help" {
-        weprintln!("Warning: \"help\" is not a subcommand here.  \
-                    Did you mean --help?");
-    }
-}
-
 fn main() {
     if let Err(e) = real_main() {
         print_error_chain(&e);

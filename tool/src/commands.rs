@@ -1,5 +1,3 @@
-use std::time::SystemTime;
-
 use clap::ArgMatches;
 
 use sequoia_openpgp as openpgp;
@@ -152,61 +150,4 @@ where
             .next();
         (userid_ref, certification)
     }).collect()
-}
-
-// Returns the smallest valid certificate.
-//
-// Given a certificate, returns the smallest valid certificate that is
-// still technically valid according to RFC 4880 and popular OpenPGP
-// implementations.
-//
-// In particular, this function extracts the primary key, and a User
-// ID with its active binding signature.  If there is no valid User
-// ID, it returns the active direct key signature.  If no User ID is
-// specified, or the specified User ID does not occur, then the
-// primary User ID is used and the specified User ID is added without
-// a binding signature.
-#[allow(dead_code)]
-pub fn cert_stub(cert: Cert,
-                 policy: &dyn Policy,
-                 timestamp: Option<SystemTime>,
-                 userid: Option<&UserID>)
-    -> Result<Cert>
-{
-    let vc = cert.with_policy(policy, timestamp)?;
-
-    let mut packets = Vec::with_capacity(4);
-    packets.push(Packet::from(vc.primary_key().key().clone()));
-
-    let mut found = false;
-    if let Some(userid) = userid {
-        for u in vc.userids() {
-            if u.userid() == userid {
-                found = true;
-                packets.push(Packet::from(userid.clone()));
-                packets.push(Packet::from(u.binding_signature().clone()));
-            }
-        }
-    }
-    if ! found {
-        // We didn't find the required User ID or no User ID was
-        // specified.  Emit the primary User ID.  If there is none,
-        // emit the direct key signature.
-        if let Ok(uid) = vc.primary_userid() {
-            packets.push(Packet::from(uid.userid().clone()));
-            packets.push(Packet::from(uid.binding_signature().clone()));
-        } else {
-            packets.push(
-                Packet::from(vc.primary_key().binding_signature().clone()));
-        }
-
-        // And include the specified User ID as the very last packet.
-        // This is convenient when we append a revocation certificate
-        // as the revocation certificate is at the right place.
-        if let Some(userid) = userid {
-            packets.push(Packet::from(userid.clone()));
-        }
-    }
-
-    Ok(Cert::from_packets(packets.into_iter())?)
 }
