@@ -29,7 +29,7 @@ use crate::common::key::certify_generated;
 use crate::output::import::ImportStatus;
 
 pub fn generate(
-    mut sq: Sq,
+    sq: Sq,
     mut command: cli::key::generate::Command,
 ) -> Result<()> {
     if command.output.as_ref().map(|s| s.is_stdout()).unwrap_or(false)
@@ -255,7 +255,7 @@ pub fn generate(
                 // are any user IDs to certify.
                 let have_userids = cert.userids().next().is_some();
                 if have_userids {
-                    cert = certify_generated(&mut sq, &cert)?;
+                    cert = certify_generated(&sq, &cert)?;
                 }
 
                 match sq.import_key(cert.clone(), &mut Default::default())
@@ -339,7 +339,7 @@ pub fn generate(
             .expect("serializing to a vector is infallible");
 
         if let Err(err) = inspect(
-            &mut sq,
+            &sq,
             buffered_reader::Memory::with_cookie(&bytes, Default::default()),
             command.output
                 .as_ref()

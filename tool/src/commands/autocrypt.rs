@@ -20,7 +20,7 @@ use crate::{
 /// Imports certs encoded as Autocrypt headers.
 ///
 /// We also try to decrypt the message, and collect the gossip headers.
-pub fn import_certs(sq: &mut Sq, source: &mut Box<dyn BufferedReader<Cookie>>,
+pub fn import_certs(sq: &Sq, source: &mut Box<dyn BufferedReader<Cookie>>,
                     stats: &mut ImportStats)
                     -> Result<()>
 {

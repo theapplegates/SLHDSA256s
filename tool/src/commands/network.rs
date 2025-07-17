@@ -315,7 +315,7 @@ fn certify(sq: &Sq,
 ///
 /// If a certificate cannot be certified for whatever reason, a
 /// diagnostic is emitted, and the certificate is returned as is.
-pub fn certify_downloads<'store, 'rstore>(sq: &mut Sq<'store, 'rstore>,
+pub fn certify_downloads<'store, 'rstore>(sq: &Sq<'store, 'rstore>,
                                           emit_provenance_messages: bool,
                                           ca: Arc<LazyCert<'store>>,
                                           certs: Vec<Cert>, email: Option<&str>)
@@ -703,7 +703,7 @@ impl Response {
     /// suppressed unless --verbose is given, or there was not a
     /// single successful result.
     async fn collect<'store, 'rstore>(
-        sq: &mut Sq<'store, 'rstore>,
+        sq: &Sq<'store, 'rstore>,
         mut responses: JoinSet<Response>,
         certs: &mut BTreeMap<Fingerprint, (Cert, BTreeSet<Method>)>,
         certify: bool,
@@ -792,7 +792,7 @@ impl Response {
     }
 
     /// Either writes out a keyring or imports the certs.
-    fn import_or_emit(mut sq: Sq<'_, '_>,
+    fn import_or_emit(sq: Sq<'_, '_>,
                       output: Option<FileOrStdout>,
                       binary: bool,
                       certs: BTreeMap<Fingerprint, (Cert, BTreeSet<Method>)>)
@@ -889,14 +889,14 @@ impl Response {
         if let Some(file) = &output {
             serialize_keyring(&sq, file, certs, binary)?;
         } else {
-            import_certs(&mut sq, certs)?;
+            import_certs(&sq, certs)?;
         }
 
         Ok(())
     }
 }
 
-pub fn dispatch_search(mut sq: Sq, c: cli::network::search::Command)
+pub fn dispatch_search(sq: Sq, c: cli::network::search::Command)
                       -> Result<()>
 {
     if c.output.is_none() {
@@ -1063,7 +1063,7 @@ pub fn dispatch_search(mut sq: Sq, c: cli::network::search::Command)
         }
 
         let new = Response::collect(
-            &mut sq, requests, &mut results, c.output.is_none(),
+            &sq, requests, &mut results, c.output.is_none(),
             default_servers, &mut pb).await?;
 
         // Expand certs to discover new identifiers to query.
@@ -1090,7 +1090,7 @@ pub fn dispatch_search(mut sq: Sq, c: cli::network::search::Command)
 }
 
 pub fn dispatch_keyserver(
-    mut sq: Sq,
+    sq: Sq,
     c: cli::network::keyserver::Command,
     matches: &ArgMatches,
 ) -> Result<()>
@@ -1145,7 +1145,7 @@ pub fn dispatch_keyserver(
             });
 
             let mut certs = Default::default();
-            Response::collect(&mut sq, requests, &mut certs, c.output.is_none(),
+            Response::collect(&sq, requests, &mut certs, c.output.is_none(),
                               default_servers, &mut pb).await?;
             drop(pb);
             Response::import_or_emit(sq, c.output, false, certs)?;
@@ -1228,7 +1228,7 @@ pub fn dispatch_keyserver(
     Ok(())
 }
 
-pub fn dispatch_wkd(mut sq: Sq, c: cli::network::wkd::Command)
+pub fn dispatch_wkd(sq: Sq, c: cli::network::wkd::Command)
     -> Result<()>
 {
     let rt = tokio::runtime::Runtime::new()?;
@@ -1267,7 +1267,7 @@ pub fn dispatch_wkd(mut sq: Sq, c: cli::network::wkd::Command)
             });
 
             let mut certs = Default::default();
-            Response::collect(&mut sq, requests, &mut certs, c.output.is_none(),
+            Response::collect(&sq, requests, &mut certs, c.output.is_none(),
                               false, &mut pb).await?;
             drop(pb);
             Response::import_or_emit(sq, c.output, false, certs)?;
@@ -1582,7 +1582,7 @@ fn visit_dirs(dir: &Path, cb: &mut dyn FnMut(&DirEntry) -> Result<()>) -> Result
     Ok(())
 }
 
-pub fn dispatch_dane(mut sq: Sq, c: cli::network::dane::Command)
+pub fn dispatch_dane(sq: Sq, c: cli::network::dane::Command)
                      -> Result<()> {
     let rt = tokio::runtime::Runtime::new()?;
 
@@ -1649,7 +1649,7 @@ pub fn dispatch_dane(mut sq: Sq, c: cli::network::dane::Command)
             });
 
             let mut certs = Default::default();
-            Response::collect(&mut sq, requests, &mut certs, c.output.is_none(),
+            Response::collect(&sq, requests, &mut certs, c.output.is_none(),
                               false, &mut pb).await?;
             drop(pb);
             Response::import_or_emit(sq, c.output, false, certs)?;

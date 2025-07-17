@@ -50,7 +50,7 @@ use crate::sq::TrustThreshold;
 /// Width of the largest key of any key, value pair we emit.
 const WIDTH: usize = 17;
 
-pub fn dispatch(mut sq: Sq, c: inspect::Command)
+pub fn dispatch(sq: Sq, c: inspect::Command)
     -> Result<()>
 {
     // sq inspect does not have --output, but commands::inspect does.
@@ -75,7 +75,7 @@ pub fn dispatch(mut sq: Sq, c: inspect::Command)
             }
         }
 
-        inspect(&mut sq, input.open("OpenPGP or autocrypt data")?,
+        inspect(&sq, input.open("OpenPGP or autocrypt data")?,
                 Some(&input.to_string()), output,
                 print_certifications, dump_bad_signatures)?;
     } else {
@@ -86,7 +86,7 @@ pub fn dispatch(mut sq: Sq, c: inspect::Command)
 
         let br = buffered_reader::Memory::with_cookie(
             &bytes, sequoia_openpgp::parse::Cookie::default());
-        inspect(&mut sq, br, None, output,
+        inspect(&sq, br, None, output,
                 print_certifications, dump_bad_signatures)?;
     }
 
@@ -101,7 +101,7 @@ pub fn dispatch(mut sq: Sq, c: inspect::Command)
 ///
 /// If `print_certifications` is set, also shows information about
 /// certifications.
-pub fn inspect<'a, R>(sq: &mut Sq,
+pub fn inspect<'a, R>(sq: &Sq,
                       input: R,
                       input_filename: Option<&str>,
                       output: &mut Box<dyn std::io::Write + Send + Sync>,
@@ -373,7 +373,7 @@ fn is_revocation_cert(c: &Cert) -> bool {
 }
 
 fn inspect_cert(
-    sq: &mut Sq,
+    sq: &Sq,
     output: &mut dyn io::Write,
     cert: &openpgp::Cert,
     print_certifications: bool,
@@ -498,7 +498,7 @@ fn inspect_cert(
 }
 
 fn inspect_key(
-    sq: &mut Sq,
+    sq: &Sq,
     output: &mut dyn io::Write,
     ka: ErasedKeyAmalgamation<PublicParts>,
     print_certifications: bool,
@@ -606,7 +606,7 @@ fn inspect_revocation(output: &mut dyn io::Write,
     Ok(())
 }
 
-fn inspect_bare_revocation(sq: &mut Sq,
+fn inspect_bare_revocation(sq: &Sq,
                            output: &mut dyn io::Write, sig: &Signature)
                            -> Result<()> {
     inspect_issuers(sq, output, &sig)?;
@@ -647,7 +647,7 @@ fn inspect_key_flags(flags: openpgp::types::KeyFlags) -> Option<String> {
     }
 }
 
-fn inspect_signatures(sq: &mut Sq,
+fn inspect_signatures(sq: &Sq,
                       output: &mut dyn io::Write,
                       sigs: &[openpgp::packet::Signature]) -> Result<()> {
     use openpgp::types::SignatureType::*;
@@ -668,7 +668,7 @@ fn inspect_signatures(sq: &mut Sq,
     Ok(())
 }
 
-fn inspect_issuers(sq: &mut Sq,
+fn inspect_issuers(sq: &Sq,
                    output: &mut dyn io::Write,
                    sig: &Signature) -> Result<()> {
     emit_issuers(sq, |id| match id {
@@ -687,7 +687,7 @@ fn inspect_issuers(sq: &mut Sq,
     }, sig)
 }
 
-fn emit_issuers<F>(sq: &mut Sq, mut emit: F, sig: &Signature)
+fn emit_issuers<F>(sq: &Sq, mut emit: F, sig: &Signature)
                    -> Result<()>
 where
     F: FnMut(std::result::Result<(Fingerprint, PreferredUserID),
@@ -723,7 +723,7 @@ where
     Ok(())
 }
 
-fn inspect_certifications<'a, A>(sq: &mut Sq,
+fn inspect_certifications<'a, A>(sq: &Sq,
                                  output: &mut dyn io::Write,
                                  certs: A,
                                  print_certifications: bool)
@@ -912,7 +912,7 @@ impl Kind {
     ///
     /// Returns the kind and the original reader without any data
     /// consumed.
-    pub fn identify<'a, T>(sq: &mut Sq, input: T)
+    pub fn identify<'a, T>(sq: &Sq, input: T)
                            -> Result<(Kind, Box<dyn BufferedReader<Cookie> + 'a>)>
     where
         T: BufferedReader<Cookie> + 'a,

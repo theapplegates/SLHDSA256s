@@ -62,7 +62,7 @@ pub fn dispatch(sq: Sq, command: cli::verify::Command)
     result
 }
 
-pub fn verify(mut sq: Sq,
+pub fn verify(sq: Sq,
               input: Box<dyn BufferedReader<Cookie>>,
               detached: Option<PathBuf>,
               detached_sig_arg: &str,
@@ -73,7 +73,7 @@ pub fn verify(mut sq: Sq,
     let detached = if let Some(sig_path) = detached {
         let sig = File::with_cookie(&sig_path, Default::default())?;
 
-        let (kind, sig) = Kind::identify(&mut sq, sig)?;
+        let (kind, sig) = Kind::identify(&sq, sig)?;
         kind.expect_or_else(&sq, "verify", Kind::DetachedSig,
                             detached_sig_arg,
                             detached_sig_value.as_deref())?;

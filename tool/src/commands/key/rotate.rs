@@ -44,7 +44,7 @@ use crate::output::import::ImportStatus;
 use crate::sq::TrustThreshold;
 
 pub fn dispatch(
-    mut sq: Sq,
+    sq: Sq,
     command: cli::key::rotate::Command,
 ) -> Result<()> {
     let o = &mut std::io::stderr();
@@ -498,7 +498,7 @@ pub fn dispatch(
                 // are any user IDs to certify.
                 let have_userids = cert.userids().next().is_some();
                 if have_userids {
-                    cert = certify_generated(&mut sq, &cert)?;
+                    cert = certify_generated(&sq, &cert)?;
                 }
 
                 match sq.import_key(cert.clone(), &mut Default::default())
@@ -597,7 +597,7 @@ pub fn dispatch(
 
         wwriteln!(stream = o);
         if let Err(err) = inspect(
-            &mut sq,
+            &sq,
             buffered_reader::Memory::with_cookie(&bytes, Default::default()),
             command.output
                 .as_ref()

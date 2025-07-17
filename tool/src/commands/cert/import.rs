@@ -27,7 +27,7 @@ use crate::common::ui;
 use crate::commands::autocrypt;
 use crate::output::import::ImportStats;
 
-pub fn dispatch<'store, 'rstore>(mut sq: Sq<'store, 'rstore>,
+pub fn dispatch<'store, 'rstore>(sq: Sq<'store, 'rstore>,
                                  cmd: import::Command)
     -> Result<()>
 where 'store: 'rstore
@@ -90,16 +90,16 @@ where 'store: 'rstore
             let result = match typ {
                 Type::Signature => {
                     import_rev(
-                        o, &mut sq, &mut input_reader, &mut stats)
+                        o, &sq, &mut input_reader, &mut stats)
                 }
                 Type::Keyring => {
                     import_certs(
-                        o, &mut sq, &mut input_reader,
+                        o, &sq, &mut input_reader,
                         input.path(), &mut stats)
                 }
                 Type::Other => {
                     autocrypt::import_certs(
-                        &mut sq, &mut input_reader, &mut stats)
+                        &sq, &mut input_reader, &mut stats)
                 }
             };
 
@@ -127,7 +127,7 @@ where 'store: 'rstore
 
 /// Imports the certs and reports on the individual certs.
 pub fn import_and_report<F>(o: &mut dyn std::io::Write,
-                            sq: &mut Sq,
+                            sq: &Sq,
                             certs: Vec<openpgp::Cert>,
                             source_path: Option<&PathBuf>,
                             stats: &mut ImportStats,
@@ -175,7 +175,7 @@ where
 
 /// Imports certs encoded as OpenPGP keyring.
 fn import_certs(o: &mut dyn std::io::Write,
-                sq: &mut Sq,
+                sq: &Sq,
                 source: &mut Box<dyn BufferedReader<Cookie>>,
                 source_path: Option<&PathBuf>,
                 stats: &mut ImportStats)
@@ -219,7 +219,7 @@ fn import_certs(o: &mut dyn std::io::Write,
 
 /// Import a bare revocation certificate.
 fn import_rev(o: &mut dyn std::io::Write,
-              sq: &mut Sq,
+              sq: &Sq,
               source: &mut Box<dyn BufferedReader<Cookie>>,
               stats: &mut ImportStats)
               -> Result<()>
