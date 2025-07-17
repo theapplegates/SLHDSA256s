@@ -202,7 +202,7 @@ fn sign_data<'a, 'store, 'rstore>(
         message,
         signers.pop().unwrap().1,
         builder)?;
-    signer = signer.creation_time(sq.time);
+    signer = signer.creation_time(sq.time());
     for s in signers {
         signer = signer.add_signer(s.1)?;
     }
@@ -350,7 +350,7 @@ fn sign_message_<'a, 'store, 'rstore>(
 
                 let mut signer = Signer::with_template(
                     sink, signers.pop().unwrap().1, builder)?;
-                signer = signer.creation_time(sq.time);
+                signer = signer.creation_time(sq.time());
                 for s in signers.drain(..) {
                     signer = signer.add_signer(s.1)?;
                 }
@@ -486,7 +486,7 @@ pub fn clearsign(sq: Sq,
     let mut signer = Signer::with_template(
         message, signers.pop().unwrap().1, builder)?
         .cleartext();
-    signer = signer.creation_time(sq.time);
+    signer = signer.creation_time(sq.time());
     for s in signers {
         signer = signer.add_signer(s.1)?;
     }

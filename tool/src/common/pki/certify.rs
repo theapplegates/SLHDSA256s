@@ -214,7 +214,7 @@ The certifier is the same as the certificate to certify."));
 
     let mut base
         = SignatureBuilder::new(SignatureType::GenericCertification)
-        .set_signature_creation_time(sq.time)?;
+        .set_signature_creation_time(sq.time())?;
 
     for domain in domain {
         if let Err(err) = UserIDQueryParams::is_domain(domain) {
@@ -282,15 +282,15 @@ The certifier is the same as the certificate to certify."));
         // Creation time.
         //
         // If we should make two certifications, then the first one
-        // should be at `sq.time - 1`, and the second one at
-        // `sq.time`.  That is, the first one is a second earlier.
+        // should be at `sq.time() - 1`, and the second one at
+        // `sq.time()`.  That is, the first one is a second earlier.
         let backdate = Duration::new((templates.len() - 1 - i) as u64, 0);
-        let ct = sq.time - backdate;
+        let ct = sq.time() - backdate;
         builder = builder.set_signature_creation_time(ct)?;
 
         // Expiration.
         if let Some(validity) = expiration
-            .as_duration(DateTime::<Utc>::from(sq.time))?
+            .as_duration(DateTime::<Utc>::from(sq.time()))?
         {
             builder = builder.set_signature_validity_period(validity)?;
         }
@@ -328,7 +328,7 @@ The certifier is the same as the certificate to certify."));
                     }
                 } else {
                     if let RevocationStatus::Revoked(_)
-                        = ua.revocation_status(sq.policy(), sq.time)
+                        = ua.revocation_status(sq.policy(), sq.time())
                     {
                         // It's revoked.
                         if user_supplied_userids {
@@ -386,7 +386,7 @@ The certifier is the same as the certificate to certify."));
                 let changed = diff_certification(
                     unless_quiet,
                     &active_certification,
-                    &builders[0], sq.time);
+                    &builders[0], sq.time());
 
                 if ! changed {
                     wwriteln!(stream = unless_quiet, initial_indent = "   - ",

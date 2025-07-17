@@ -276,7 +276,7 @@ impl OutputType for ConciseHumanReadableOutputNetwork<'_, '_, '_> {
         };
 
         let vc = self.current_cert.as_ref().map(|cert| {
-            cert.with_policy(self.sq.policy(), self.sq.time)
+            cert.with_policy(self.sq.policy(), self.sq.time())
         });
 
         if show_cert {
@@ -292,7 +292,7 @@ impl OutputType for ConciseHumanReadableOutputNetwork<'_, '_, '_> {
             let rs = if let Some(Ok(ref vc)) = vc {
                 vc.revocation_status()
             } else {
-                cert.revocation_status(self.sq.policy(), self.sq.time)
+                cert.revocation_status(self.sq.policy(), self.sq.time())
             };
 
             if let RevocationStatus::Revoked(sigs) = rs {
@@ -382,7 +382,7 @@ impl OutputType for ConciseHumanReadableOutputNetwork<'_, '_, '_> {
                     anyhow::anyhow!("missing call to OutputFormat::add_cert"));
             }
 
-            vc = cert.with_policy(self.sq.policy(), self.sq.time);
+            vc = cert.with_policy(self.sq.policy(), self.sq.time());
         } else {
             return Err(
                 anyhow::anyhow!("missing call to OutputFormat::add_cert"));

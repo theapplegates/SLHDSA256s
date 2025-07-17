@@ -51,7 +51,7 @@ where P: cert_designator::ArgumentPrefix,
     let (cert, cert_handle)
         = sq.resolve_cert(&cert, TrustThreshold::Full)?;
 
-    let vc = cert.with_policy(sq.policy(), sq.time)?;
+    let vc = cert.with_policy(sq.policy(), sq.time())?;
 
     let keys = if let Some(keys) = keys {
         sq.resolve_keys(&vc, &cert_handle, &keys, false)?
@@ -72,7 +72,7 @@ where P: cert_designator::ArgumentPrefix,
         = sq.get_primary_key(&cert, Some(&[GetKeysOptions::AllowNotAlive]))?;
 
     // Fix the new expiration time.
-    let expiration_time = expiration.to_system_time(sq.time)?;
+    let expiration_time = expiration.to_system_time(sq.time())?;
 
     let (primary, subkeys): (Vec<_>, Vec<_>)
         = keys.into_iter().partition(|ka| ka.primary());
@@ -93,7 +93,7 @@ where P: cert_designator::ArgumentPrefix,
             &mut primary_signer,
             &cert,
             SignatureBuilder::from(template.clone())
-                .set_signature_creation_time(sq.time)?
+                .set_signature_creation_time(sq.time())?
                 .set_key_expiration_time(ka.key(), expiration_time)?)?
                  .into());
     }
@@ -179,7 +179,7 @@ where P: cert_designator::ArgumentPrefix,
         // possible component, the primary key.
         acc.push(template
                  .set_type(SignatureType::DirectKey)
-                 .set_signature_creation_time(sq.time)?
+                 .set_signature_creation_time(sq.time())?
                  .set_key_expiration_time(cert.primary_key().key(),
                                           expiration_time)?
                  .sign_direct_key(&mut primary_signer, None)?
@@ -202,7 +202,7 @@ where P: cert_designator::ArgumentPrefix,
                 &mut primary_signer,
                 &cert,
                 SignatureBuilder::from(template)
-                    .set_signature_creation_time(sq.time)?
+                    .set_signature_creation_time(sq.time())?
                     .set_key_expiration_time(cert.primary_key().key(),
                                              expiration_time)?)?
                      .into());

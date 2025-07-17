@@ -596,7 +596,7 @@ where 'store: 'rstore,
 
         // Check if the certificate is valid according to the current
         // policy.
-        let vc = cert.with_policy(sq.policy(), sq.time)
+        let vc = cert.with_policy(sq.policy(), sq.time())
             .with_context(|| format!("{} is unusable", fpr))?;
 
         // Check if the certificate is live.
@@ -605,7 +605,7 @@ where 'store: 'rstore,
 
         // Check that it is not revoked.
         if let RevocationStatus::Revoked(sigs)
-            = cert.revocation_status(sq.policy(), sq.time)
+            = cert.revocation_status(sq.policy(), sq.time())
         {
             if let Some((reason, message))
                 = sigs[0].reason_for_revocation()
@@ -631,7 +631,7 @@ where 'store: 'rstore,
             = cert.userids().find(|ua| ua.userid() == userid)
         {
             if let RevocationStatus::Revoked(sigs)
-                = ua.revocation_status(sq.policy(), sq.time)
+                = ua.revocation_status(sq.policy(), sq.time())
             {
                 if let Some((reason, message))
                     = sigs[0].reason_for_revocation()

@@ -183,7 +183,7 @@ fn key_validity(sq: &Sq, cert: &Cert, key: Option<&Fingerprint>) -> Vec<String> 
         let ka = cert.keys().subkeys().find(|ka| &ka.key().fingerprint() == key)
             .expect("key is associated with the certificate");
 
-        match ka.clone().with_policy(sq.policy(), sq.time) {
+        match ka.clone().with_policy(sq.policy(), sq.time()) {
             Ok(ka) => {
                 if let Some(revoked) = revoked(ka.revocation_status()) {
                     info.push(revoked)
@@ -205,7 +205,7 @@ fn key_validity(sq: &Sq, cert: &Cert, key: Option<&Fingerprint>) -> Vec<String> 
             }
             Err(err) => {
                 if let Some(revoked)
-                    = revoked(ka.revocation_status(sq.policy(), sq.time))
+                    = revoked(ka.revocation_status(sq.policy(), sq.time()))
                 {
                     info.push(revoked);
                 }
@@ -213,7 +213,7 @@ fn key_validity(sq: &Sq, cert: &Cert, key: Option<&Fingerprint>) -> Vec<String> 
                 // Only print that it is invalid if the cert is valid.
                 // If the cert is invalid, then we already printed the
                 // information when showing the primary key.
-                if let Ok(_) = cert.with_policy(sq.policy(), sq.time) {
+                if let Ok(_) = cert.with_policy(sq.policy(), sq.time()) {
                     info.push(format!(
                         "not valid: {}",
                         crate::one_line_error_chain(err)));
@@ -221,7 +221,7 @@ fn key_validity(sq: &Sq, cert: &Cert, key: Option<&Fingerprint>) -> Vec<String> 
             }
         }
     } else {
-        match cert.with_policy(sq.policy(), sq.time) {
+        match cert.with_policy(sq.policy(), sq.time()) {
             Ok(vc) => {
                 if let Some(revoked) = revoked(vc.revocation_status()) {
                     info.push(revoked)
@@ -243,7 +243,7 @@ fn key_validity(sq: &Sq, cert: &Cert, key: Option<&Fingerprint>) -> Vec<String> 
             }
             Err(err) => {
                 if let Some(revoked)
-                    = revoked(cert.revocation_status(sq.policy(), sq.time))
+                    = revoked(cert.revocation_status(sq.policy(), sq.time()))
                 {
                     info.push(revoked);
                 }
@@ -435,11 +435,11 @@ pub fn list(sq: Sq, mut cmd: cli::key::list::Command) -> Result<()> {
             // NULL policy.  They won't be considered authenticated,
             // but at least we'll show something.
             let self_signed: HashSet<UserID> = if let Ok(vc)
-                = cert.with_policy(sq.policy(), sq.time)
+                = cert.with_policy(sq.policy(), sq.time())
             {
                 HashSet::from_iter(vc.userids().map(|ua| ua.userid()).cloned())
             } else if let Ok(vc)
-                = cert.with_policy(NULL_POLICY, sq.time)
+                = cert.with_policy(NULL_POLICY, sq.time())
             {
                 HashSet::from_iter(vc.userids().map(|ua| ua.userid()).cloned())
             } else {
@@ -449,7 +449,7 @@ pub fn list(sq: Sq, mut cmd: cli::key::list::Command) -> Result<()> {
             let mut userids = Vec::with_capacity(cert.userids().count());
             for ua in cert.userids() {
                 let revoked = if let RevocationStatus::Revoked(_)
-                    = ua.revocation_status(sq.policy(), sq.time)
+                    = ua.revocation_status(sq.policy(), sq.time())
                 {
                     true
                 } else {

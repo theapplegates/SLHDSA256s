@@ -26,7 +26,7 @@ pub fn dispatch(sq: Sq, command: crate::cli::key::subkey::export::Command)
     // Yes, we unconditionally use the NULL policy.  This is safe as
     // the user explicitly named both the certificate, and keys to
     // export.
-    let vc = Cert::with_policy(&cert, &NULL_POLICY, sq.time)
+    let vc = Cert::with_policy(&cert, &NULL_POLICY, sq.time())
         .with_context(|| {
             format!("The certificate {} is not valid under the \
                      null policy.",

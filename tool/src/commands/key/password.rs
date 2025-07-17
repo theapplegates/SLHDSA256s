@@ -20,7 +20,7 @@ pub fn dispatch(sq: Sq, command: cli::key::password::Command)
         = sq.resolve_cert(&command.cert, TrustThreshold::Full)?;
 
     // We require the certificate be valid under the standard policy.
-    Cert::with_policy(&cert, sq.policy(), sq.time)
+    Cert::with_policy(&cert, sq.policy(), sq.time())
         .with_context(|| {
             format!("The certificate {} is not valid under the \
                      current policy.",
@@ -29,7 +29,7 @@ pub fn dispatch(sq: Sq, command: cli::key::password::Command)
 
     // But we change the password for all keys with plausible
     // bindings.
-    let vc = Cert::with_policy(&cert, NULL_POLICY, sq.time)
+    let vc = Cert::with_policy(&cert, NULL_POLICY, sq.time())
         .with_context(|| {
             format!("The certificate {} is not valid under the \
                      null policy.",

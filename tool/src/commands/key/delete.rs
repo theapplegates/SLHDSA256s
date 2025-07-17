@@ -22,7 +22,7 @@ pub fn dispatch(sq: Sq, command: cli::key::delete::Command)
         = sq.resolve_cert(&command.cert, TrustThreshold::Full)?;
 
     // Fail if the certificate is not valid under the current policy.
-    Cert::with_policy(&cert, sq.policy(), sq.time)
+    Cert::with_policy(&cert, sq.policy(), sq.time())
         .with_context(|| {
             sq.hint(format_args!(
                 "The certificate {} is not valid under the \
@@ -59,7 +59,7 @@ pub fn dispatch(sq: Sq, command: cli::key::delete::Command)
     // it, we abort, and suggest using `sq key subkey delete` instead.
 
     // Get all keys valid under the NULL policy.
-    let nc = Cert::with_policy(&cert, NULL_POLICY, sq.time)
+    let nc = Cert::with_policy(&cert, NULL_POLICY, sq.time())
         .with_context(|| {
             format!("The certificate {} is not valid under the \
                      null policy.",
@@ -78,7 +78,7 @@ pub fn dispatch(sq: Sq, command: cli::key::delete::Command)
             // We check that the primary key is valid above.
             continue;
         }
-        if let Err(err) = ka.with_policy(sq.policy(), sq.time) {
+        if let Err(err) = ka.with_policy(sq.policy(), sq.time()) {
             bad.push((ka.key().fingerprint(), err));
         }
     }
@@ -115,7 +115,7 @@ pub fn dispatch(sq: Sq, command: cli::key::delete::Command)
                 true,
                 true,
                 NULL_POLICY,
-                sq.time)
+                sq.time())
             {
                 if certs.len() > 1 {
                     die = true;

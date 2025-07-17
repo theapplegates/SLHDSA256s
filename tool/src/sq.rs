@@ -178,6 +178,11 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
         self.policy
     }
 
+    /// Returns the current time.
+    pub fn time(&self) -> SystemTime {
+        self.time
+    }
+
     /// Be verbose.
     pub fn verbose(&self) -> bool {
         self.config.verbose()
@@ -519,7 +524,7 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
     {
         self.lookup_with_policy(
             handles, keyflags, or_by_primary, allow_ambiguous,
-            self.policy(), self.time)
+            self.policy(), self.time())
     }
 
     /// Looks up an identifier.
@@ -643,7 +648,7 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
     where H: Into<FileStdinOrKeyHandle>
     {
         self.lookup_one_with_policy(handle, keyflags, or_by_primary,
-                                    self.policy(), self.time)
+                                    self.policy(), self.time())
     }
 
     /// Looks up a certificate.
@@ -688,7 +693,7 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
         // Build a WoT network.
 
         let cert_store = wot::store::CertStore::from_store(
-            cert_store, self.policy(), self.time);
+            cert_store, self.policy(), self.time());
         let n = wot::NetworkBuilder::rooted(&cert_store, &*self.trust_roots())
             .build();
 
@@ -759,7 +764,7 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
                 };
 
                 // Check the certs for validity.
-                let vc = match cert.with_policy(self.policy(), self.time) {
+                let vc = match cert.with_policy(self.policy(), self.time()) {
                     Ok(vc) => vc,
                     Err(err) => {
                         let err = err.context(format!(
@@ -1081,7 +1086,7 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
         let mut primary_uid = None;
 
         // First, apply our policy.
-        if let Ok(vcert) = cert.with_policy(self.policy(), self.time) {
+        if let Ok(vcert) = cert.with_policy(self.policy(), self.time()) {
             if let Ok(primary) = vcert.primary_userid() {
                 primary_uid = Some(primary.userid());
             }
@@ -1089,7 +1094,7 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
 
         // Second, apply the null policy.
         if primary_uid.is_none() {
-            if let Ok(vcert) = cert.with_policy(&NULL_POLICY, self.time) {
+            if let Ok(vcert) = cert.with_policy(&NULL_POLICY, self.time()) {
                 if let Ok(primary) = vcert.primary_userid() {
                     primary_uid = Some(primary.userid());
                 }
@@ -1515,7 +1520,7 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
 
         'next_cert: for cert in certs {
             let cert = cert.borrow();
-            let vc = match cert.with_policy(policy, self.time) {
+            let vc = match cert.with_policy(policy, self.time()) {
                 Ok(vc) => vc,
                 Err(err) => {
                     return Err(
@@ -1562,7 +1567,7 @@ impl<'store: 'rstore, 'rstore> Sq<'store, 'rstore> {
 
             // We didn't get a key.  Lint the cert.
 
-            let time = chrono::DateTime::<chrono::offset::Utc>::from(self.time);
+            let time = chrono::DateTime::<chrono::offset::Utc>::from(self.time());
 
             let mut context = Vec::new();
             for (fpr, [not_alive, revoked, not_supported, no_secret_key]) in bad {

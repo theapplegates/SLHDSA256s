@@ -46,7 +46,7 @@ pub fn bind(sq: Sq, command: cli::key::subkey::bind::Command) -> Result<()>
         .map(|kh| {
             let cert = match sq.lookup_with_policy(
                 std::iter::once(kh.clone()), None, false, true,
-                adoptee_policy, sq.time)
+                adoptee_policy, sq.time())
             {
                 Ok(certs) => certs.into_iter().next().unwrap(),
                 Err(err) => return (kh, Err(err)),
@@ -57,7 +57,7 @@ pub fn bind(sq: Sq, command: cli::key::subkey::bind::Command) -> Result<()>
                 .next().expect("have key");
 
             use openpgp::cert::amalgamation::ValidateAmalgamation;
-            let sig = key.with_policy(adoptee_policy, sq.time)
+            let sig = key.with_policy(adoptee_policy, sq.time())
                 .map(|k| k.binding_signature())
                 .ok();
             let builder: SignatureBuilder = match sig {
@@ -90,7 +90,7 @@ pub fn bind(sq: Sq, command: cli::key::subkey::bind::Command) -> Result<()>
                 _ => panic!("Unsupported binding signature: {:?}", sig),
             };
 
-            let builder = match builder.set_signature_creation_time(sq.time) {
+            let builder = match builder.set_signature_creation_time(sq.time()) {
                 Ok(b) => b,
                 Err(err) => return (kh, Err(err)),
             };
@@ -136,7 +136,7 @@ pub fn bind(sq: Sq, command: cli::key::subkey::bind::Command) -> Result<()>
             let mut key = key.key().clone().role_into_subordinate();
 
             if let Some(creation_time) = &command.creation_time {
-                match creation_time.to_system_time(sq.time)
+                match creation_time.to_system_time(sq.time())
                     .and_then(|t| key.set_creation_time(t))
                 {
                     Ok(_) => (),
@@ -144,7 +144,7 @@ pub fn bind(sq: Sq, command: cli::key::subkey::bind::Command) -> Result<()>
                 }
             } else if key.creation_time() == std::time::UNIX_EPOCH {
                 // We have a bare key.  Set the creation time to now.
-                match key.set_creation_time(sq.time) {
+                match key.set_creation_time(sq.time()) {
                     Ok(_) => (),
                     Err(err) => return (kh, Err(err)),
                 }
@@ -189,7 +189,7 @@ pub fn bind(sq: Sq, command: cli::key::subkey::bind::Command) -> Result<()>
     let mut packets: Vec<Packet> = vec![];
     for (cert, mut key, mut builder) in wanted.into_iter() {
         // Set key expiration.
-        if let Some(e) = command.expiration.value().to_system_time(sq.time)? {
+        if let Some(e) = command.expiration.value().to_system_time(sq.time())? {
             builder = builder.set_key_expiration_time(&key, e)?;
         }
 
@@ -323,7 +323,7 @@ pub fn bind(sq: Sq, command: cli::key::subkey::bind::Command) -> Result<()>
                 .unwrap_or_else(|| {
                     SignatureBuilder::new(SignatureType::PrimaryKeyBinding)
                 })
-                .set_signature_creation_time(sq.time)?
+                .set_signature_creation_time(sq.time())?
                 .sign_primary_key_binding(&mut subkey_signer, pk, &key)?;
 
             builder = builder.set_embedded_signature(backsig)?;

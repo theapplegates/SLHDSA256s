@@ -61,7 +61,7 @@ impl UserIDRevocation {
             // Create a revocation for a User ID.
             let mut rev = UserIDRevocationBuilder::new()
                 .set_reason_for_revocation(reason, message.as_bytes())?;
-            rev = rev.set_signature_creation_time(sq.time)?;
+            rev = rev.set_signature_creation_time(sq.time())?;
             for (critical, notation) in notations {
                 rev = rev.add_notation(
                     notation.name(),
@@ -167,7 +167,7 @@ fn userid_add(
     }
 
     let vcert = cert
-        .with_policy(sq.policy(), sq.time)
+        .with_policy(sq.policy(), sq.time())
         .with_context(|| {
             format!("Certificate {} is not valid", cert.fingerprint())
         })?;
@@ -262,7 +262,7 @@ fn userid_add(
         add.push(uid.clone().into());
 
         // Creation time.
-        sb = sb.set_signature_creation_time(sq.time)?;
+        sb = sb.set_signature_creation_time(sq.time())?;
 
         let binding = uid.bind(&mut signer, &cert, sb.clone())?;
         add.push(binding.into());
@@ -301,7 +301,7 @@ pub fn userid_revoke(
     // the current policy.  Users can still revoke user IDs whose
     // binding signature relies on weak cryptography using
     // `--add-user`.
-    let vcert = cert.with_policy(sq.policy(), sq.time)
+    let vcert = cert.with_policy(sq.policy(), sq.time())
         .with_context(|| {
             format!("The certificate is not valid under the current \
                      policy.  Consider revoking the whole certificate \

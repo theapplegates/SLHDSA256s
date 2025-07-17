@@ -229,7 +229,7 @@ pub fn lint(sq: Sq, mut args: Command) -> Result<()> {
     let mut certs_with_signing_subkeys = 0;
     let mut certs_with_sha1_protected_backsig = 0;
 
-    let reference_time = sq.time;
+    let reference_time = sq.time();
 
     // If no inputs are given, read from stdin.
     if args.certs.is_empty() {

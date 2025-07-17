@@ -133,7 +133,7 @@ pub fn import_certs(sq: &Sq, certs: Vec<Cert>) -> Result<()> {
     stats.print_summary(o, sq)?;
 
     for vcert in certs.iter()
-        .filter_map(|cert| cert.with_policy(sq.policy(), sq.time).ok())
+        .filter_map(|cert| cert.with_policy(sq.policy(), sq.time()).ok())
         .filter(|vcert| vcert.alive().is_ok())
     {
         let mut hint = sq.hint(format_args!(
@@ -238,7 +238,7 @@ fn certify(sq: &Sq,
 {
     let mut builder =
         SignatureBuilder::new(SignatureType::GenericCertification)
-        .set_signature_creation_time(sq.time)?;
+        .set_signature_creation_time(sq.time())?;
 
     if depth != 0 || amount != 120 {
         builder = builder.set_trust_signature(depth, amount.min(255) as u8)?;
@@ -349,7 +349,7 @@ pub fn certify_downloads<'store, 'rstore>(sq: &Sq<'store, 'rstore>,
     });
 
     let certs: Vec<Cert> = certs.into_iter().map(|cert| {
-        let vc = match cert.with_policy(sq.policy(), sq.time) {
+        let vc = match cert.with_policy(sq.policy(), sq.time()) {
             Err(err) => {
                 let err = err.context(format!(
                     "Warning: not recording provenance information \
@@ -825,7 +825,7 @@ impl Response {
             qprintln!(initial_indent = "   - ", "created {}",
                       cert.primary_key().key().creation_time().convert());
 
-            match cert.with_policy(sq.policy(), sq.time) {
+            match cert.with_policy(sq.policy(), sq.time()) {
                 Ok(vcert) => {
                     if let Err(e) = vcert.alive() {
                         qprintln!(initial_indent = "   - ", "not live: {}", e);
@@ -1201,7 +1201,7 @@ pub fn dispatch_keyserver(
                             && matches!(e.downcast_ref(),
                                         Some(net::Error::HttpStatus(
                                             StatusCode::BAD_REQUEST)))
-                            && cert.keys().with_policy(sq.policy(), sq.time)
+                            && cert.keys().with_policy(sq.policy(), sq.time())
                             .key_flags(KeyFlags::empty()
                                        .set_transport_encryption()
                                        .set_storage_encryption())
@@ -1300,7 +1300,7 @@ pub fn dispatch_wkd(sq: Sq, c: cli::network::wkd::Command)
             let mut skipping = Vec::new();
             let mut insert: BTreeMap<_, _> = insert.into_iter()
                 .filter(|cert| {
-                    if ! cert.with_policy(sq.policy(), sq.time)
+                    if ! cert.with_policy(sq.policy(), sq.time())
                         .ok()
                         .map(|vc| vc.userids().any(
                             |u| u.userid().email().ok().flatten().map(
@@ -1606,7 +1606,7 @@ pub fn dispatch_dane(sq: Sq, c: cli::network::dane::Command)
             }
 
             for cert in certs {
-                let vc = cert.with_policy(sq.policy(), sq.time)?;
+                let vc = cert.with_policy(sq.policy(), sq.time())?;
 
                 use cli::network::dane::ResourceRecordType;
                 let records = match c.typ {

@@ -39,7 +39,7 @@ impl CertificateRevocation {
             // Create a revocation for the certificate.
             let mut rev = CertRevocationBuilder::new()
                 .set_reason_for_revocation(reason, message.as_bytes())?;
-            rev = rev.set_signature_creation_time(sq.time)?;
+            rev = rev.set_signature_creation_time(sq.time())?;
             for (critical, notation) in notations {
                 rev = rev.add_notation(
                     notation.name(),

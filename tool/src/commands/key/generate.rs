@@ -83,13 +83,13 @@ pub fn generate(
     }
 
     // Creation time.
-    builder = builder.set_creation_time(sq.time);
+    builder = builder.set_creation_time(sq.time());
 
     // Expiration.
     builder = builder.set_validity_period(
         command
         .expiration
-        .as_duration(DateTime::<Utc>::from(sq.time))?
+        .as_duration(DateTime::<Utc>::from(sq.time()))?
     );
 
     // Cipher Suite

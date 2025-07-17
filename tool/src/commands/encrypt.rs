@@ -81,7 +81,7 @@ pub fn dispatch(sq: Sq, command: cli::encrypt::Command) -> Result<()> {
         notations,
         command.mode,
         command.compression,
-        Some(sq.time),
+        Some(sq.time()),
         command.use_expired_subkey,
         command.set_metadata_filename,
     )?;
@@ -213,7 +213,7 @@ pub fn encrypt<'a, 'b: 'a>(
             }
             if let Err(err) = ka.alive() {
                 if let Some(t) = ka.key_expiration_time() {
-                    if t < sq.time {
+                    if t < sq.time() {
                         expired_keys.push((ka, t));
                         bad.push(format!("{} expired on {}",
                                          fpr, t.convert().to_string()));

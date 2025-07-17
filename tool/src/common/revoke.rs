@@ -133,7 +133,7 @@ No certification key found: the key specified with --revocation-file \
 does not contain a certification key with secret key material.  \
 Perhaps this is because no certification keys are valid at the time \
 you specified ({})",
-                        DateTime::<Utc>::from(sq.time))));
+                        DateTime::<Utc>::from(sq.time()))));
                 } else {
                     return Err(err.context(format!("\
 No certification key found: the key specified with --revocation-file \
@@ -151,7 +151,7 @@ No certification key found: --revocation-file not provided and the
 certificate to revoke does not contain a certification key with secret
 key material.  Perhaps this is because no certification keys are valid at
 the time you specified ({})",
-                        DateTime::<Utc>::from(sq.time))));
+                        DateTime::<Utc>::from(sq.time()))));
                 } else {
                     return Err(err.context(format!("\
 No certification key found: --revocation-file not provided and the

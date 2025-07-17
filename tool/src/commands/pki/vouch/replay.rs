@@ -34,8 +34,8 @@ pub fn replay(sq: Sq, c: replay::Command)
     if ! c.allow_dissimilar_userids {
         // Check that the certificates have a self-signed user ID in
         // common.
-        let source_vc = source.with_policy(sq.policy(), sq.time)?;
-        let target_vc = target.with_policy(sq.policy(), sq.time)?;
+        let source_vc = source.with_policy(sq.policy(), sq.time())?;
+        let target_vc = target.with_policy(sq.policy(), sq.time())?;
         let source_userids: BTreeSet<&UserID>
             = source_vc.userids().map(|ua| ua.userid()).collect();
         let target_userids: BTreeSet<&UserID>

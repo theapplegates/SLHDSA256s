@@ -21,7 +21,7 @@ pub fn authorize(sq: Sq, mut c: authorize::Command)
         }
     }
 
-    let vc = cert.with_policy(sq.policy(), Some(sq.time))?;
+    let vc = cert.with_policy(sq.policy(), Some(sq.time()))?;
     let userids = c.userids.resolve(&vc)?;
 
     let notations = c.signature_notations.parse()?;

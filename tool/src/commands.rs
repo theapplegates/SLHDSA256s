@@ -112,10 +112,10 @@ where
         let mut certifications = ua.bundle().certifications()
             .filter(|sig| {
                 if let Some(ct) = sig.signature_creation_time() {
-                    ct <= sq.time
+                    ct <= sq.time()
                         && sig.signature_validity_period()
                         .map(|vp| {
-                            sq.time < ct + vp
+                            sq.time() < ct + vp
                         })
                         .unwrap_or(true)
                         && sig.get_issuers().iter().any(|i| i.aliases(&issuer_kh))
@@ -136,7 +136,7 @@ where
         });
 
         // Return the first valid signature, which is the most recent one
-        // that is no younger than sq.time.
+        // that is no younger than sq.time().
         let pk = ua.cert().primary_key().key();
         let certification = certifications.into_iter()
             .filter_map(|sig| {

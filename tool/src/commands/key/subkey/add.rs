@@ -25,11 +25,11 @@ pub fn dispatch(sq: Sq, command: Command) -> Result<()>
     let cert =
         sq.resolve_cert(&command.cert, TrustThreshold::Full)?.0;
 
-    let valid_cert = cert.with_policy(sq.policy(), sq.time)?;
+    let valid_cert = cert.with_policy(sq.policy(), sq.time())?;
 
     let validity = command
         .expiration
-        .as_duration(DateTime::<Utc>::from(sq.time))?;
+        .as_duration(DateTime::<Utc>::from(sq.time()))?;
 
     let keyflags = KeyFlags::empty()
         .set_authentication_to(command.can_authenticate)
@@ -67,7 +67,7 @@ pub fn dispatch(sq: Sq, command: Command) -> Result<()>
         };
 
     let new_cert = KeyBuilder::new(keyflags)
-        .set_creation_time(sq.time)
+        .set_creation_time(sq.time())
         .set_cipher_suite(
             sq.config.cipher_suite(&command.cipher_suite,
                                    command.cipher_suite_source))

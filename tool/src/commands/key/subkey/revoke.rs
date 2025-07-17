@@ -50,7 +50,7 @@ impl SubkeyRevocation {
 
             let mut rev = SubkeyRevocationBuilder::new()
                 .set_reason_for_revocation(reason, message.as_bytes())?;
-            rev = rev.set_signature_creation_time(sq.time)?;
+            rev = rev.set_signature_creation_time(sq.time())?;
             for (critical, notation) in notations {
                 rev = rev.add_notation(
                     notation.name(),
@@ -116,7 +116,7 @@ pub fn dispatch(sq: Sq, command: crate::cli::key::subkey::revoke::Command)
     let (cert, cert_source) =
         sq.resolve_cert(&command.cert, TrustThreshold::Full)?;
 
-    let vc = Cert::with_policy(&cert, NULL_POLICY, sq.time)
+    let vc = Cert::with_policy(&cert, NULL_POLICY, sq.time())
         .with_context(|| {
             format!("The certificate {} is not valid under the \
                      null policy.",

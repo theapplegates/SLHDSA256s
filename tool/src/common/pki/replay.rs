@@ -148,7 +148,7 @@ pub fn replay(sq: &Sq, o: &mut dyn std::io::Write, indent: &str,
 
         // Skip if cert is invalid, expired, or revoked, or
         // user ID is revoked.
-        let vc = match cert.with_policy(sq.policy(), sq.time) {
+        let vc = match cert.with_policy(sq.policy(), sq.time()) {
             Ok(vc) => vc,
             Err(err) => {
                 wwriteln!(stream = o,
@@ -187,7 +187,7 @@ pub fn replay(sq: &Sq, o: &mut dyn std::io::Write, indent: &str,
         let ua = cert.userids().find(|u| u.userid() == &userid);
         if let Some(ua) = ua.as_ref() {
             if let RevocationStatus::Revoked(sigs)
-                = ua.revocation_status(sq.policy(), sq.time)
+                = ua.revocation_status(sq.policy(), sq.time())
             {
                 let sig = sigs.into_iter().next().expect("have one");
                 if let Some((reason, message)) = sig.reason_for_revocation()
@@ -233,7 +233,7 @@ pub fn replay(sq: &Sq, o: &mut dyn std::io::Write, indent: &str,
                 .format("%Y‑%m‑%d %H:%M:%S")
                 .to_string();
 
-            if let Err(err) = certification.signature_alive(sq.time, None) {
+            if let Err(err) = certification.signature_alive(sq.time(), None) {
                 t!("Not considering certification made at {}: {}",
                    ct_str,
                    err);
@@ -276,7 +276,7 @@ pub fn replay(sq: &Sq, o: &mut dyn std::io::Write, indent: &str,
 
                 if let Some(ua) = ua.as_ref() {
                     for preexisting in ua.active_certifications_by_key(
-                        sq.policy(), sq.time, &target_pk)
+                        sq.policy(), sq.time(), &target_pk)
                     {
                         let preexisting_ct = if let Some(ct)
                             = preexisting.signature_creation_time()
@@ -288,7 +288,7 @@ pub fn replay(sq: &Sq, o: &mut dyn std::io::Write, indent: &str,
                         };
 
                         // When checking for differences, use the
-                        // preexisting creation time and not `sq.time`
+                        // preexisting creation time and not `sq.time()`
                         // as we don't want the creation time or the
                         // expiration time to flag a difference.
                         let mut trace: Vec<u8> = Vec::new();
@@ -329,7 +329,7 @@ pub fn replay(sq: &Sq, o: &mut dyn std::io::Write, indent: &str,
                 // refreshing the certification.  So, we leave it as
                 // is.
 
-                let builder = builder.set_signature_creation_time(sq.time)?;
+                let builder = builder.set_signature_creation_time(sq.time())?;
 
                 let sig = builder.sign_userid_binding(
                     signer,

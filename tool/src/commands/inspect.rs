@@ -246,7 +246,7 @@ where
                         sq.lookup_with_policy(
                             Some(recipient),
                             None, true, true,
-                            NULL_POLICY, sq.time)
+                            NULL_POLICY, sq.time())
                     })
                 {
                     if certs.len() == 1 {
@@ -388,7 +388,7 @@ fn inspect_cert(
     }
     writeln!(output)?;
     writeln!(output, "{:>WIDTH$}: {}", "Fingerprint", cert.fingerprint())?;
-    inspect_revocation(output, cert.revocation_status(sq.policy(), sq.time))?;
+    inspect_revocation(output, cert.revocation_status(sq.policy(), sq.time()))?;
     inspect_key(
         sq,
         output,
@@ -399,10 +399,10 @@ fn inspect_cert(
 
     for skb in cert.keys().subkeys() {
         writeln!(output, "{:>WIDTH$}: {}", "Subkey", skb.key().fingerprint())?;
-        inspect_revocation(output, skb.revocation_status(sq.policy(), sq.time))?;
-        match skb.binding_signature(sq.policy(), sq.time) {
+        inspect_revocation(output, skb.revocation_status(sq.policy(), sq.time()))?;
+        match skb.binding_signature(sq.policy(), sq.time()) {
             Ok(sig) => {
-                if let Err(e) = sig.signature_alive(sq.time, Duration::new(0, 0)) {
+                if let Err(e) = sig.signature_alive(sq.time(), Duration::new(0, 0)) {
                     print_error_chain(output, &e)?;
                 }
             }
@@ -428,10 +428,10 @@ fn inspect_cert(
 
     for uidb in cert.userids() {
         writeln!(output, "{:>WIDTH$}: {}", "UserID", uidb.userid())?;
-        inspect_revocation(output, uidb.revocation_status(sq.policy(), sq.time))?;
-        match uidb.binding_signature(sq.policy(), sq.time) {
+        inspect_revocation(output, uidb.revocation_status(sq.policy(), sq.time()))?;
+        match uidb.binding_signature(sq.policy(), sq.time()) {
             Ok(sig) => {
-                if let Err(e) = sig.signature_alive(sq.time, Duration::new(0, 0)) {
+                if let Err(e) = sig.signature_alive(sq.time(), Duration::new(0, 0)) {
                     print_error_chain(output, &e)?;
                 }
             }
@@ -446,10 +446,10 @@ fn inspect_cert(
     for uab in cert.user_attributes() {
         writeln!(output, "{:>WIDTH$}: {:?}", "User attribute",
                  uab.user_attribute())?;
-        inspect_revocation(output, uab.revocation_status(sq.policy(), sq.time))?;
-        match uab.binding_signature(sq.policy(), sq.time) {
+        inspect_revocation(output, uab.revocation_status(sq.policy(), sq.time()))?;
+        match uab.binding_signature(sq.policy(), sq.time()) {
             Ok(sig) => {
-                if let Err(e) = sig.signature_alive(sq.time, Duration::new(0, 0)) {
+                if let Err(e) = sig.signature_alive(sq.time(), Duration::new(0, 0)) {
                     print_error_chain(output, &e)?;
                 }
             }
@@ -464,9 +464,9 @@ fn inspect_cert(
     for ub in cert.unknowns() {
         writeln!(output, "{:>WIDTH$}: {:?}", "Unknown component",
                  ub.unknown())?;
-        match ub.binding_signature(sq.policy(), sq.time) {
+        match ub.binding_signature(sq.policy(), sq.time()) {
             Ok(sig) => {
-                if let Err(e) = sig.signature_alive(sq.time, Duration::new(0, 0)) {
+                if let Err(e) = sig.signature_alive(sq.time(), Duration::new(0, 0)) {
                     print_error_chain(output, &e)?;
                 }
             }
@@ -506,7 +506,7 @@ fn inspect_key(
     let key = ka.key();
     let bundle = ka.bundle();
 
-    let vka = match ka.with_policy(sq.policy(), sq.time) {
+    let vka = match ka.with_policy(sq.policy(), sq.time()) {
         Ok(vka) => {
             if let Err(e) = vka.alive() {
                 writeln!(output, "{:>WIDTH$}  Invalid: {}", "",

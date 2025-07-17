@@ -64,7 +64,7 @@ pub fn dispatch(
     }
 
     let mut old_cert = sq.resolve_cert(&command.cert, TrustThreshold::Full)?.0;
-    let old_vc = old_cert.with_policy(sq.policy(), sq.time)?;
+    let old_vc = old_cert.with_policy(sq.policy(), sq.time())?;
 
     // Common key flags.  If this is a shared key, mark it as such.
     assert!(! (command.own_key && command.shared_key));
@@ -107,13 +107,13 @@ pub fn dispatch(
     }
 
     // Creation time.
-    builder = builder.set_creation_time(sq.time);
+    builder = builder.set_creation_time(sq.time());
 
     // Expiration.
     builder = builder.set_validity_period(
         command
         .expiration
-        .as_duration(DateTime::<Utc>::from(sq.time))?
+        .as_duration(DateTime::<Utc>::from(sq.time()))?
     );
 
     // Cipher Suite
@@ -315,7 +315,7 @@ pub fn dispatch(
 
     let mut builder
         = SignatureBuilder::new(SignatureType::GenericCertification)
-        .set_signature_creation_time(sq.time)?;
+        .set_signature_creation_time(sq.time())?;
     builder = builder.set_trust_signature(255, 120)?;
 
     let mut old_cert_updates = Vec::new();
@@ -378,7 +378,7 @@ pub fn dispatch(
         for ua in old_cert.userids() {
             for sig in ua.active_certifications_by_key(
                 sq.policy(),
-                sq.time,
+                sq.time(),
                 trust_root.primary_key().key())
             {
                 wwriteln!(stream = o, indent="  ",
@@ -388,7 +388,7 @@ pub fn dispatch(
                 summarize_certification(o, "  ", &sig, true)?;
 
                 let builder: SignatureBuilder = sig.clone().into();
-                let builder = builder.set_signature_creation_time(sq.time)?;
+                let builder = builder.set_signature_creation_time(sq.time())?;
 
                 let sig = builder.sign_userid_binding(
                     &mut trust_root_signer,
@@ -434,7 +434,7 @@ pub fn dispatch(
         // Retire the old certificate.
         wwriteln!(stream = o);
 
-        let retire_at = retire_at.to_system_time(sq.time)?;
+        let retire_at = retire_at.to_system_time(sq.time())?;
         let retire_at_str = chrono::DateTime::<chrono::Utc>::from(retire_at)
             .format("%Y‑%m‑%d %H:%M:%S")
             .to_string();

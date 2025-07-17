@@ -86,12 +86,12 @@ pub fn verify(sq: Sq,
     let helper = VHelper::new(&sq, signatures, certs);
     let helper = if let Some(dsig) = detached {
         let mut v = DetachedVerifierBuilder::from_reader(dsig)?
-            .with_policy(sq.policy(), Some(sq.time), helper)?;
+            .with_policy(sq.policy(), Some(sq.time()), helper)?;
         v.verify_buffered_reader(input)?;
         v.into_helper()
     } else {
         let mut v = VerifierBuilder::from_reader(input)?
-            .with_policy(sq.policy(), Some(sq.time), helper)?;
+            .with_policy(sq.policy(), Some(sq.time()), helper)?;
         io::copy(&mut v, output)?;
         v.into_helper()
     };
@@ -188,7 +188,7 @@ impl<'c, 'store, 'rstore> VHelper<'c, 'store, 'rstore> {
         use crate::common::pki::output::print_path;
         use crate::print_error_chain;
 
-        let reference_time = self.sq.time;
+        let reference_time = self.sq.time();
 
         use self::VerificationError::*;
         for result in results {
