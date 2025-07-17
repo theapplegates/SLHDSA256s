@@ -104,7 +104,6 @@ pub fn verify(sq: Sq,
 pub struct VHelper<'c, 'store, 'rstore>
     where 'store: 'rstore
 {
-    #[allow(dead_code)]
     pub sq: &'c Sq<'store, 'rstore>,
     signatures: usize,
 

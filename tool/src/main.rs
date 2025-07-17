@@ -334,7 +334,6 @@ fn real_main() -> Result<()> {
     }
     let sequoia = sequoia.build()?;
 
-    #[allow(deprecated)]
     let sq = Sq {
         sequoia,
         config_file,
