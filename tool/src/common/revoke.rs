@@ -6,14 +6,14 @@ use anyhow::Result;
 use chrono::offset::Utc;
 use chrono::DateTime;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::armor::Kind;
 use openpgp::armor::Writer;
 use openpgp::Cert;
 use openpgp::crypto::Signer;
 use openpgp::serialize::Serialize;
 
-use sequoia_cert_store as cert_store;
+use sequoia::cert_store;
 use cert_store::StoreUpdate;
 use cert_store::LazyCert;
 

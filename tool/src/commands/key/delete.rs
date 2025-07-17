@@ -2,7 +2,7 @@
 
 use anyhow::Context;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Cert;
 use openpgp::cert::amalgamation::ValidateAmalgamation;
 use openpgp::cert::amalgamation::key::PrimaryKey;

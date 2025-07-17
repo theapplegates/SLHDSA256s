@@ -1,13 +1,13 @@
 use anyhow::Context;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::{
     armor,
     Result,
     serialize::Serialize,
 };
 
-use sequoia_cert_store as cert_store;
+use sequoia::cert_store;
 use cert_store::Store;
 
 use crate::{

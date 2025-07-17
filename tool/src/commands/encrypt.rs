@@ -3,7 +3,7 @@ use std::time::SystemTime;
 
 use anyhow::Context;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::armor;
 use openpgp::cert::amalgamation::ValidAmalgamation;
 use openpgp::cert::amalgamation::ValidateAmalgamation;

@@ -1,4 +1,4 @@
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Cert;
 use openpgp::Result;
 use openpgp::cert::amalgamation::key::ValidErasedKeyAmalgamation;

@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use typenum::Unsigned;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Packet;
 use openpgp::Result;
 use openpgp::cert::amalgamation::ValidAmalgamation;
@@ -14,7 +14,7 @@ use openpgp::serialize::Serialize;
 use openpgp::types::RevocationStatus;
 use openpgp::types::SignatureType;
 
-use sequoia_cert_store::StoreUpdate;
+use sequoia::cert_store::StoreUpdate;
 
 use crate::Sq;
 use crate::cli::types::CertDesignators;

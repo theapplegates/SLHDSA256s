@@ -1,6 +1,6 @@
 use std::io::{self, Read};
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::KeyHandle;
 use openpgp::armor::ReaderMode;
 use self::openpgp::fmt::hex;

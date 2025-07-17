@@ -1,6 +1,6 @@
 //! Operations on certs.
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::{
     Fingerprint,
     KeyHandle,

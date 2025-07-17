@@ -9,7 +9,7 @@ use chrono::offset::Utc;
 use chrono::DateTime;
 use chrono::TimeZone;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::types::Timestamp;
 
 use crate::cli::SECONDS_IN_YEAR;

@@ -12,7 +12,7 @@ use clap::ArgMatches;
 use indicatif::ProgressBar;
 use tokio::task::JoinSet;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::{
     Fingerprint,
     Result,
@@ -44,7 +44,7 @@ use net::{
     reqwest::{StatusCode, Url},
 };
 
-use sequoia_cert_store as cert_store;
+use sequoia::cert_store;
 use cert_store::LazyCert;
 use cert_store::Store;
 use cert_store::StoreUpdate;
@@ -395,7 +395,7 @@ pub fn certify_downloads(sq: &Sq,
         match certify(
             sq, emit_provenance_messages,
             &mut ca_signer, &cert, &userids[..],
-            0, sequoia_wot::FULLY_TRUSTED)
+            0, sequoia::wot::FULLY_TRUSTED)
         {
             Ok(cert) => cert,
             Err(err) => {

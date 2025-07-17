@@ -6,7 +6,7 @@ use openpgp::types::RevocationStatus;
 use openpgp::types::SignatureType;
 use openpgp::Cert;
 use openpgp::Result;
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 
 use super::common::artifact;
 use super::common::compare_notations;

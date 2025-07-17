@@ -6,9 +6,9 @@ use std::time::Duration;
 
 use anyhow::Context;
 
-use buffered_reader::{BufferedReader, Dup};
+use sequoia::openpgp::parse::buffered_reader::{BufferedReader, Dup};
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::{Fingerprint, KeyHandle, Packet, Result};
 use openpgp::armor::ReaderMode;
 use openpgp::cert::prelude::*;
@@ -84,8 +84,8 @@ pub fn dispatch(sq: Sq, c: inspect::Command)
             cert.serialize(&mut bytes).context("Serializing certificate")?;
         }
 
-        let br = buffered_reader::Memory::with_cookie(
-            &bytes, sequoia_openpgp::parse::Cookie::default());
+        let br = sequoia::openpgp::parse::buffered_reader::Memory::with_cookie(
+            &bytes, sequoia::openpgp::parse::Cookie::default());
         inspect(&sq, br, None, output,
                 print_certifications, dump_bad_signatures)?;
     }
@@ -109,7 +109,7 @@ pub fn inspect<'a, R>(sq: &Sq,
                       dump_bad_signatures: bool)
     -> Result<Kind>
 where
-    R: BufferedReader<sequoia_openpgp::parse::Cookie> + 'a,
+    R: BufferedReader<sequoia::openpgp::parse::Cookie> + 'a,
 {
     let mut ppr =
         match openpgp::parse::PacketParser::from_buffered_reader(input)

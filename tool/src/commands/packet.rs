@@ -6,7 +6,7 @@ use std::{
 use anyhow::Context as _;
 use terminal_size::terminal_size;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::{
     KeyHandle,
     armor::{

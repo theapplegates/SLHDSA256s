@@ -3,9 +3,9 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 
-use buffered_reader::{BufferedReader, Dup};
+use sequoia::openpgp::parse::buffered_reader::{BufferedReader, Dup};
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::KeyHandle;
 use openpgp::Packet;
 use openpgp::Result;
@@ -16,7 +16,7 @@ use openpgp::parse::PacketParserResult;
 use openpgp::parse::Parse;
 use openpgp::types::SignatureType;
 
-use sequoia_cert_store as cert_store;
+use sequoia::cert_store;
 use cert_store::LazyCert;
 use cert_store::StoreUpdate;
 

@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::parse::Parse;
 use openpgp::Cert;
 use openpgp::cert::amalgamation::ValidAmalgamation;

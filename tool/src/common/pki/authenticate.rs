@@ -4,7 +4,7 @@ use anyhow::Context;
 
 use typenum::Unsigned;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Cert;
 use openpgp::Fingerprint;
 use openpgp::KeyHandle;
@@ -12,12 +12,12 @@ use openpgp::Result;
 use openpgp::types::RevocationStatus;
 use openpgp::packet::UserID;
 
-use sequoia_cert_store as cert_store;
+use sequoia::cert_store;
 use cert_store::store::StoreError;
 use cert_store::store::UserIDQueryParams;
 use cert_store::Store as _;
 
-use sequoia_wot as wot;
+use sequoia::wot;
 use wot::store::Backend;
 use wot::store::Store;
 

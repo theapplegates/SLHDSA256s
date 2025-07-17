@@ -2,12 +2,12 @@ use std::cell::RefCell;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Result;
 use openpgp::packet::UserID;
 use openpgp::serialize::Serialize;
 
-use sequoia_cert_store as cert_store;
+use sequoia::cert_store;
 use cert_store::StoreUpdate;
 
 use crate::Sq;
@@ -78,7 +78,7 @@ pub fn replay(sq: Sq, c: replay::Command)
         let mut message = output.create_pgp_safe(
             &sq,
             false, // binary
-            sequoia_openpgp::armor::Kind::PublicKey)?;
+            sequoia::openpgp::armor::Kind::PublicKey)?;
         for cert in results.into_iter() {
             cert.serialize(&mut message)?;
         }

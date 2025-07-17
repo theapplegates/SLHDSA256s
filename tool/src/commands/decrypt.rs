@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::io;
 use std::sync::Arc;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::types::SymmetricAlgorithm;
 use openpgp::fmt::hex;
 use openpgp::KeyHandle;
@@ -20,9 +20,9 @@ use openpgp::parse::{
 use openpgp::parse::stream::{
     VerificationHelper, DecryptionHelper, DecryptorBuilder, MessageStructure,
 };
-use sequoia_openpgp::types::KeyFlags;
+use sequoia::openpgp::types::KeyFlags;
 
-use sequoia_cert_store as cert_store;
+use sequoia::cert_store;
 use cert_store::store::StoreError;
 
 use sequoia_keystore as keystore;

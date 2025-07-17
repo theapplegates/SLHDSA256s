@@ -5,14 +5,14 @@ use std::time::SystemTime;
 
 use anyhow::Result;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Fingerprint;
 use openpgp::KeyHandle;
 use openpgp::KeyID;
 use openpgp::packet::UserID;
 use openpgp::policy::NullPolicy;
 
-use sequoia_wot as wot;
+use sequoia::wot;
 
 use crate::output::sanitize::Safe;
 

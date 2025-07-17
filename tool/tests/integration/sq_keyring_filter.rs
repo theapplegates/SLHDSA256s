@@ -4,7 +4,7 @@ use std::{
     sync::OnceLock,
 };
 
-use sequoia_openpgp::{
+use sequoia::openpgp::{
     Packet,
     Result,
     cert::{Cert, CertParser},

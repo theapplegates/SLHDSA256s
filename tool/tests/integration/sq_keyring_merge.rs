@@ -1,6 +1,6 @@
 use std::fs::File;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Packet;
 use openpgp::Result;
 use openpgp::cert::prelude::*;

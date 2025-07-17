@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 
-use sequoia_openpgp::{
+use sequoia::openpgp::{
     self as openpgp,
     KeyHandle,
     packet::UserID,

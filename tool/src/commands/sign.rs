@@ -4,9 +4,9 @@ use std::io;
 use std::path::PathBuf;
 use tempfile::NamedTempFile;
 
-use buffered_reader::BufferedReader;
+use sequoia::openpgp::parse::buffered_reader::BufferedReader;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::armor;
 use openpgp::crypto;
 use openpgp::{Packet, Result};

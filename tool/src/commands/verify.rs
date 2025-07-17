@@ -2,9 +2,9 @@ use std::collections::{HashMap, HashSet, btree_map::{BTreeMap, Entry}};
 use std::io;
 use std::path::PathBuf;
 
-use buffered_reader::File;
+use sequoia::openpgp::parse::buffered_reader::File;
 
-use sequoia_openpgp::{
+use sequoia::openpgp::{
     self as openpgp,
     KeyID,
     Cert,
@@ -19,8 +19,8 @@ use sequoia_openpgp::{
     },
 };
 
-use sequoia_cert_store::Store;
-use sequoia_wot::store::Store as _;
+use sequoia::cert_store::Store;
+use sequoia::wot::store::Store as _;
 
 use crate::Sq;
 use crate::Result;
@@ -277,7 +277,7 @@ impl<'c> VHelper<'c> {
 
                 if let Some(cert_store) = self.sq.cert_store()? {
                     // Build the network.
-                    let cert_store = sequoia_wot::store::CertStore::from_store(
+                    let cert_store = sequoia::wot::store::CertStore::from_store(
                         cert_store, self.sq.policy(), reference_time);
 
                     let userids =
@@ -289,7 +289,7 @@ impl<'c> VHelper<'c> {
                                     It has no User IDs",
                                    cert_fpr);
                     } else {
-                        let n = sequoia_wot::NetworkBuilder::rooted(
+                        let n = sequoia::wot::NetworkBuilder::rooted(
                             &cert_store, &*trust_roots).build();
 
                         let authenticated_userids
@@ -297,10 +297,10 @@ impl<'c> VHelper<'c> {
                                 let paths = n.authenticate(
                                     userid, cert.fingerprint(),
                                     // XXX: Make this user configurable.
-                                    sequoia_wot::FULLY_TRUSTED);
+                                    sequoia::wot::FULLY_TRUSTED);
 
                                 let amount = paths.amount();
-                                let authenticated = if amount >= sequoia_wot::FULLY_TRUSTED {
+                                let authenticated = if amount >= sequoia::wot::FULLY_TRUSTED {
                                     weprintln!(indent=prefix,
                                                "Fully authenticated \
                                                 ({} of {}) {}, {}",

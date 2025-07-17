@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::cmp::Ordering;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::KeyHandle;
 use openpgp::Result;
 use openpgp::policy::HashAlgoSecurity;

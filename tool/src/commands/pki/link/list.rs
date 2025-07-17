@@ -1,11 +1,11 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Fingerprint;
 use openpgp::KeyHandle;
 
-use sequoia_cert_store as cert_store;
+use sequoia::cert_store;
 use cert_store::LazyCert;
 use cert_store::Store;
 
@@ -131,7 +131,7 @@ pub fn list(sq: Sq, c: link::ListCommand)
             })
         {
             let (depth, _amount) = certification.trust_signature()
-                .unwrap_or((0, sequoia_wot::FULLY_TRUSTED as u8));
+                .unwrap_or((0, sequoia::wot::FULLY_TRUSTED as u8));
 
             if c.ca && depth == 0 {
                 // Only show CAs.

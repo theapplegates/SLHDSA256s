@@ -87,7 +87,7 @@ use std::time::Duration;
 use clap::{Command, CommandFactory, Parser, Subcommand};
 use clap::builder::StyledStr;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Fingerprint;
 
 #[macro_use]
@@ -171,8 +171,8 @@ pub fn build(globals_hidden: bool) -> Command {
         format!(
             "{} (sequoia-openpgp {}, using {})",
             env!("CARGO_PKG_VERSION"),
-            sequoia_openpgp::VERSION,
-            sequoia_openpgp::crypto::backend()
+            sequoia::openpgp::VERSION,
+            sequoia::openpgp::crypto::backend()
         )
         .into_boxed_str(),
     ) as &str;
@@ -328,7 +328,7 @@ a lightweight way to partially isolate `sq`.
 
 Use 'default' to explicitly use the default location, use 'none' to \
 not use a home directory.",
-            sequoia_directories::Home::default_location()
+            sequoia::directories::Home::default_location()
                 .map(|p| {
                     let p = p.display().to_string();
                     if let Some(home) = dirs::home_dir() {
@@ -364,9 +364,9 @@ its data in the specified location.
 
 Use 'default' to explicitly use the default server, use 'none' to \
 not use a key store.",
-            sequoia_directories::Home::default()
+            sequoia::directories::Home::default()
                 .map(|home| {
-                    let p = home.data_dir(sequoia_directories::Component::Keystore);
+                    let p = home.data_dir(sequoia::directories::Component::Keystore);
                     let p = p.display().to_string();
                     if let Some(home) = dirs::home_dir() {
                         let home = home.display().to_string();
@@ -398,9 +398,9 @@ variable.
 
 Use 'default' to explicitly use the default cert store, use 'none' to \
 not use a cert store.",
-            sequoia_directories::Home::default()
+            sequoia::directories::Home::default()
                 .map(|home| {
-                    let p = home.data_dir(sequoia_directories::Component::CertD);
+                    let p = home.data_dir(sequoia::directories::Component::CertD);
                     let p = p.display().to_string();
                     if let Some(home) = dirs::home_dir() {
                         let home = home.display().to_string();

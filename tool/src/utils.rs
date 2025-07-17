@@ -1,6 +1,6 @@
 //! Miscellaneous utilities.
 
-use sequoia_openpgp::{
+use sequoia::openpgp::{
     Cert,
 };
 

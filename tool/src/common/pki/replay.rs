@@ -5,7 +5,7 @@ use std::collections::btree_map::Entry;
 
 use anyhow::Context;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Cert;
 use openpgp::Fingerprint;
 use openpgp::Packet;

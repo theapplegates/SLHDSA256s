@@ -1,7 +1,7 @@
 use anyhow::Result;
 
-use buffered_reader::{BufferedReader, Dup};
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp::parse::buffered_reader::{BufferedReader, Dup};
+use sequoia::openpgp;
 use openpgp::{
     packet::UserID,
     parse::{Cookie, Parse, stream::DecryptorBuilder},

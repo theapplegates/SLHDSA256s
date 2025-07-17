@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 
-use sequoia_openpgp::packet::signature::subpacket::{
+use sequoia::openpgp::packet::signature::subpacket::{
     NotationData,
     NotationDataFlags,
 };

@@ -1,7 +1,7 @@
 use clap::Args;
 use clap::ArgGroup;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::KeyHandle;
 
 use crate::cli::examples;

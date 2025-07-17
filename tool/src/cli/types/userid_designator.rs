@@ -3,7 +3,7 @@ use anyhow::Result;
 
 use typenum::Unsigned;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Cert;
 use openpgp::cert::ValidCert;
 use openpgp::packet::UserID;

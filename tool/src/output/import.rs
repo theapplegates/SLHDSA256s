@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::Result;
 
-use sequoia_cert_store::{
+use sequoia::cert_store::{
     LazyCert,
     store::{
         MergeCerts,

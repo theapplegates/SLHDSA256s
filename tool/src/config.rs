@@ -19,12 +19,12 @@ use toml_edit::{
     Value,
 };
 
-use sequoia_openpgp::{
+use sequoia::openpgp::{
     Fingerprint,
     policy::StandardPolicy,
 };
 use sequoia_net::reqwest::Url;
-use sequoia_directories::{Component, Home};
+use sequoia::directories::{Component, Home};
 use sequoia_policy_config::ConfiguredStandardPolicy;
 
 use crate::{
@@ -68,7 +68,7 @@ pub struct Config {
     policy_inline: Option<Vec<u8>>,
 
     /// The default cipher suite for newly generated keys.
-    cipher_suite: Option<sequoia_openpgp::cert::CipherSuite>,
+    cipher_suite: Option<sequoia::openpgp::cert::CipherSuite>,
 
     /// The default profile for newly generated keys.
     key_generate_profile: Option<cli::types::Profile>,
@@ -272,7 +272,7 @@ impl Config {
     ///   - or use the default value.
     pub fn cipher_suite(&self, cli: &cli::key::CipherSuite,
                         source: Option<ValueSource>)
-                        -> sequoia_openpgp::cert::CipherSuite
+                        -> sequoia::openpgp::cert::CipherSuite
     {
         match source.expect("set by the cli parser") {
             ValueSource::DefaultValue =>
@@ -493,7 +493,7 @@ impl ConfigFile {
                      .to_possible_value().unwrap().get_name()),
             &format!("{:?}", cli::network::keyserver::DEFAULT_KEYSERVERS),
             &format!("{:?}", {
-                sequoia_keystore::sequoia_ipc::Context::configure().build()
+                sequoia::ipc::Context::configure().build()
                     .map(|c| c.lib().display().to_string())
                     .unwrap_or_else(|_| "<unknown>".into())
             }),

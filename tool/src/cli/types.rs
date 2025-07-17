@@ -14,14 +14,14 @@ use std::time::Duration;
 use anyhow::Context;
 use anyhow::Result;
 
-use buffered_reader::BufferedReader;
-use buffered_reader::File;
-use buffered_reader::Generic;
+use sequoia::openpgp::parse::buffered_reader::BufferedReader;
+use sequoia::openpgp::parse::buffered_reader::File;
+use sequoia::openpgp::parse::buffered_reader::Generic;
 
 /// Common types for arguments of sq.
 use clap::ValueEnum;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::fmt::hex;
 use openpgp::KeyHandle;
 use openpgp::packet::UserID;

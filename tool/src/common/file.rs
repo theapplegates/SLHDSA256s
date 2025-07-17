@@ -9,7 +9,7 @@ use anyhow::{Context, Result};
 
 use tempfile::NamedTempFile;
 
-use sequoia_openpgp::{
+use sequoia::openpgp::{
     self as openpgp,
     armor,
     serialize::stream::{Armorer, Message},

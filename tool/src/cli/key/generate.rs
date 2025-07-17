@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{ArgGroup, Args};
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::packet::UserID;
 
 use crate::cli::KEY_VALIDITY_DURATION;
@@ -263,9 +263,9 @@ When `--output` is specified, the revocation certificate is written to \
 the file specified by `--rev-cert`.
 
 If `--output` is `-`, then this option must not also be `-`.",
-            sequoia_directories::Home::default()
+            sequoia::directories::Home::default()
             .map(|home| {
-                let p = home.data_dir(sequoia_directories::Component::Other(
+                let p = home.data_dir(sequoia::directories::Component::Other(
                     "revocation-certificates".into()));
                 let p = p.display().to_string();
                 if let Some(home) = dirs::home_dir() {

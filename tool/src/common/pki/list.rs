@@ -1,7 +1,7 @@
 use std::cell::Ref;
 use std::cell::RefCell;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Cert;
 use openpgp::KeyHandle;
 use openpgp::Packet;
@@ -11,7 +11,7 @@ use openpgp::packet::UserID;
 use openpgp::types::KeyFlags;
 use openpgp::types::SignatureType;
 
-use sequoia_cert_store as cert_store;
+use sequoia::cert_store;
 use cert_store::Store;
 
 use crate::Result;
@@ -302,7 +302,7 @@ pub fn summarize_certification(o: &mut dyn std::io::Write,
     }
 
     let (depth, amount) = certification.trust_signature()
-        .unwrap_or((0, sequoia_wot::FULLY_TRUSTED as u8));
+        .unwrap_or((0, sequoia::wot::FULLY_TRUSTED as u8));
 
     if amount == 0 {
         wwriteln!(stream=o, initial_indent=indent,
@@ -315,7 +315,7 @@ pub fn summarize_certification(o: &mut dyn std::io::Write,
         regex.dedup();
 
         if depth > 0 {
-            if amount == sequoia_wot::FULLY_TRUSTED as u8
+            if amount == sequoia::wot::FULLY_TRUSTED as u8
                 && regex.is_empty()
             {
                 wwriteln!(stream=o, initial_indent=indent,
@@ -338,7 +338,7 @@ pub fn summarize_certification(o: &mut dyn std::io::Write,
                       "trust depth: {}", depth);
         }
 
-        if amount != sequoia_wot::FULLY_TRUSTED as u8 {
+        if amount != sequoia::wot::FULLY_TRUSTED as u8 {
             wwriteln!(stream=o, initial_indent=indent,
                       "trust amount: {}", amount);
         }

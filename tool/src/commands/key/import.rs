@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::cert::CertParser;
 use openpgp::parse::Parse;
 

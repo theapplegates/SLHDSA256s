@@ -2,7 +2,7 @@ use std::path;
 
 use predicates::prelude::*;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 
 use openpgp::Cert;
 use openpgp::Packet;

@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::packet::Key;
 use openpgp::parse::Parse;
 use openpgp::types::KeyFlags;
@@ -377,7 +377,7 @@ fn sq_key_subkey_revoke_multiple() -> Result<()> {
 
     let vrevoked = revoked.with_policy(STANDARD_POLICY, sq.now())?;
     for subkey in vrevoked.keys().subkeys() {
-        use sequoia_openpgp::cert::amalgamation::ValidAmalgamation;
+        use sequoia::openpgp::cert::amalgamation::ValidAmalgamation;
         assert!(matches!(subkey.revocation_status(),
                          RevocationStatus::Revoked(_)));
     }

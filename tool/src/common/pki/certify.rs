@@ -7,7 +7,7 @@ use anyhow::Context;
 use chrono::DateTime;
 use chrono::Utc;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Cert;
 use openpgp::Result;
 use openpgp::packet::prelude::*;
@@ -17,7 +17,7 @@ use openpgp::serialize::Serialize;
 use openpgp::types::RevocationStatus;
 use openpgp::types::SignatureType;
 
-use sequoia_cert_store as cert_store;
+use sequoia::cert_store;
 use cert_store::StoreUpdate;
 use cert_store::store::UserIDQueryParams;
 
@@ -467,7 +467,7 @@ The certifier is the same as the certificate to certify."));
         let mut message = output.create_pgp_safe(
             &sq,
             binary,
-            sequoia_openpgp::armor::Kind::PublicKey,
+            sequoia::openpgp::armor::Kind::PublicKey,
         )?;
         cert.serialize(&mut message)?;
         message.finalize()?;

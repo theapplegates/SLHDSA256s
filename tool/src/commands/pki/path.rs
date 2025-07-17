@@ -1,7 +1,7 @@
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Result;
 
-use sequoia_wot as wot;
+use sequoia::wot;
 
 use crate::Sq;
 use crate::cli::pki::path::Command;

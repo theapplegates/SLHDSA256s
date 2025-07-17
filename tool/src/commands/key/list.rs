@@ -5,7 +5,7 @@ use std::{
     time::SystemTime,
 };
 
-use sequoia_openpgp::{
+use sequoia::openpgp::{
     Cert,
     Fingerprint,
     KeyHandle,
@@ -403,7 +403,7 @@ pub fn list(sq: Sq, mut cmd: cli::key::list::Command) -> Result<()> {
     {
         if let Some(q) = q.as_ref() {
             let paths = q.authenticate(
-                userid, &cert.fingerprint(), sequoia_wot::FULLY_TRUSTED);
+                userid, &cert.fingerprint(), sequoia::wot::FULLY_TRUSTED);
             let amount = paths.amount();
             (amount, PreferredUserID::from_userid(userid.clone(), amount))
         } else {

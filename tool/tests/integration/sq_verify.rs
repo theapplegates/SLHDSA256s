@@ -3,7 +3,7 @@ use std::io::Seek;
 use std::io::Write;
 use std::io;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Result;
 
 use super::common::*;

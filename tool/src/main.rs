@@ -15,7 +15,7 @@ use std::time::SystemTime;
 
 use once_cell::sync::OnceCell;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 
 use openpgp::Result;
 use openpgp::Cert;
@@ -52,7 +52,7 @@ pub mod config;
 pub mod output;
 pub use output::Model;
 
-/// Converts sequoia_openpgp types for rendering.
+/// Converts sequoia::openpgp types for rendering.
 pub trait Convert<T> {
     /// Performs the conversion.
     fn convert(self) -> T;
@@ -267,9 +267,9 @@ fn real_main() -> Result<()> {
 
     let home = match &c.home {
         Some(StateDirectory::Absolute(p)) =>
-            Some(sequoia_directories::Home::new(p.clone())?),
+            Some(sequoia::directories::Home::new(p.clone())?),
         None | Some(StateDirectory::Default) =>
-            Some(sequoia_directories::Home::default()
+            Some(sequoia::directories::Home::default()
                  .ok_or(anyhow::anyhow!("no default SEQUOIA_HOME \
                                          on this platform"))?
                  .clone()),

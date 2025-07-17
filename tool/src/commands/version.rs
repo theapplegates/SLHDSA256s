@@ -10,9 +10,9 @@ pub fn dispatch(_sq: Sq, _c: version::Command)
                 -> Result<()>
 {
     weprintln!("sq {}", env!("CARGO_PKG_VERSION"));
-    weprintln!("using sequoia-openpgp {}", sequoia_openpgp::VERSION);
+    weprintln!("using sequoia-openpgp {}", sequoia::openpgp::VERSION);
     weprintln!("with cryptographic backend {}",
-               sequoia_openpgp::crypto::backend());
+               sequoia::openpgp::crypto::backend());
 
     Ok(())
 }

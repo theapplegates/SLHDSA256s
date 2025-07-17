@@ -3,7 +3,7 @@ use std::time::SystemTime;
 
 use anyhow::Context;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::cert::UserIDRevocationBuilder;
 use openpgp::packet::signature::subpacket::NotationData;
 use openpgp::packet::signature::subpacket::SubpacketTag;
@@ -18,7 +18,7 @@ use openpgp::Cert;
 use openpgp::Packet;
 use openpgp::Result;
 
-use sequoia_cert_store as cert_store;
+use sequoia::cert_store;
 use cert_store::StoreUpdate;
 
 use crate::Sq;

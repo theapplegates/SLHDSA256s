@@ -2,7 +2,7 @@
 
 use openpgp::crypto::Password;
 use openpgp::Result;
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 
 use crate::Sq;
 

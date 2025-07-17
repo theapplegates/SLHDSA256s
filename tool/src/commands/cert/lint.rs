@@ -8,7 +8,7 @@ use termcolor::{WriteColor, StandardStream, ColorChoice, ColorSpec, Color};
 
 use anyhow::Context;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Result;
 use openpgp::armor;
 use openpgp::cert::prelude::*;
@@ -23,7 +23,7 @@ use openpgp::types::RevocationStatus;
 use openpgp::types::SignatureType;
 use openpgp::types::SymmetricAlgorithm;
 
-use sequoia_cert_store as cert_store;
+use sequoia::cert_store;
 use cert_store::LazyCert;
 use cert_store::StoreUpdate;
 

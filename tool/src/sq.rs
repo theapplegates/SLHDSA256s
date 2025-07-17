@@ -15,7 +15,7 @@ use anyhow::Context as _;
 
 use once_cell::sync::OnceCell;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Cert;
 use openpgp::crypto;
 use openpgp::crypto::Password;
@@ -33,7 +33,7 @@ use openpgp::types::KeyFlags;
 use openpgp::types::RevocationStatus;
 use openpgp::types::RevocationType;
 
-use sequoia_cert_store as cert_store;
+use sequoia::cert_store;
 use cert_store::LazyCert;
 use cert_store::Store;
 use cert_store::store::MergePublicCollectStats;
@@ -41,7 +41,7 @@ use cert_store::store::StoreError;
 use cert_store::store::StoreUpdate;
 use cert_store::store::UserIDQueryParams;
 
-use sequoia_wot as wot;
+use sequoia::wot;
 use wot::store::Store as _;
 
 use sequoia_keystore as keystore;
@@ -229,7 +229,7 @@ impl Sq {
     pub fn key_store_path(&self) -> Result<Option<PathBuf>> {
         let default = || {
             Ok(self.sequoia.home()
-               .map(|h| h.data_dir(sequoia_directories::Component::Keystore)))
+               .map(|h| h.data_dir(sequoia::directories::Component::Keystore)))
         };
 
         if let Some(dir) = self.key_store_path.as_ref() {

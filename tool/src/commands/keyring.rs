@@ -7,7 +7,7 @@ use std::{
 use std::ops::Deref;
 use anyhow::Context;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::{
     Result,
     armor,
@@ -318,7 +318,7 @@ fn split(input: &mut (dyn io::Read + Sync + Send), prefix: &str, binary: bool)
                     |p| p.tag() == Tag::SecretKey || p.tag() == Tag::SecretSubkey),
             };
 
-            use sequoia_openpgp::serialize::stream::{Message, Armorer};
+            use sequoia::openpgp::serialize::stream::{Message, Armorer};
             let message = Message::new(sink);
             let mut message = Armorer::new(message)
                 .kind(if is_tsk {

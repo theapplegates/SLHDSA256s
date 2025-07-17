@@ -1,6 +1,6 @@
 use clap::ArgMatches;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Result;
 
 pub mod link;

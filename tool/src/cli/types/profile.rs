@@ -12,19 +12,19 @@ pub enum Profile {
 
 impl Default for Profile {
     fn default() -> Profile {
-        match sequoia_openpgp::Profile::default() {
-            sequoia_openpgp::Profile::RFC9580 => Profile::RFC9580,
-            sequoia_openpgp::Profile::RFC4880 => Profile::RFC4880,
+        match sequoia::openpgp::Profile::default() {
+            sequoia::openpgp::Profile::RFC9580 => Profile::RFC9580,
+            sequoia::openpgp::Profile::RFC4880 => Profile::RFC4880,
             _ => Profile::RFC9580,
         }
     }
 }
 
-impl From<Profile> for sequoia_openpgp::Profile {
+impl From<Profile> for sequoia::openpgp::Profile {
     fn from(p: Profile) -> Self {
         match p {
-            Profile::RFC9580 => sequoia_openpgp::Profile::RFC9580,
-            Profile::RFC4880 => sequoia_openpgp::Profile::RFC4880,
+            Profile::RFC9580 => sequoia::openpgp::Profile::RFC9580,
+            Profile::RFC4880 => sequoia::openpgp::Profile::RFC4880,
         }
     }
 }

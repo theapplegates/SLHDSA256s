@@ -5,7 +5,7 @@ use std::sync::{Mutex, OnceLock};
 
 use tempfile::TempDir;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::KeyHandle;
 use openpgp::Result;
 use openpgp::Cert;

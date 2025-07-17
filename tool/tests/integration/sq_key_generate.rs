@@ -1,6 +1,6 @@
 use std::time;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Result;
 
 use super::common;

@@ -2,13 +2,13 @@ use std::{
     collections::BTreeSet,
 };
 
-use sequoia_openpgp::{
+use sequoia::openpgp::{
     Result,
     serialize::Serialize,
 };
 
-use sequoia_cert_store::Store;
-use sequoia_wot as wot;
+use sequoia::cert_store::Store;
+use sequoia::wot;
 
 use crate::Sq;
 use crate::cli::key::approvals;
@@ -179,7 +179,7 @@ fn update(
     // If we want to authenticate, prepare the authentication network.
     let network_threshold = command.add_authenticated.then_some(
         (wot::NetworkBuilder::rooted(store, &*sq.trust_roots()).build(),
-         sequoia_wot::FULLY_TRUSTED));
+         sequoia::wot::FULLY_TRUSTED));
 
     // Get a signer.
     let mut pk_signer = sq.get_primary_key(&key, None)?;

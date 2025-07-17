@@ -8,7 +8,7 @@ use chrono::Utc;
 
 use anyhow::Context;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Cert;
 use openpgp::Fingerprint;
 use openpgp::Packet;
@@ -26,7 +26,7 @@ use openpgp::types::ReasonForRevocation;
 use openpgp::types::RevocationStatus;
 use openpgp::types::SignatureType;
 
-use sequoia_cert_store as cert_store;
+use sequoia::cert_store;
 use cert_store::StoreUpdate;
 
 use crate::Sq;
@@ -264,7 +264,7 @@ pub fn dispatch(
         rev_cert
     } else if on_keystore {
         if let Some(home) = sq.sequoia.home() {
-            let dir = home.data_dir(sequoia_directories::Component::Other(
+            let dir = home.data_dir(sequoia::directories::Component::Other(
                 "revocation-certificates".into()));
             std::fs::create_dir_all(&dir)
                 .with_context(|| {
@@ -598,7 +598,7 @@ pub fn dispatch(
         wwriteln!(stream = o);
         if let Err(err) = inspect(
             &sq,
-            buffered_reader::Memory::with_cookie(&bytes, Default::default()),
+            sequoia::openpgp::parse::buffered_reader::Memory::with_cookie(&bytes, Default::default()),
             command.output
                 .as_ref()
                 .and_then(|output| {

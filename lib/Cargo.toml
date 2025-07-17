@@ -35,6 +35,17 @@ thiserror = "1"
 [dev-dependencies]
 tempfile = "3.1"
 
+[features]
+default = [
+    "crypto-nettle",
+]
+crypto-nettle = ["sequoia-openpgp/crypto-nettle"]
+crypto-openssl = ["sequoia-openpgp/crypto-openssl"]
+crypto-botan = ["sequoia-openpgp/crypto-botan"]
+crypto-botan2 = ["sequoia-openpgp/crypto-botan2"]
+crypto-cng = ["sequoia-openpgp/crypto-cng"]
+crypto-rust = ["sequoia-openpgp/crypto-rust"]
+
 [target.'cfg(not(windows))'.dev-dependencies]
 # Enables a crypto backend for the tests:
 sequoia-openpgp = { version = "2", default-features = false, features = ["crypto-nettle", "__implicit-crypto-backend-for-tests"]  }

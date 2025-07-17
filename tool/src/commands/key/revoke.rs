@@ -1,4 +1,4 @@
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::cert::CertRevocationBuilder;
 use openpgp::packet::signature::subpacket::NotationData;
 use openpgp::types::ReasonForRevocation;

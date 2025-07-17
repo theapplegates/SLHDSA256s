@@ -1,9 +1,9 @@
 use openpgp::packet::UserID;
 use openpgp::Fingerprint;
 use openpgp::Result;
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 
-use sequoia_wot as wot;
+use sequoia::wot;
 use wot::Path;
 
 pub use concise_human_readable::print_path;

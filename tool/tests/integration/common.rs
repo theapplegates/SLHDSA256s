@@ -23,7 +23,7 @@ use chrono::Duration;
 use chrono::TimeZone;
 use chrono::Utc;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Cert;
 use openpgp::Fingerprint;
 use openpgp::KeyHandle;
@@ -207,7 +207,7 @@ pub fn check_certifications(
         .map(|(certifier, cert, userid, sig)| {
             // Get it in to a similar form as expected.
             let (_depth, amount) = sig.trust_signature()
-                .unwrap_or((0, sequoia_wot::FULLY_TRUSTED as u8));
+                .unwrap_or((0, sequoia::wot::FULLY_TRUSTED as u8));
 
             eprintln!("Certification: {} on {}, {}; amount: {}",
                       certifier.fingerprint(),

@@ -3,7 +3,7 @@ use std::path::Path;
 
 use super::common::{artifact, NO_USERIDS, Sq, STANDARD_POLICY, UserIDArg};
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::{
     Cert,
     Result,

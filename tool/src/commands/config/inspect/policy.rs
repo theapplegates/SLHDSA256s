@@ -9,7 +9,7 @@ use std::{
 
 use anyhow::Result;
 
-use sequoia_openpgp::{
+use sequoia::openpgp::{
     packet,
     policy::{
         AsymmetricAlgorithm,
@@ -105,7 +105,7 @@ where
 fn explain_hashes(sink: &mut dyn io::Write, p: &StandardPolicy)
                   -> Result<()>
 {
-    use sequoia_openpgp::policy::HashAlgoSecurity::*;
+    use sequoia::openpgp::policy::HashAlgoSecurity::*;
 
     wwriteln!(stream = sink, initial_indent = " - ", "Hash algorithms");
 

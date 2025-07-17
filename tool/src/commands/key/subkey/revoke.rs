@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use anyhow::Context;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Cert;
 use openpgp::Packet;
 use openpgp::cert::SubkeyRevocationBuilder;

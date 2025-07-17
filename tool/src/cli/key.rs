@@ -2,7 +2,7 @@
 
 use clap::{ValueEnum, Parser, Subcommand};
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::cert::CipherSuite as SqCipherSuite;
 use openpgp::types::ReasonForRevocation;
 

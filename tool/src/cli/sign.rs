@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use clap::{ArgGroup, Parser, ValueEnum};
 
-use sequoia_openpgp::{
+use sequoia::openpgp::{
     types::SignatureType,
 };
 

@@ -3,7 +3,7 @@ use anyhow::Context;
 use chrono::DateTime;
 use chrono::Utc;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Result;
 use openpgp::cert::KeyBuilder;
 use openpgp::serialize::Serialize;

@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::Error;
 
-use sequoia_openpgp as openpgp;
+use sequoia::openpgp;
 use openpgp::Cert;
 use openpgp::Fingerprint;
 use openpgp::KeyHandle;
@@ -14,10 +14,10 @@ use openpgp::cert::amalgamation::ValidAmalgamation;
 use openpgp::packet::UserID;
 use openpgp::types::RevocationStatus;
 
-use sequoia_cert_store as cert_store;
+use sequoia::cert_store;
 use cert_store::Store;
 
-use sequoia_wot as wot;
+use sequoia::wot;
 use wot::Path;
 use wot::PathLints;
 use wot::FULLY_TRUSTED;
