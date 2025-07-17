@@ -25,7 +25,7 @@ use sequoia::openpgp::types::KeyFlags;
 use sequoia::cert_store;
 use cert_store::store::StoreError;
 
-use sequoia_keystore as keystore;
+use sequoia::key_store as keystore;
 
 use crate::{
     cli,

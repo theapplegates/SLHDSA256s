@@ -12,7 +12,7 @@ use openpgp::crypto::Password;
 use openpgp::packet::key::KeyParts;
 use openpgp::serialize::Serialize;
 
-use sequoia_keystore as keystore;
+use sequoia::key_store as keystore;
 use keystore::Protection;
 
 use crate::Convert;

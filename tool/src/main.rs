@@ -13,8 +13,6 @@ use std::path::Path;
 use std::str::FromStr;
 use std::time::SystemTime;
 
-use once_cell::sync::OnceCell;
-
 use sequoia::openpgp;
 
 use openpgp::Result;
@@ -346,6 +344,10 @@ fn real_main() -> Result<()> {
         sequoia.cert_store_path(p);
     }
 
+    if let Some(p) = c.key_store.clone() {
+        sequoia.key_store_path(p);
+    }
+
     for p in &c.keyring {
         sequoia.add_keyring(p);
     }
@@ -363,8 +365,6 @@ fn real_main() -> Result<()> {
         overwrite: c.overwrite,
         batch: c.batch,
         policy_as_of,
-        key_store_path: c.key_store.clone(),
-        key_store: OnceCell::new(),
         password_cache: password_cache.into(),
     };
 

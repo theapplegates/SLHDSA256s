@@ -4,7 +4,7 @@ use std::{
     borrow::Cow,
     collections::BTreeMap,
     path::{Path, PathBuf},
-    sync::{Arc, OnceLock},
+    sync::{Arc, Mutex, OnceLock},
     time::SystemTime,
 };
 
@@ -18,6 +18,7 @@ use anyhow::Context;
 pub use anyhow;
 pub use sequoia_cert_store as cert_store;
 pub use sequoia_directories as directories;
+pub use sequoia_keystore as key_store;
 pub use sequoia_ipc as ipc;
 pub use sequoia_openpgp as openpgp;
 pub use sequoia_wot as wot;
@@ -76,6 +77,13 @@ pub struct Sequoia {
 
     /// Additional trust roots.
     trust_roots: Vec<Fingerprint>,
+
+    /// The key store.
+    key_store_path: Option<StateDirectory>,
+    key_store: once_cell::sync::OnceCell<Mutex<key_store::Keystore>>,
+
+    /// Path to our IPC servers.
+    ipc_server_path: PathBuf,
 }
 
 impl Sequoia {
@@ -386,6 +394,84 @@ impl Sequoia {
         }
     }
 
+    /// Returns the key store's path.
+    ///
+    /// If the key store is disabled, returns `Ok(None)`.
+    pub fn key_store_path(&self) -> Result<Option<PathBuf>> {
+        let default = || {
+            Ok(self.home()
+               .map(|h| h.data_dir(directories::Component::Keystore)))
+        };
+
+        if let Some(dir) = self.key_store_path.as_ref() {
+            match dir {
+                StateDirectory::Absolute(p) => Ok(Some(p.clone())),
+                StateDirectory::Default => default(),
+                StateDirectory::None => Ok(None),
+            }
+        } else {
+            default()
+        }
+    }
+
+    /// Returns whether the key store is disabled.
+    fn no_key_store(&self) -> bool {
+        self.key_store_path.as_ref()
+            .map(|s| s.is_none())
+            .unwrap_or(self.stateless())
+    }
+
+    fn no_key_store_err() -> errors::Error {
+        errors::Error::state_disabled("key store")
+    }
+
+    /// Returns the key store's path.
+    ///
+    /// If the key store is disabled, returns an error.
+    pub fn key_store_path_or_else(&self) -> Result<PathBuf> {
+        if self.no_key_store() {
+            Err(Self::no_key_store_err().into())
+        } else {
+            self.key_store_path()?
+                .ok_or_else(|| {
+                    Self::no_key_store_err().into()
+                })
+        }
+    }
+
+    /// Returns the key store.
+    ///
+    /// If the key store is disabled, returns `Ok(None)`.  If it is not yet
+    /// open, opens it.
+    pub fn key_store(&self) -> Result<Option<&Mutex<key_store::Keystore>>> {
+        if self.no_key_store() {
+            return Ok(None);
+        }
+
+        self.key_store
+            .get_or_try_init(|| {
+                let c = key_store::Context::configure()
+                    .home(self.key_store_path_or_else()?)
+                    .lib(self.ipc_server_path())
+                    .build()?;
+
+                let ks = key_store::Keystore::connect(&c)
+                    .context("Connecting to key store")?;
+
+                Ok(Mutex::new(ks))
+            })
+            .map(Some)
+    }
+
+    /// Returns the key store.
+    ///
+    /// If the key store is disabled, returns an error.
+    pub fn key_store_or_else(&self) -> Result<&Mutex<key_store::Keystore>> {
+        self.key_store().and_then(|key_store| key_store.ok_or_else(|| {
+            Self::no_key_store_err().into()
+        }))
+    }
+
     /// Returns the secret keys found in any specified keyrings.
     pub fn keyring_tsks(&self)
         -> Result<&BTreeMap<Fingerprint,
@@ -401,6 +487,11 @@ impl Sequoia {
             // map.
             Ok(self.keyring_tsks.get_or_init(|| BTreeMap::new()))
         }
+    }
+
+    /// Returns the path to the IPC servers.
+    pub fn ipc_server_path(&self) -> &Path {
+        &self.ipc_server_path
     }
 
     /// Emits a warning.

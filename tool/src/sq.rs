@@ -13,8 +13,6 @@ use typenum::Unsigned;
 use anyhow::anyhow;
 use anyhow::Context as _;
 
-use once_cell::sync::OnceCell;
-
 use sequoia::openpgp;
 use openpgp::Cert;
 use openpgp::crypto;
@@ -44,7 +42,7 @@ use cert_store::store::UserIDQueryParams;
 use sequoia::wot;
 use wot::store::Store as _;
 
-use sequoia_keystore as keystore;
+use sequoia::key_store as keystore;
 use keystore::Protection;
 
 use sequoia::Sequoia;
@@ -57,7 +55,6 @@ use crate::cli::types::SpecialName;
 use crate::cli::types::StdinWarning;
 use crate::cli::types::cert_designator;
 use crate::cli::types::key_designator;
-use crate::cli::types::paths::StateDirectory;
 use crate::common::password;
 use crate::common::ui;
 use crate::output::hint::Hint;
@@ -137,10 +134,6 @@ pub struct Sq {
 
     pub policy_as_of: SystemTime,
 
-    // The key store.
-    pub key_store_path: Option<StateDirectory>,
-    pub key_store: OnceCell<Mutex<keystore::Keystore>>,
-
     /// A password cache.  When encountering a locked key, we first
     /// consult the password cache.  The passwords are only tried if
     /// it is safe.  That is, the passwords are only tried if we are
@@ -175,13 +168,6 @@ impl Sq {
     /// Be quiet.
     pub fn quiet(&self) -> bool {
         self.config.quiet()
-    }
-
-    /// Returns whether the key store is disabled.
-    fn no_key_store(&self) -> bool {
-        self.key_store_path.as_ref()
-            .map(|s| s.is_none())
-            .unwrap_or(self.sequoia.stateless())
     }
 
     /// Returns the cert store's base directory, if it is enabled.
@@ -227,40 +213,14 @@ impl Sq {
     ///
     /// If the key store is disabled, returns `Ok(None)`.
     pub fn key_store_path(&self) -> Result<Option<PathBuf>> {
-        let default = || {
-            Ok(self.sequoia.home()
-               .map(|h| h.data_dir(sequoia::directories::Component::Keystore)))
-        };
-
-        if let Some(dir) = self.key_store_path.as_ref() {
-            match dir {
-                StateDirectory::Absolute(p) => Ok(Some(p.clone())),
-                StateDirectory::Default => default(),
-                StateDirectory::None => Ok(None),
-            }
-        } else {
-            default()
-        }
-    }
-
-    fn no_key_store_err() -> clap::Error {
-        clap::Error::raw(clap::error::ErrorKind::ArgumentConflict,
-                         "Operation requires a key store, \
-                          but the key store is disabled")
+        self.sequoia.key_store_path()
     }
 
     /// Returns the key store's path.
     ///
     /// If the key store is disabled, returns an error.
     pub fn key_store_path_or_else(&self) -> Result<PathBuf> {
-        if self.no_key_store() {
-            Err(Self::no_key_store_err().into())
-        } else {
-            self.key_store_path()?
-                .ok_or_else(|| {
-                    Self::no_key_store_err().into()
-                })
-        }
+        self.sequoia.key_store_path_or_else()
     }
 
     /// Returns the key store.
@@ -268,35 +228,14 @@ impl Sq {
     /// If the key store is disabled, returns `Ok(None)`.  If it is not yet
     /// open, opens it.
     pub fn key_store(&self) -> Result<Option<&Mutex<keystore::Keystore>>> {
-        if self.no_key_store() {
-            return Ok(None);
-        }
-
-        self.key_store
-            .get_or_try_init(|| {
-                let mut c = keystore::Context::configure()
-                    .home(self.key_store_path_or_else()?);
-
-                if let Some(p) = self.config.servers_path() {
-                    c = c.lib(p);
-                }
-
-                let c = c.build()?;
-                let ks = keystore::Keystore::connect(&c)
-                    .context("Connecting to key store")?;
-
-                Ok(Mutex::new(ks))
-            })
-            .map(Some)
+        self.sequoia.key_store()
     }
 
     /// Returns the key store.
     ///
     /// If the key store is disabled, returns an error.
     pub fn key_store_or_else(&self) -> Result<&Mutex<keystore::Keystore>> {
-        self.key_store().and_then(|key_store| key_store.ok_or_else(|| {
-            Self::no_key_store_err().into()
-        }))
+        self.sequoia.key_store_or_else()
     }
 
     /// Returns the secret keys found in any specified keyrings.

@@ -15,7 +15,7 @@ use sequoia::openpgp::{
     types::RevocationStatus,
 };
 
-use sequoia_keystore as keystore;
+use sequoia::key_store as keystore;
 use keystore::Protection;
 
 use crate::Convert;
@@ -546,7 +546,7 @@ pub fn list(sq: Sq, mut cmd: cli::key::list::Command) -> Result<()> {
         let mut hint = sq.hint(format_args!(
             "There are no secret keys."));
 
-        if sq.key_store_path.is_some()
+        if sq.sequoia.key_store_path()?.is_some()
             || ! sq.sequoia.home()
             .map(|h| h.is_default_location()).unwrap_or(false)
         {
@@ -555,7 +555,7 @@ pub fn list(sq: Sq, mut cmd: cli::key::list::Command) -> Result<()> {
                  using the `{}` option.  Consider using the default \
                  key store location to access your keys.",
                 sq.key_store_path()?.unwrap().display(),
-                if sq.key_store_path.is_some() {
+                if sq.sequoia.key_store_path()?.is_some() {
                     "--key-store"
                 } else {
                     "--home"

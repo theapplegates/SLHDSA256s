@@ -49,8 +49,14 @@ pub struct SequoiaBuilder {
     /// Additional keyrings to read.
     keyrings: Vec<PathBuf>,
 
+    /// Overrides the path to the key store.
+    key_store_path: Option<crate::types::StateDirectory>,
+
     /// Additional trust roots.
     trust_roots: Vec<openpgp::Fingerprint>,
+
+    /// Path to our IPC servers.
+    ipc_server_path: PathBuf,
 }
 
 impl SequoiaBuilder {
@@ -62,7 +68,11 @@ impl SequoiaBuilder {
             time: Default::default(),
             cert_store_path: Default::default(),
             keyrings: Default::default(),
+            key_store_path: Default::default(),
             trust_roots: Default::default(),
+            ipc_server_path:
+            PathBuf::from(option_env!("PREFIX").unwrap_or("/usr/local"))
+                .join("libexec").join("sequoia"),
         }
     }
 
@@ -151,6 +161,12 @@ impl SequoiaBuilder {
         self
     }
 
+    /// Overrides the key store location.
+    pub fn key_store_path(&mut self, p: StateDirectory) -> &mut Self {
+        self.key_store_path = Some(p);
+        self
+    }
+
     /// Adds the given keyring to Sequoia's virtual cert store.
     pub fn add_keyring<P>(&mut self, p: P) -> &mut Self
     where
@@ -187,6 +203,15 @@ impl SequoiaBuilder {
         self
     }
 
+    /// Sets the path to the IPC servers.
+    pub fn ipc_server_path<P>(&mut self, p: P) -> &mut Self
+    where
+        P: AsRef<Path>,
+    {
+        self.ipc_server_path = p.as_ref().into();
+        self
+    }
+
     /// Instantiate a new context based on the builder's
     /// configuration.
     pub fn build(&self) -> Result<Sequoia> {
@@ -211,8 +236,11 @@ impl SequoiaBuilder {
             cert_store: Default::default(),
             keyrings: self.keyrings.clone(),
             keyring_tsks: Default::default(),
+            key_store_path: self.key_store_path.clone(),
+            key_store: Default::default(),
             trust_roots: self.trust_roots.clone(),
             trust_root_local: Default::default(),
+            ipc_server_path: self.ipc_server_path.clone(),
         })
     }
 }

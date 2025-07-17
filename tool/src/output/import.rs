@@ -15,7 +15,7 @@ use sequoia::cert_store::{
     },
 };
 
-use sequoia_keystore as keystore;
+use sequoia::key_store as keystore;
 
 use crate::output::pluralize::Pluralize;
 

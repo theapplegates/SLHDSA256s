@@ -4,7 +4,7 @@ use openpgp::Result;
 use openpgp::cert::amalgamation::key::ValidErasedKeyAmalgamation;
 use openpgp::packet::key::KeyParts;
 
-use sequoia_keystore as keystore;
+use sequoia::key_store as keystore;
 
 use crate::Sq;
 use crate::cli::types::FileStdinOrKeyHandle;

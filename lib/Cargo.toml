@@ -21,9 +21,11 @@ maintenance = { status = "actively-developed" }
 anyhow = "1.0.18"
 dirs = "5"
 filetime = "0.2"
+once_cell = "1.17"
 rusqlite = ">=0.31, <0.33"
 sequoia-cert-store = { version = "0.7", default-features = false }
 sequoia-directories = "0.1"
+sequoia-keystore = { version = "0.7" }
 sequoia-ipc = { version = "0.36", default-features = false }
 sequoia-openpgp = { version = "2", default-features = false, features = ["compression"] }
 sequoia-wot = { version = "0.15", default-features = false }
