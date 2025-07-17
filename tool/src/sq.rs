@@ -136,8 +136,6 @@ pub struct Sq {
     /// Prevent any kind of interactive prompting.
     pub batch: bool,
 
-    pub time: SystemTime,
-    pub time_is_now: bool,
     pub policy_as_of: SystemTime,
     pub cert_store_path: Option<StateDirectory>,
     pub keyrings: Vec<PathBuf>,
@@ -177,7 +175,12 @@ impl Sq {
 
     /// Returns the current time.
     pub fn time(&self) -> SystemTime {
-        self.time
+        self.sequoia.time()
+    }
+
+    /// Returns whether the time approximates the current time.
+    pub fn time_is_now(&self) -> bool {
+        self.sequoia.time_is_now()
     }
 
     /// Be verbose.
@@ -1574,7 +1577,7 @@ impl Sq {
                     format!("{}/{}", cert.fingerprint(), fpr)
                 };
 
-                let preface = if ! self.time_is_now {
+                let preface = if ! self.time_is_now() {
                     format!("{} was not considered because\n\
                              at the specified time ({}) it was",
                             id, time)

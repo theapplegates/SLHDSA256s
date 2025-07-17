@@ -295,7 +295,6 @@ fn real_main() -> Result<()> {
     config.init_verbose(c.verbose, matches.value_source("verbose"));
     config.init_quiet(c.quiet, matches.value_source("quiet"));
 
-    let time_is_now = c.time.is_none();
     let time: SystemTime = if let Some(t) = c.time.as_ref() {
         t.to_system_time(std::time::SystemTime::now())?
     } else {
@@ -336,6 +335,14 @@ fn real_main() -> Result<()> {
         sequoia.stateless();
     }
     sequoia.policy(policy);
+
+    if let Some(t) = c.time.as_ref() {
+        sequoia.fix_time_at(
+            t.to_system_time(std::time::SystemTime::now())?);
+    } else {
+        sequoia.fix_time();
+    };
+
     let sequoia = sequoia.build()?;
 
     let sq = Sq {
@@ -344,8 +351,6 @@ fn real_main() -> Result<()> {
         config,
         overwrite: c.overwrite,
         batch: c.batch,
-        time,
-        time_is_now,
         policy_as_of,
         cert_store_path: c.cert_store.clone(),
         keyrings: c.keyring.clone(),

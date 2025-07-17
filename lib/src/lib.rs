@@ -1,6 +1,7 @@
 //! A high-level API for Sequoia.
 
 use std::borrow::Cow;
+use std::time::SystemTime;
 
 #[macro_use] mod log;
 
@@ -22,6 +23,9 @@ pub struct Sequoia {
 
     /// The OpenPGP policy.
     policy: openpgp::policy::StandardPolicy<'static>,
+
+    /// The current time.
+    time: Time,
 }
 
 impl Sequoia {
@@ -52,5 +56,48 @@ impl Sequoia {
     /// Returns the OpenPGP policy.
     pub fn policy(&self) -> &openpgp::policy::StandardPolicy<'static> {
         &self.policy
+    }
+
+    /// Returns the configured time.
+    pub fn time(&self) -> SystemTime {
+        self.time.get()
+    }
+
+    /// Returns whether the configured time approximates the current
+    /// time.
+    pub fn time_is_now(&self) -> bool {
+        self.time.is_now()
+    }
+}
+
+#[derive(Clone, Default)]
+enum Time {
+    /// Always use the current time.
+    ///
+    /// This is the default, and good for long-running programs.
+    #[default]
+    Realtime,
+
+    /// Freeze the time the Sequoia context is built.
+    Frozen(SystemTime),
+
+    /// Use the given time.
+    Fix(SystemTime),
+}
+
+impl Time {
+    /// Returns the configured time.
+    fn get(&self) -> SystemTime {
+        match self {
+            Time::Realtime => SystemTime::now(),
+            Time::Frozen(t) => *t,
+            Time::Fix(t) => *t,
+        }
+    }
+
+    /// Returns whether the configured time approximates the current
+    /// time.
+    fn is_now(&self) -> bool {
+        ! matches!(self, Time::Fix(_))
     }
 }

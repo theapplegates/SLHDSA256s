@@ -127,7 +127,7 @@ pub fn get_secret_signer<'a>(
         match sq.get_primary_key(secret, flags) {
             Ok(key) => Ok((secret.clone(), key)),
             Err(err) => {
-                if ! sq.time_is_now {
+                if ! sq.time_is_now() {
                     return Err(err.context(format!("\
 No certification key found: the key specified with --revocation-file \
 does not contain a certification key with secret key material.  \
@@ -145,7 +145,7 @@ does not contain a certification key with secret key material")));
         match sq.get_primary_key(cert, flags) {
             Ok(key) => Ok((cert.clone(), key)),
             Err(err) => {
-                if ! sq.time_is_now {
+                if ! sq.time_is_now() {
                     return Err(err.context(format!("\
 No certification key found: --revocation-file not provided and the
 certificate to revoke does not contain a certification key with secret

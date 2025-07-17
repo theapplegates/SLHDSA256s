@@ -1,8 +1,10 @@
 use std::borrow::Cow;
 use std::path::Path;
+use std::time::SystemTime;
 
 use crate::Result;
 use crate::Sequoia;
+use crate::Time;
 use crate::openpgp;
 
 enum Home {
@@ -36,6 +38,9 @@ pub struct SequoiaBuilder {
 
     /// The OpenPGP policy.
     policy: openpgp::policy::StandardPolicy<'static>,
+
+    /// The current time.
+    time: Time,
 }
 
 impl SequoiaBuilder {
@@ -44,6 +49,7 @@ impl SequoiaBuilder {
         SequoiaBuilder {
             home: Home::Default,
             policy: openpgp::policy::StandardPolicy::new(),
+            time: Default::default(),
         }
     }
 
@@ -134,6 +140,18 @@ impl SequoiaBuilder {
         self
     }
 
+    /// Fixes the time at the current time.
+    pub fn fix_time(&mut self) -> &mut Self {
+        self.time = Time::Frozen(SystemTime::now());
+        self
+    }
+
+    /// Fixes the time at the given time.
+    pub fn fix_time_at(&mut self, t: SystemTime) -> &mut Self {
+        self.time = Time::Fix(t);
+        self
+    }
+
     /// Instantiate a new context based on the builder's
     /// configuration.
     pub fn build(&self) -> Result<Sequoia> {
@@ -153,6 +171,7 @@ impl SequoiaBuilder {
         Ok(Sequoia {
             home,
             policy: self.policy.clone(),
+            time: self.time.clone(),
         })
     }
 }
