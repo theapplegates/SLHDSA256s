@@ -134,7 +134,7 @@ where P: cert_designator::ArgumentPrefix,
                     PolicyURI => keep,
                     KeyFlags => keep,
                     Features => keep,
-                    // XXXv6: PreferredAEADCiphersuites => keep,
+                    PreferredAEADCiphersuites => keep,
 
                     // Oddballs, keep them.
                     Reserved(_) => keep,
