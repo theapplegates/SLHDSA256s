@@ -14,7 +14,7 @@ use std::convert::{TryFrom, TryInto};
 use std::time::SystemTime;
 
 use ossl::{
-    pkey::{EccData, EvpPkey, EvpPkeyType, DsaData, PkeyData, RsaData},
+    pkey::{EccData, EvpPkey, EvpPkeyType, DsaData, MlkeyData, PkeyData, RsaData},
     asymcipher::{EncAlg, EncOp, OsslAsymcipher},
     signature::{OsslSignature, SigAlg, SigOp},
 };
@@ -47,7 +47,7 @@ impl Asymmetric for super::Backend {
             RSAEncryptSign | RSAEncrypt | RSASign => true,
             DSA => true,
             ECDH | ECDSA | EdDSA => true,
-            MLDSA65_Ed25519 | MLDSA87_Ed448 => false,
+            MLDSA65_Ed25519 | MLDSA87_Ed448 => true,
             SLHDSA128s | SLHDSA128f | SLHDSA256s =>
                 false,
             MLKEM768_X25519 | MLKEM1024_X448 =>
@@ -391,6 +391,118 @@ impl Asymmetric for super::Backend {
         let mut verifier = OsslSignature::new(
             &ctx, SigOp::Verify, SigAlg::Dsa, &mut key, None)?;
         Ok(verifier.verify(digest, Some(&signature)).is_ok())
+    }
+
+    fn mldsa65_generate_key() -> Result<(Protected, Box<[u8; 1952]>)> {
+        let ctx = super::context();
+
+        let key = EvpPkey::generate(&ctx, EvpPkeyType::Mldsa65)?;
+        match key.export()? {
+            PkeyData::Mlkey(MlkeyData { ref pubkey, ref seed, .. }) => {
+                let pubkey = pubkey.as_ref().expect("to be set");
+                let mut public = Box::new([0; 1952]);
+                let l = public.len().min(pubkey.len());
+                public[..l].copy_from_slice(&pubkey[..l]);
+                Ok((seed.as_ref().ok_or_else(not_set)?.into(), public))
+            },
+            _ => Err(wrong_key()),
+        }
+    }
+
+    fn mldsa65_sign(secret: &Protected, digest: &[u8])
+                    -> Result<Box<[u8; 3309]>>
+    {
+        let ctx = super::context();
+
+        let mut key = EvpPkey::import(
+            &ctx, EvpPkeyType::Mldsa65,
+            PkeyData::Mlkey(MlkeyData {
+                pubkey: None,
+                prikey: None,
+                seed: Some(secret.into()),
+            })
+        )?;
+
+        let mut signer = OsslSignature::new(
+            &ctx, SigOp::Sign, SigAlg::Mldsa65, &mut key, None)?;
+        let mut signature = Box::new([0; 3309]);
+        signer.sign(digest, Some(&mut signature[..]))?;
+        Ok(signature)
+    }
+
+    fn mldsa65_verify(public: &[u8; 1952], digest: &[u8], signature: &[u8; 3309])
+                      -> Result<bool>
+    {
+        let ctx = super::context();
+
+        let mut key = EvpPkey::import(
+            &ctx, EvpPkeyType::Mldsa65,
+            PkeyData::Mlkey(MlkeyData {
+                pubkey: Some(public.to_vec()),
+                prikey: None,
+                seed: None,
+            })
+        )?;
+
+        let mut verifier = OsslSignature::new(
+            &ctx, SigOp::Verify, SigAlg::Mldsa65, &mut key, None)?;
+        Ok(verifier.verify(digest, Some(&signature[..])).is_ok())
+    }
+
+    fn mldsa87_generate_key() -> Result<(Protected, Box<[u8; 2592]>)> {
+        let ctx = super::context();
+
+        let key = EvpPkey::generate(&ctx, EvpPkeyType::Mldsa87)?;
+        match key.export()? {
+            PkeyData::Mlkey(MlkeyData { ref pubkey, ref seed, .. }) => {
+                let pubkey = pubkey.as_ref().expect("to be set");
+                let mut public = Box::new([0; 2592]);
+                let l = public.len().min(pubkey.len());
+                public[..l].copy_from_slice(&pubkey[..l]);
+                Ok((seed.as_ref().ok_or_else(not_set)?.into(), public))
+            },
+            _ => Err(wrong_key()),
+        }
+    }
+
+    fn mldsa87_sign(secret: &Protected, digest: &[u8])
+                    -> Result<Box<[u8; 4627]>>
+    {
+        let ctx = super::context();
+
+        let mut key = EvpPkey::import(
+            &ctx, EvpPkeyType::Mldsa87,
+            PkeyData::Mlkey(MlkeyData {
+                pubkey: None,
+                prikey: None,
+                seed: Some(secret.into()),
+            })
+        )?;
+
+        let mut signer = OsslSignature::new(
+            &ctx, SigOp::Sign, SigAlg::Mldsa87, &mut key, None)?;
+        let mut signature = Box::new([0; 4627]);
+        signer.sign(digest, Some(&mut signature[..]))?;
+        Ok(signature)
+    }
+
+    fn mldsa87_verify(public: &[u8; 2592], digest: &[u8], signature: &[u8; 4627])
+                      -> Result<bool>
+    {
+        let ctx = super::context();
+
+        let mut key = EvpPkey::import(
+            &ctx, EvpPkeyType::Mldsa87,
+            PkeyData::Mlkey(MlkeyData {
+                pubkey: Some(public.to_vec()),
+                prikey: None,
+                seed: None,
+            })
+        )?;
+
+        let mut verifier = OsslSignature::new(
+            &ctx, SigOp::Verify, SigAlg::Mldsa87, &mut key, None)?;
+        Ok(verifier.verify(digest, Some(&signature[..])).is_ok())
     }
 }
 
