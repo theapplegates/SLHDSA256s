@@ -92,6 +92,7 @@ use openpgp::Fingerprint;
 
 use sequoia::consts::SECONDS_IN_DAY;
 use sequoia::consts::SECONDS_IN_YEAR;
+use sequoia::Time;
 
 #[macro_use]
 pub mod examples;
@@ -473,7 +474,7 @@ To include a time, say 5:50 AM, add a T, the time and optionally the timezone \
 $ sq --time 20130721T0550+0200 --message verify msg.pgp
 ",
     )]
-    pub time: Option<types::Time>,
+    pub time: Option<Time>,
     #[clap(
         long = "policy-as-of",
         allow_hyphen_values = true,
@@ -503,7 +504,7 @@ $ sq --policy-as-of 20070101 verify --message msg.pgp
 Defaults to the reference time, which can be set using --time.
 ",
     )]
-    pub policy_as_of: Option<types::Time>,
+    pub policy_as_of: Option<Time>,
 
     #[clap(
         long = "trust-root",

@@ -4,6 +4,8 @@ use clap::ArgGroup;
 use sequoia::openpgp;
 use openpgp::KeyHandle;
 
+use sequoia::Time;
+
 use crate::cli::examples;
 use examples::Action;
 use examples::Actions;
@@ -13,7 +15,6 @@ use crate::cli::types::ClapData;
 use crate::cli::types::EncryptPurpose;
 use crate::cli::types::ExpirationArg;
 use crate::cli::types::FileOrStdout;
-use crate::cli::types::Time;
 use crate::cli::types::cert_designator;
 
 pub struct AdditionalDocs {}

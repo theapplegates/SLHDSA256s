@@ -23,9 +23,10 @@ use wot::PathLints;
 use wot::FULLY_TRUSTED;
 use wot::PARTIALLY_TRUSTED;
 
+use sequoia::Time;
+
 use crate::Convert;
 use crate::Sq;
-use crate::Time;
 use crate::common::ca_creation_time;
 use crate::common::ui;
 use crate::error_chain;

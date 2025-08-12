@@ -44,6 +44,8 @@ pub use builder::SequoiaBuilder;
 mod compat;
 mod errors;
 pub use errors::Error;
+mod time;
+pub use time::Time;
 
 pub struct Sequoia {
     /// The home directory.

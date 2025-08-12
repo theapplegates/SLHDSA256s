@@ -21,6 +21,7 @@ use openpgp::parse::Parse;
 use openpgp::cert::prelude::*;
 
 use sequoia::Sequoia;
+use sequoia::Time;
 
 use clap::FromArgMatches;
 
@@ -39,7 +40,6 @@ use common::PreferredUserID;
 pub mod utils;
 
 mod cli;
-use cli::types::Time;
 use cli::types::Version;
 use cli::types::paths::StateDirectory;
 
