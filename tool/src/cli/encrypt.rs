@@ -2,6 +2,8 @@
 
 use clap::{ValueEnum, Parser};
 
+use sequoia::config::Profile;
+
 use super::types::ClapData;
 use super::types::EncryptPurpose;
 use super::types::FileOrStdin;
@@ -10,7 +12,6 @@ use super::types::FileOrStdout;
 use crate::cli::config;
 use crate::cli::types::CertDesignators;
 use crate::cli::types::cert_designator::*;
-use crate::cli::types::Profile;
 
 use crate::cli::examples;
 use examples::*;

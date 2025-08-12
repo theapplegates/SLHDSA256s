@@ -6,6 +6,7 @@ use sequoia::openpgp;
 use openpgp::packet::UserID;
 
 use sequoia::config::CipherSuite;
+use sequoia::config::Profile;
 
 use crate::cli::KEY_VALIDITY_DURATION;
 use crate::cli::KEY_VALIDITY_IN_YEARS;
@@ -15,7 +16,6 @@ use crate::cli::types::EncryptPurpose;
 use crate::cli::types::Expiration;
 use crate::cli::types::ExpirationArg;
 use crate::cli::types::FileOrStdout;
-use crate::cli::types::Profile;
 
 use crate::cli::examples::*;
 

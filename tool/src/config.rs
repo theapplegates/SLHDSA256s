@@ -52,7 +52,7 @@ pub struct Config {
     encrypt_for_self: BTreeSet<Fingerprint>,
 
     /// The default profile for encryption containers.
-    encrypt_profile: Option<cli::types::Profile>,
+    encrypt_profile: Option<sequoia::config::Profile>,
 
     /// The set of signing keys selected using `--signer-self`.
     sign_signer_self: BTreeSet<Fingerprint>,
@@ -71,7 +71,7 @@ pub struct Config {
     cipher_suite: Option<sequoia::openpgp::cert::CipherSuite>,
 
     /// The default profile for newly generated keys.
-    key_generate_profile: Option<cli::types::Profile>,
+    key_generate_profile: Option<sequoia::config::Profile>,
 
     /// The set of keyservers to use.
     key_servers: Option<Vec<Url>>,
@@ -189,9 +189,9 @@ impl Config {
     /// - If the command line flag is not given, then
     ///   - use the value from the configuration file (if any),
     ///   - or use the default value.
-    pub fn encrypt_profile(&self, cli: &cli::types::Profile,
+    pub fn encrypt_profile(&self, cli: &sequoia::config::Profile,
                                 source: Option<ValueSource>)
-                                -> cli::types::Profile
+                                -> sequoia::config::Profile
     {
         match source.expect("set by the cli parser") {
             ValueSource::DefaultValue =>
@@ -290,9 +290,9 @@ impl Config {
     /// - If the command line flag is not given, then
     ///   - use the value from the configuration file (if any),
     ///   - or use the default value.
-    pub fn key_generate_profile(&self, cli: &cli::types::Profile,
+    pub fn key_generate_profile(&self, cli: &sequoia::config::Profile,
                                 source: Option<ValueSource>)
-                                -> cli::types::Profile
+                                -> sequoia::config::Profile
     {
         match source.expect("set by the cli parser") {
             ValueSource::DefaultValue =>
@@ -484,12 +484,12 @@ impl ConfigFile {
             } else {
                 "".into()
             },
-            &format!("{:?}", cli::types::Profile::default()
+            &format!("{:?}", sequoia::config::Profile::default()
                      .to_possible_value().unwrap().get_name()),
             &cli::THIRD_PARTY_CERTIFICATION_VALIDITY_IN_YEARS.to_string(),
             &format!("{:?}", sequoia::config::CipherSuite::default().
                      to_possible_value().unwrap().get_name()),
-            &format!("{:?}", cli::types::Profile::default()
+            &format!("{:?}", sequoia::config::Profile::default()
                      .to_possible_value().unwrap().get_name()),
             &format!("{:?}", cli::network::keyserver::DEFAULT_KEYSERVERS),
             &format!("{:?}", {
@@ -983,7 +983,7 @@ fn apply_encrypt_profile(config: &mut Option<&mut Config>,
 {
     let s = item.as_str()
         .ok_or_else(|| Error::bad_item_type(path, item, "string"))?;
-    let v = cli::types::Profile::from_str(s, false)
+    let v = sequoia::config::Profile::from_str(s, false)
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
     if let Some(config) = config {
@@ -1192,7 +1192,7 @@ fn apply_key_generate_profile(config: &mut Option<&mut Config>,
 {
     let s = item.as_str()
         .ok_or_else(|| Error::bad_item_type(path, item, "string"))?;
-    let v = cli::types::Profile::from_str(s, false)
+    let v = sequoia::config::Profile::from_str(s, false)
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
     if let Some(config) = config {

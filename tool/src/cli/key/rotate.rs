@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::{ArgGroup, Args};
 
 use sequoia::config::CipherSuite;
+use sequoia::config::Profile;
 
 use crate::cli::KEY_ROTATE_RETIRE_IN_DURATION;
 use crate::cli::KEY_ROTATE_RETIRE_IN_IN_DAYS;
@@ -14,7 +15,6 @@ use crate::cli::types::EncryptPurpose;
 use crate::cli::types::Expiration;
 use crate::cli::types::ExpirationArg;
 use crate::cli::types::FileOrStdout;
-use crate::cli::types::Profile;
 use crate::cli::types::expiration::RetireInKind;
 use crate::cli::types::CertDesignators;
 use crate::cli::types::cert_designator;

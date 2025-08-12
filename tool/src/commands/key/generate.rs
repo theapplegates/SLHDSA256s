@@ -55,7 +55,7 @@ pub fn generate(
     };
 
     let mut builder = CertBuilder::new()
-        .set_profile(command.profile.into())?;
+        .set_profile(command.profile.clone().into())?;
 
     // Names, email addresses, and user IDs.
     lint_names(&command.names)?;
