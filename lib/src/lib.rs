@@ -55,7 +55,7 @@ pub struct Sequoia {
     policy: openpgp::policy::StandardPolicy<'static>,
 
     /// The current time.
-    time: Time,
+    time: Clock,
 
     /// Overrides the path to the cert store.
     cert_store_path: Option<types::StateDirectory>,
@@ -506,7 +506,7 @@ impl Sequoia {
 }
 
 #[derive(Clone, Default)]
-enum Time {
+enum Clock {
     /// Always use the current time.
     ///
     /// This is the default, and good for long-running programs.
@@ -520,20 +520,20 @@ enum Time {
     Fix(SystemTime),
 }
 
-impl Time {
+impl Clock {
     /// Returns the configured time.
     fn get(&self) -> SystemTime {
         match self {
-            Time::Realtime => SystemTime::now(),
-            Time::Frozen(t) => *t,
-            Time::Fix(t) => *t,
+            Clock::Realtime => SystemTime::now(),
+            Clock::Frozen(t) => *t,
+            Clock::Fix(t) => *t,
         }
     }
 
     /// Returns whether the configured time approximates the current
     /// time.
     fn is_now(&self) -> bool {
-        ! matches!(self, Time::Fix(_))
+        ! matches!(self, Clock::Fix(_))
     }
 }
 

@@ -5,7 +5,7 @@ use std::time::SystemTime;
 use crate::Result;
 use crate::Sequoia;
 use crate::StateDirectory;
-use crate::Time;
+use crate::Clock;
 use crate::openpgp;
 
 enum Home {
@@ -41,7 +41,7 @@ pub struct SequoiaBuilder {
     policy: openpgp::policy::StandardPolicy<'static>,
 
     /// The current time.
-    time: Time,
+    time: Clock,
 
     /// Overrides the path to the cert store.
     cert_store_path: Option<crate::types::StateDirectory>,
@@ -193,13 +193,13 @@ impl SequoiaBuilder {
 
     /// Fixes the time at the current time.
     pub fn fix_time(&mut self) -> &mut Self {
-        self.time = Time::Frozen(SystemTime::now());
+        self.time = Clock::Frozen(SystemTime::now());
         self
     }
 
     /// Fixes the time at the given time.
     pub fn fix_time_at(&mut self, t: SystemTime) -> &mut Self {
-        self.time = Time::Fix(t);
+        self.time = Clock::Fix(t);
         self
     }
 
