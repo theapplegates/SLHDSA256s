@@ -29,8 +29,6 @@ use openpgp::parse::Cookie;
 use openpgp::types::KeyFlags;
 use openpgp::types::SymmetricAlgorithm;
 
-use sequoia::Time;
-
 pub mod cert_designator;
 pub use cert_designator::CertDesignators;
 pub mod key_designator;
