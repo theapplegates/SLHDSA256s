@@ -95,7 +95,7 @@ pub fn generate(
     // Cipher Suite
     builder = builder.set_cipher_suite(
         sq.config.cipher_suite(&command.cipher_suite,
-                               command.cipher_suite_source));
+                                       command.cipher_suite_source));
 
     // Profile.  XXX: Currently, this is not actionable.
     let _profile = sq.config.key_generate_profile(

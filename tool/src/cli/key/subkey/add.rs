@@ -3,12 +3,13 @@ use std::path::PathBuf;
 use clap::Args;
 use clap::ArgGroup;
 
+use sequoia::config::CipherSuite;
+
 use crate::cli::examples;
 use examples::Action;
 use examples::Actions;
 
 use crate::cli::config;
-use crate::cli::key::CipherSuite;
 use crate::cli::types::CertDesignators;
 use crate::cli::types::ClapData;
 use crate::cli::types::EncryptPurpose;

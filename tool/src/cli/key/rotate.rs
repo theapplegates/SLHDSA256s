@@ -2,6 +2,8 @@ use std::path::PathBuf;
 
 use clap::{ArgGroup, Args};
 
+use sequoia::config::CipherSuite;
+
 use crate::cli::KEY_ROTATE_RETIRE_IN_DURATION;
 use crate::cli::KEY_ROTATE_RETIRE_IN_IN_DAYS;
 use crate::cli::KEY_VALIDITY_DURATION;
@@ -18,7 +20,6 @@ use crate::cli::types::CertDesignators;
 use crate::cli::types::cert_designator;
 
 use crate::cli::examples::*;
-use crate::cli::key::CipherSuite;
 
 #[derive(Debug, Args)]
 #[clap(

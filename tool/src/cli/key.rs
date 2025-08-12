@@ -3,7 +3,6 @@
 use clap::{ValueEnum, Parser, Subcommand};
 
 use sequoia::openpgp;
-use openpgp::cert::CipherSuite as SqCipherSuite;
 use openpgp::types::ReasonForRevocation;
 
 pub mod approvals;
@@ -95,26 +94,4 @@ pub enum Subcommands {
     Subkey(subkey::Command),
     #[clap(subcommand)]
     Approvals(approvals::Command),
-}
-
-#[derive(ValueEnum, Clone, Debug, Default)]
-pub enum CipherSuite {
-    Rsa2k,
-    Rsa3k,
-    Rsa4k,
-    #[default]
-    Cv25519
-}
-
-impl CipherSuite {
-
-    /// Return a matching `sequoia_openpgp::cert::CipherSuite`
-    pub fn as_ciphersuite(&self) -> SqCipherSuite {
-        match self {
-            CipherSuite::Rsa2k => SqCipherSuite::RSA2k,
-            CipherSuite::Rsa3k => SqCipherSuite::RSA3k,
-            CipherSuite::Rsa4k => SqCipherSuite::RSA4k,
-            CipherSuite::Cv25519 => SqCipherSuite::Cv25519,
-        }
-    }
 }

@@ -42,6 +42,7 @@ use types::StateDirectory;
 mod builder;
 pub use builder::SequoiaBuilder;
 mod compat;
+pub mod config;
 mod errors;
 pub use errors::Error;
 mod time;

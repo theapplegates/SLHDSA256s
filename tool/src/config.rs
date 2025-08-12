@@ -270,7 +270,7 @@ impl Config {
     /// - If the command line flag is not given, then
     ///   - use the value from the configuration file (if any),
     ///   - or use the default value.
-    pub fn cipher_suite(&self, cli: &cli::key::CipherSuite,
+    pub fn cipher_suite(&self, cli: &sequoia::config::CipherSuite,
                         source: Option<ValueSource>)
                         -> sequoia::openpgp::cert::CipherSuite
     {
@@ -487,7 +487,7 @@ impl ConfigFile {
             &format!("{:?}", cli::types::Profile::default()
                      .to_possible_value().unwrap().get_name()),
             &cli::THIRD_PARTY_CERTIFICATION_VALIDITY_IN_YEARS.to_string(),
-            &format!("{:?}", cli::key::CipherSuite::default().
+            &format!("{:?}", sequoia::config::CipherSuite::default().
                      to_possible_value().unwrap().get_name()),
             &format!("{:?}", cli::types::Profile::default()
                      .to_possible_value().unwrap().get_name()),
@@ -1168,7 +1168,7 @@ fn apply_key_generate_cipher_suite(config: &mut Option<&mut Config>,
 {
     let s = item.as_str()
         .ok_or_else(|| Error::bad_item_type(path, item, "string"))?;
-    let v = cli::key::CipherSuite::from_str(s, false)
+    let v = sequoia::config::CipherSuite::from_str(s, false)
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
     if let Some(config) = config {
