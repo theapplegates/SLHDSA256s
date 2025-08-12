@@ -24,12 +24,13 @@ use sequoia::openpgp::{
 
 use sequoia_policy_config::ConfiguredStandardPolicy;
 
+use sequoia::config::ConfigFile;
+use sequoia::config::toml_edit_tree::Node;
+
 use crate::{
     Convert,
     Sq,
     cli::config::inspect,
-    config::ConfigFile,
-    toml_edit_tree::Node,
 };
 
 /// Implements `sq config inspect policy`.

@@ -3526,21 +3526,26 @@ checksum = "f79dfe2d285b0488816f30e700a7438c5a73d816b5b7d3ac72fbc48b0d185e03"
 name = "sequoia"
 version = "0.1.0"
 dependencies = [
+ "aho-corasick",
  "anyhow",
  "chrono",
  "clap",
  "dirs 5.0.1",
  "filetime",
  "once_cell",
+ "regex",
  "rusqlite",
  "sequoia-cert-store",
  "sequoia-directories",
  "sequoia-ipc",
  "sequoia-keystore",
+ "sequoia-net",
  "sequoia-openpgp",
+ "sequoia-policy-config",
  "sequoia-wot",
  "tempfile",
  "thiserror 1.0.69",
+ "toml_edit",
 ]
 
 [[package]]
@@ -3862,7 +3867,6 @@ dependencies = [
  "textwrap",
  "thiserror 2.0.12",
  "tokio",
- "toml_edit",
  "typenum",
 ]
 

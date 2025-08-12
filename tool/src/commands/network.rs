@@ -906,18 +906,21 @@ pub fn dispatch_search(sq: Sq, c: cli::network::search::Command)
                  clap::parser::ValueSource::DefaultValue);
 
     let http_client = http_client()?;
-    let servers = sq.config.key_servers(&c.servers, c.servers_source)
+    let servers = sq.config.resolve_key_servers(&c.servers, c.servers_source)
         .map(|uri| KeyServer::with_client(uri, http_client.clone())
              .with_context(|| format!("Malformed keyserver URI: {}", uri))
              .map(Arc::new))
         .collect::<Result<Vec<_>>>()?;
 
     let iterations =
-        sq.config.network_search_iterations(c.iterations, c.iterations_source);
+        sq.config.resolve_network_search_iterations(
+            c.iterations, c.iterations_source);
     let use_wkd =
-        sq.config.network_search_use_wkd(c.use_wkd, c.use_wkd_source);
+        sq.config.resolve_network_search_use_wkd(
+            c.use_wkd, c.use_wkd_source);
     let use_dane =
-        sq.config.network_search_use_dane(c.use_dane, c.use_dane_source);
+        sq.config.resolve_network_search_use_dane(
+            c.use_dane, c.use_dane_source);
 
     let mut seen_emails = HashSet::new();
     let mut seen_fps = HashSet::new();
@@ -1095,7 +1098,7 @@ pub fn dispatch_keyserver(
     let default_servers =
         matches!(servers_source, clap::parser::ValueSource::DefaultValue);
 
-    let servers = sq.config.key_servers(&c.servers, Some(servers_source))
+    let servers = sq.config.resolve_key_servers(&c.servers, Some(servers_source))
         .map(|uri| KeyServer::with_client(uri, http_client()?)
              .with_context(|| format!("Malformed keyserver URI: {}", uri))
              .map(Arc::new))

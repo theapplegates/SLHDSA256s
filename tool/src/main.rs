@@ -22,12 +22,9 @@ use openpgp::cert::prelude::*;
 
 use sequoia::Sequoia;
 use sequoia::Time;
+use sequoia::config;
 
 use clap::FromArgMatches;
-
-// XXX: This could be its own crate, or preferably integrated into
-// toml_edit.
-mod toml_edit_tree;
 
 #[macro_use] mod macros;
 #[macro_use] mod log;
@@ -44,7 +41,6 @@ use cli::types::Version;
 use cli::types::paths::StateDirectory;
 
 mod commands;
-pub mod config;
 pub mod output;
 pub use output::Model;
 

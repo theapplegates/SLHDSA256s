@@ -3,12 +3,12 @@ use std::path::PathBuf;
 use clap::{ArgGroup, Args};
 
 use sequoia::config::CipherSuite;
+use sequoia::config::KEY_ROTATE_RETIRE_IN_DURATION;
+use sequoia::config::KEY_ROTATE_RETIRE_IN_IN_DAYS;
+use sequoia::config::KEY_VALIDITY_DURATION;
+use sequoia::config::KEY_VALIDITY_IN_YEARS;
 use sequoia::config::Profile;
 
-use crate::cli::KEY_ROTATE_RETIRE_IN_DURATION;
-use crate::cli::KEY_ROTATE_RETIRE_IN_IN_DAYS;
-use crate::cli::KEY_VALIDITY_DURATION;
-use crate::cli::KEY_VALIDITY_IN_YEARS;
 use crate::cli::config;
 use crate::cli::types::ClapData;
 use crate::cli::types::EncryptPurpose;

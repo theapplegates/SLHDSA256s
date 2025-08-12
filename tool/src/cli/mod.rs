@@ -81,7 +81,6 @@ pub const USER_INTERFACE_GUIDELINES: () = ();
 use std::borrow::Cow;
 use std::fmt::Write;
 use std::path::PathBuf;
-use std::time::Duration;
 
 /// Command-line parser for sq.
 use clap::{Command, CommandFactory, Parser, Subcommand};
@@ -90,8 +89,6 @@ use clap::builder::StyledStr;
 use sequoia::openpgp;
 use openpgp::Fingerprint;
 
-use sequoia::consts::SECONDS_IN_DAY;
-use sequoia::consts::SECONDS_IN_YEAR;
 use sequoia::Time;
 
 #[macro_use]
@@ -137,25 +134,6 @@ pub fn escape_for_shell(s: &str) -> Cow<str> {
         Cow::Owned(format!("{:?}", s))
     }
 }
-
-/// The default validity (in years) for keys and subkeys
-pub const KEY_VALIDITY_IN_YEARS: u64 = 3;
-/// The default validity period (as Duration) for keys and subkeys
-pub const KEY_VALIDITY_DURATION: Duration =
-    Duration::new(SECONDS_IN_YEAR * KEY_VALIDITY_IN_YEARS, 0);
-/// The default validity (in years) for third party certifications
-pub const THIRD_PARTY_CERTIFICATION_VALIDITY_IN_YEARS: u64 = 10;
-/// The default validity period (as Duration) for third party certifications
-pub const THIRD_PARTY_CERTIFICATION_VALIDITY_DURATION: Duration = Duration::new(
-    SECONDS_IN_YEAR * THIRD_PARTY_CERTIFICATION_VALIDITY_IN_YEARS,
-    0,
-);
-
-/// The default time (in days) to retire a certificate after rotation.
-pub const KEY_ROTATE_RETIRE_IN_IN_DAYS: u64 = 182;
-/// The default time to retire a certificate after rotation.
-pub const KEY_ROTATE_RETIRE_IN_DURATION: Duration =
-    Duration::new(SECONDS_IN_DAY * KEY_ROTATE_RETIRE_IN_IN_DAYS, 0);
 
 pub const GLOBAL_OPTIONS_HEADER: &str = "Global Options";
 

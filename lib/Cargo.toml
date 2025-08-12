@@ -18,21 +18,26 @@ gitlab = { repository = "sequoia-pgp/sequoia-sq" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
+aho-corasick = "1"
 anyhow = "1.0.18"
 chrono = "0.4.38"
 clap = { version = "4.5", optional = true }
 dirs = "5"
 filetime = "0.2"
 once_cell = "1.17"
+regex = "1"
 rusqlite = ">=0.31, <0.33"
 sequoia-cert-store = { version = "0.7", default-features = false }
 sequoia-directories = "0.1"
 sequoia-keystore = { version = "0.7" }
 sequoia-ipc = { version = "0.36", default-features = false }
+sequoia-net = { version = "0.30", default-features = false }
 sequoia-openpgp = { version = "2", default-features = false, features = ["compression"] }
+sequoia-policy-config = "0.8"
 sequoia-wot = { version = "0.15", default-features = false }
 tempfile = "3.1"
-thiserror = "1"
+thiserror = { version = ">=1, <3" }
+toml_edit = { version = "0.22", default-features = false, features = ["display", "parse"] }
 
 [build-dependencies]
 

@@ -1,20 +1,13 @@
 use clap::{Args, Parser, Subcommand};
 
+use sequoia::config::DEFAULT_KEYSERVERS;
+
 use crate::cli::config;
 use crate::cli::examples::*;
 use crate::cli::types::ClapData;
 use crate::cli::types::FileOrCertStore;
 use crate::cli::types::FileOrStdout;
 use crate::cli::types::cert_designator::*;
-
-/// The default key servers to query.
-pub const DEFAULT_KEYSERVERS: &[&'static str] = &[
-    "hkps://keys.openpgp.org",
-    "hkps://mail-api.proton.me",
-    "hkps://keys.mailvelope.com",
-    "hkps://keyserver.ubuntu.com",
-    "hkps://sks.pod01.fleetstreetops.com",
-];
 
 #[derive(Parser, Debug)]
 #[clap(

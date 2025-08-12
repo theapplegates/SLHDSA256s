@@ -2,7 +2,7 @@
 
 use clap::Parser;
 
-use crate::cli::THIRD_PARTY_CERTIFICATION_VALIDITY_IN_YEARS;
+use sequoia::config::THIRD_PARTY_CERTIFICATION_VALIDITY_IN_YEARS;
 
 use crate::cli::types::ClapData;
 use crate::cli::types::expiration;

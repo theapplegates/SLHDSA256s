@@ -66,7 +66,7 @@ pub fn dispatch(sq: Sq, command: cli::encrypt::Command) -> Result<()> {
     }
 
     // Profile.  XXX: Currently, this is not actionable.
-    let _profile = sq.config.encrypt_profile(
+    let _profile = sq.config.resolve_encrypt_profile(
         &command.profile, command.profile_source);
 
     encrypt(

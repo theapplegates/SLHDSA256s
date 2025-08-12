@@ -118,11 +118,12 @@ pub fn dispatch(
 
     // Cipher Suite
     builder = builder.set_cipher_suite(
-        sq.config.cipher_suite(&command.cipher_suite,
-                               command.cipher_suite_source));
+        sq.config.resolve_cipher_suite(&command.cipher_suite,
+                                       command.cipher_suite_source)
+            .as_ciphersuite());
 
     // Profile.  XXX: Currently, this is not actionable.
-    let _profile = sq.config.key_generate_profile(
+    let _profile = sq.config.resolve_key_generate_profile(
         &command.profile, command.profile_source);
 
     // Primary key capabilities.

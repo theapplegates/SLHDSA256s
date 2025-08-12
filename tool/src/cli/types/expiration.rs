@@ -2,9 +2,10 @@ use std::ops::Deref;
 
 use typenum::Unsigned;
 
-use crate::cli::KEY_ROTATE_RETIRE_IN_DURATION;
-use crate::cli::THIRD_PARTY_CERTIFICATION_VALIDITY_DURATION;
 pub use sequoia::config::Expiration;
+use sequoia::config::KEY_ROTATE_RETIRE_IN_DURATION;
+use sequoia::config::THIRD_PARTY_CERTIFICATION_VALIDITY_DURATION;
+
 use crate::cli::config;
 use crate::cli::pki::vouch::CERTIFICATION_EXPIRATION;
 

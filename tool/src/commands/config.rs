@@ -4,12 +4,12 @@ use std::collections::BTreeMap;
 
 use anyhow::{Context, Result};
 
-use toml_edit::{
+use sequoia::config::toml_edit::{
     Item,
     Value,
 };
 
-use crate::toml_edit_tree::{
+use sequoia::config::toml_edit_tree::{
     Error,
     Node,
     Path,
@@ -48,7 +48,8 @@ fn get(sq: Sq, cmd: config::get::Command) -> Result<()> {
     let mut acc = Default::default();
 
     // First, look in the configuration.
-    let config = sq.config_file.effective_configuration(&sq)?;
+    let config = sq.config_file.effective_configuration(
+        &sq.policy(), sq.config.hints())?;
     let r0 = Node::traverse(&*config.as_item() as _, &path)
         .map_err(Into::into)
         .and_then(

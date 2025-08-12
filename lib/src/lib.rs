@@ -20,7 +20,9 @@ pub use sequoia_cert_store as cert_store;
 pub use sequoia_directories as directories;
 pub use sequoia_keystore as key_store;
 pub use sequoia_ipc as ipc;
+pub use sequoia_net as net;
 pub use sequoia_openpgp as openpgp;
+pub use sequoia_policy_config as policy_config;
 pub use sequoia_wot as wot;
 
 use openpgp::{

@@ -8,7 +8,6 @@ use clap::parser::ValueSource;
 use crate::{
     Sq,
     cli::config::inspect,
-    cli::network,
     config::ConfigFile,
 };
 
@@ -35,7 +34,7 @@ fn network(sq: Sq, _: inspect::network::Command) -> Result<()> {
     let o = &mut std::io::stdout();
 
     // First, sq network search, the most general interface.
-    let use_wkd = sq.config.network_search_use_wkd(
+    let use_wkd = sq.config.resolve_network_search_use_wkd(
         Some(true), Some(ValueSource::DefaultValue));
     wwriteln!(stream=o, initial_indent = " - ", "sq network search");
     wwriteln!(stream=o, initial_indent = "   - ", "{}",
@@ -46,7 +45,7 @@ fn network(sq: Sq, _: inspect::network::Command) -> Result<()> {
         wwriteln!(stream=o, initial_indent = "     - ", "see below for impact");
     }
 
-    let use_dane = sq.config.network_search_use_dane(
+    let use_dane = sq.config.resolve_network_search_use_dane(
         Some(true), Some(ValueSource::DefaultValue));
     wwriteln!(stream=o, initial_indent = "   - ", "{}",
               may_use("DANE", use_dane));
@@ -56,8 +55,8 @@ fn network(sq: Sq, _: inspect::network::Command) -> Result<()> {
         wwriteln!(stream=o, initial_indent = "     - ", "see below for impact");
     }
 
-    let key_servers = sq.config.key_servers(
-        &network::keyserver::DEFAULT_KEYSERVERS,
+    let key_servers = sq.config.resolve_key_servers(
+        &sequoia::config::DEFAULT_KEYSERVERS,
         Some(clap::parser::ValueSource::DefaultValue))
         .collect::<Vec<_>>();
 
@@ -77,7 +76,7 @@ fn network(sq: Sq, _: inspect::network::Command) -> Result<()> {
         wwriteln!(stream=o, initial_indent = "       - ", "see below for impact");
     }
 
-    let iterations = sq.config.network_search_iterations(
+    let iterations = sq.config.resolve_network_search_iterations(
         3, Some(ValueSource::DefaultValue));
     if iterations == 0 {
         wwriteln!(stream=o, initial_indent = "   - ",

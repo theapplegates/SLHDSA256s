@@ -1,5 +1,7 @@
 use clap::Parser;
 
+use sequoia::config::DEFAULT_KEYSERVERS;
+
 use crate::cli::config;
 use crate::cli::examples::Action;
 use crate::cli::examples::Actions;
@@ -7,7 +9,6 @@ use crate::cli::examples::Actions;
 use crate::cli::types::ClapData;
 use crate::cli::types::FileOrCertStore;
 use crate::cli::types::FileOrStdout;
-use super::keyserver::DEFAULT_KEYSERVERS;
 
 #[derive(Parser, Debug)]
 #[clap(
