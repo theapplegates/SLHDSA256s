@@ -35,6 +35,7 @@ use cert_store::{
     StoreUpdate,
 };
 
+pub mod consts;
 pub mod types;
 use types::StateDirectory;
 

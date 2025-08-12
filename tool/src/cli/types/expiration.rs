@@ -282,7 +282,7 @@ impl IntoResettable<OsStr> for Expiration {
 mod test {
     use super::*;
 
-    use crate::SECONDS_IN_YEAR;
+    use sequoia::consts::SECONDS_IN_YEAR;
 
     #[test]
     fn test_expiry() {

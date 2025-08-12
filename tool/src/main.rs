@@ -39,8 +39,6 @@ use common::PreferredUserID;
 pub mod utils;
 
 mod cli;
-use cli::SECONDS_IN_DAY;
-use cli::SECONDS_IN_YEAR;
 use cli::types::Time;
 use cli::types::Version;
 use cli::types::paths::StateDirectory;

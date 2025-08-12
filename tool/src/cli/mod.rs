@@ -90,6 +90,9 @@ use clap::builder::StyledStr;
 use sequoia::openpgp;
 use openpgp::Fingerprint;
 
+use sequoia::consts::SECONDS_IN_DAY;
+use sequoia::consts::SECONDS_IN_YEAR;
+
 #[macro_use]
 pub mod examples;
 
@@ -134,12 +137,6 @@ pub fn escape_for_shell(s: &str) -> Cow<str> {
     }
 }
 
-/// The seconds in a day
-pub const SECONDS_IN_DAY : u64 = 24 * 60 * 60;
-/// The seconds in a year
-pub const SECONDS_IN_YEAR : u64 =
-    // Average number of days in a year.
-    (365.2422222 * SECONDS_IN_DAY as f64) as u64;
 /// The default validity (in years) for keys and subkeys
 pub const KEY_VALIDITY_IN_YEARS: u64 = 3;
 /// The default validity period (as Duration) for keys and subkeys
