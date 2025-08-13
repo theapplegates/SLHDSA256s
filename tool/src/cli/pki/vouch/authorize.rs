@@ -3,7 +3,7 @@
 use clap::ArgGroup;
 use clap::Parser;
 
-use sequoia::config::THIRD_PARTY_CERTIFICATION_VALIDITY_IN_YEARS;
+use sequoia::config::DEFAULT_THIRD_PARTY_CERTIFICATION_VALIDITY_IN_YEARS;
 
 use crate::cli::types::ClapData;
 use crate::cli::types::expiration;
@@ -81,7 +81,7 @@ This subcommand respects the reference time set by the top-level \
 `--time` argument.  It sets the certification's creation time to the \
 reference time.
 ",
-        THIRD_PARTY_CERTIFICATION_VALIDITY_IN_YEARS,
+        DEFAULT_THIRD_PARTY_CERTIFICATION_VALIDITY_IN_YEARS,
     ),
     after_help = AUTHORIZE_EXAMPLES,
 )]

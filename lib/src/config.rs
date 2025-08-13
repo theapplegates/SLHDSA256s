@@ -53,17 +53,17 @@ pub mod toml_edit_tree;
 pub type Augmentations = BTreeMap<&'static str, String>;
 
 /// The default validity (in years) for keys and subkeys
-pub const KEY_VALIDITY_IN_YEARS: u64 = 3;
+pub const DEFAULT_KEY_VALIDITY_IN_YEARS: u64 = 3;
 /// The default validity period (as Duration) for keys and subkeys
-pub const KEY_VALIDITY_DURATION: Duration =
-    Duration::new(SECONDS_IN_YEAR * KEY_VALIDITY_IN_YEARS, 0);
+pub const DEFAULT_KEY_VALIDITY_DURATION: Duration =
+    Duration::new(SECONDS_IN_YEAR * DEFAULT_KEY_VALIDITY_IN_YEARS, 0);
 /// The default validity (in years) for third party certifications
-pub const THIRD_PARTY_CERTIFICATION_VALIDITY_IN_YEARS: u64 = 10;
+pub const DEFAULT_THIRD_PARTY_CERTIFICATION_VALIDITY_IN_YEARS: u64 = 10;
 /// The default validity period (as Duration) for third party certifications
-pub const THIRD_PARTY_CERTIFICATION_VALIDITY_DURATION: Duration = Duration::new(
-    SECONDS_IN_YEAR * THIRD_PARTY_CERTIFICATION_VALIDITY_IN_YEARS,
-    0,
-);
+pub const DEFAULT_THIRD_PARTY_CERTIFICATION_VALIDITY_DURATION: Duration =
+    Duration::new(
+        SECONDS_IN_YEAR * DEFAULT_THIRD_PARTY_CERTIFICATION_VALIDITY_IN_YEARS,
+        0);
 
 /// The default key servers to query.
 pub const DEFAULT_KEYSERVERS: &[&'static str] = &[
@@ -81,10 +81,10 @@ pub const DEFAULT_NETWORK_SEARCH_USE_WKD: bool = true;
 pub const DEFAULT_NETWORK_SEARCH_USE_DANE: bool = true;
 
 /// The default time (in days) to retire a certificate after rotation.
-pub const KEY_ROTATE_RETIRE_IN_IN_DAYS: u64 = 182;
+pub const DEFAULT_KEY_ROTATE_RETIRE_IN_IN_DAYS: u64 = 182;
 /// The default time to retire a certificate after rotation.
-pub const KEY_ROTATE_RETIRE_IN_DURATION: Duration =
-    Duration::new(SECONDS_IN_DAY * KEY_ROTATE_RETIRE_IN_IN_DAYS, 0);
+pub const DEFAULT_KEY_ROTATE_RETIRE_IN_DURATION: Duration =
+    Duration::new(SECONDS_IN_DAY * DEFAULT_KEY_ROTATE_RETIRE_IN_IN_DAYS, 0);
 
 /// Represents configuration at runtime.
 ///
@@ -153,7 +153,7 @@ impl Default for Config {
             sign_signer_self: Default::default(),
             pki_vouch_certifier_self: None,
             pki_vouch_expiration: Expiration::from_duration(
-                THIRD_PARTY_CERTIFICATION_VALIDITY_DURATION),
+                DEFAULT_THIRD_PARTY_CERTIFICATION_VALIDITY_DURATION),
             policy_path: None,
             policy_inline: None,
             cipher_suite: Default::default(),
@@ -554,7 +554,7 @@ impl ConfigFile {
                 "".into()
             },
             &format!("{:?}", Profile::default()),
-            &THIRD_PARTY_CERTIFICATION_VALIDITY_IN_YEARS.to_string(),
+            &DEFAULT_THIRD_PARTY_CERTIFICATION_VALIDITY_IN_YEARS.to_string(),
             &format!("{:?}", CipherSuite::default()),
             &format!("{:?}", Profile::default()),
             &format!("{:?}", DEFAULT_KEYSERVERS),

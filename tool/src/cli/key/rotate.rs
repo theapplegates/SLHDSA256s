@@ -3,10 +3,10 @@ use std::path::PathBuf;
 use clap::{ArgGroup, Args};
 
 use sequoia::config::CipherSuite;
-use sequoia::config::KEY_ROTATE_RETIRE_IN_DURATION;
-use sequoia::config::KEY_ROTATE_RETIRE_IN_IN_DAYS;
-use sequoia::config::KEY_VALIDITY_DURATION;
-use sequoia::config::KEY_VALIDITY_IN_YEARS;
+use sequoia::config::DEFAULT_KEY_ROTATE_RETIRE_IN_DURATION;
+use sequoia::config::DEFAULT_KEY_ROTATE_RETIRE_IN_IN_DAYS;
+use sequoia::config::DEFAULT_KEY_VALIDITY_DURATION;
+use sequoia::config::DEFAULT_KEY_VALIDITY_IN_YEARS;
 use sequoia::config::Profile;
 
 use crate::cli::config;
@@ -64,8 +64,8 @@ other updated certificates are written to the specified file.
 
 Stable since 1.2.0.
 ",
-        KEY_VALIDITY_IN_YEARS,
-        KEY_ROTATE_RETIRE_IN_IN_DAYS,
+        DEFAULT_KEY_VALIDITY_IN_YEARS,
+        DEFAULT_KEY_ROTATE_RETIRE_IN_IN_DAYS,
     ),
     after_help = ROTATE_EXAMPLES,
 )]
@@ -73,10 +73,10 @@ Stable since 1.2.0.
 #[clap(group(ArgGroup::new("cap-authenticate").args(&["can_authenticate", "cannot_authenticate"])))]
 #[clap(group(ArgGroup::new("cap-encrypt").args(&["can_encrypt", "cannot_encrypt"])))]
 #[clap(mut_arg("expiration", |arg| {
-    arg.default_value(Expiration::from_duration(KEY_VALIDITY_DURATION))
+    arg.default_value(Expiration::from_duration(DEFAULT_KEY_VALIDITY_DURATION))
 }))]
 #[clap(mut_arg("retire-in", |arg| {
-    arg.default_value(Expiration::from_duration(KEY_ROTATE_RETIRE_IN_DURATION))
+    arg.default_value(Expiration::from_duration(DEFAULT_KEY_ROTATE_RETIRE_IN_DURATION))
 }))]
 pub struct Command {
     #[command(flatten)]

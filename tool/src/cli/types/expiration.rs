@@ -3,8 +3,8 @@ use std::ops::Deref;
 use typenum::Unsigned;
 
 pub use sequoia::config::Expiration;
-use sequoia::config::KEY_ROTATE_RETIRE_IN_DURATION;
-use sequoia::config::THIRD_PARTY_CERTIFICATION_VALIDITY_DURATION;
+use sequoia::config::DEFAULT_KEY_ROTATE_RETIRE_IN_DURATION;
+use sequoia::config::DEFAULT_THIRD_PARTY_CERTIFICATION_VALIDITY_DURATION;
 
 use crate::cli::config;
 use crate::cli::pki::vouch::CERTIFICATION_EXPIRATION;
@@ -123,10 +123,10 @@ revocation certificate.";
                     ExpirationKind::Default => Expiration::Never,
                     ExpirationKind::Certification =>
                         Expiration::from_duration(
-                            THIRD_PARTY_CERTIFICATION_VALIDITY_DURATION),
+                            DEFAULT_THIRD_PARTY_CERTIFICATION_VALIDITY_DURATION),
                     ExpirationKind::RetireIn =>
                         Expiration::from_duration(
-                            KEY_ROTATE_RETIRE_IN_DURATION),
+                            DEFAULT_KEY_ROTATE_RETIRE_IN_DURATION),
                 })
                 .help(match kind {
                     ExpirationKind::Default | ExpirationKind::Certification =>

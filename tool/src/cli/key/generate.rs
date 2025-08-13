@@ -6,8 +6,8 @@ use sequoia::openpgp;
 use openpgp::packet::UserID;
 
 use sequoia::config::CipherSuite;
-use sequoia::config::KEY_VALIDITY_DURATION;
-use sequoia::config::KEY_VALIDITY_IN_YEARS;
+use sequoia::config::DEFAULT_KEY_VALIDITY_DURATION;
+use sequoia::config::DEFAULT_KEY_VALIDITY_IN_YEARS;
 use sequoia::config::Profile;
 
 use crate::cli::config;
@@ -41,7 +41,7 @@ the `--expiration` argument.
 `--time` argument.  It sets the creation time of the primary key, any \
 subkeys, and the binding signatures to the reference time.
 ",
-        KEY_VALIDITY_IN_YEARS,
+        DEFAULT_KEY_VALIDITY_IN_YEARS,
     ),
     after_help = GENERATE_EXAMPLES,
 )]
@@ -53,7 +53,7 @@ subkeys, and the binding signatures to the reference time.
              .args(&["own_key", "shared_key"])
              .required(true)))]
 #[clap(mut_arg("expiration", |arg| {
-    arg.default_value(Expiration::from_duration(KEY_VALIDITY_DURATION))
+    arg.default_value(Expiration::from_duration(DEFAULT_KEY_VALIDITY_DURATION))
 }))]
 pub struct Command {
     #[clap(
