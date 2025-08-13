@@ -468,7 +468,7 @@ impl ConfigFile {
     /// A template for the configuration containing the default
     /// values.
     const TEMPLATE: &'static str = "\
-# Configuration template for sq <SQ-VERSION>
+# Configuration template for sequoia <SEQUOIA-VERSION>
 <SQ-CONFIG-PATH-HINT>
 
 [ui]
@@ -513,7 +513,7 @@ impl ConfigFile {
     /// Patterns to match on in `Self::DEFAULT` to be replaced with
     /// the default values.
     const TEMPLATE_PATTERNS: &'static [&'static str] = &[
-        "<SQ-VERSION>",
+        "<SEQUOIA-VERSION>",
         "<SQ-CONFIG-PATH-HINT>",
         "<DEFAULT-ENCRYPT-PROFILE>",
         "<DEFAULT-PKI-VOUCH-EXPIRATION>",
