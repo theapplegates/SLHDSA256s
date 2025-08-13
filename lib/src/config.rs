@@ -77,6 +77,8 @@ pub const DEFAULT_KEYSERVERS: &[&'static str] = &[
 pub const DEFAULT_NETWORK_SEARCH_ITERATIONS: u8 = 3;
 /// Whether to use WKD when doing a network search.
 pub const DEFAULT_NETWORK_SEARCH_USE_WKD: bool = true;
+/// Whether to use DANE when doing a network search.
+pub const DEFAULT_NETWORK_SEARCH_USE_DANE: bool = true;
 
 /// The default time (in days) to retire a certificate after rotation.
 pub const KEY_ROTATE_RETIRE_IN_IN_DAYS: u64 = 182;
@@ -161,7 +163,7 @@ impl Default for Config {
                 .collect(),
             network_search_iterations: DEFAULT_NETWORK_SEARCH_ITERATIONS,
             network_search_use_wkd: DEFAULT_NETWORK_SEARCH_USE_WKD,
-            network_search_use_dane: true,
+            network_search_use_dane: DEFAULT_NETWORK_SEARCH_USE_DANE,
             servers_path: Default::default(),
         }
     }
@@ -494,7 +496,7 @@ impl ConfigFile {
 [network.search]
 #iterations = <DEFAULT-NETWORK-SEARCH-ITERATIONS>
 #use-wkd = <DEFAULT-NETWORK-SEARCH-USE-WKD>
-#use-dane = true
+#use-dane = <DEFAULT-NETWORK-SEARCH-USE-DANE>
 
 [servers]
 #path = <DEFAULT-SERVERS-PATH>
@@ -523,6 +525,7 @@ impl ConfigFile {
         "<DEFAULT-POLICY-INLINE>",
         "<DEFAULT-NETWORK-SEARCH-ITERATIONS>",
         "<DEFAULT-NETWORK-SEARCH-USE-WKD>",
+        "<DEFAULT-NETWORK-SEARCH-USE-DANE>",
     ];
 
     /// Returns a configuration template with the defaults.
@@ -564,6 +567,7 @@ impl ConfigFile {
             &default_policy_inline.to_string(),
             &format!("{}", DEFAULT_NETWORK_SEARCH_ITERATIONS),
             &format!("{}", DEFAULT_NETWORK_SEARCH_USE_WKD),
+            &format!("{}", DEFAULT_NETWORK_SEARCH_USE_DANE),
         ]))
     }
 
