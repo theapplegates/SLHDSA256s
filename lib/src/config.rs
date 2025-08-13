@@ -73,6 +73,8 @@ pub const DEFAULT_KEYSERVERS: &[&'static str] = &[
     "hkps://keyserver.ubuntu.com",
     "hkps://sks.pod01.fleetstreetops.com",
 ];
+/// The number of times to iterate when doing a network search.
+pub const DEFAULT_NETWORK_SEARCH_ITERATIONS: u8 = 3;
 
 /// The default time (in days) to retire a certificate after rotation.
 pub const KEY_ROTATE_RETIRE_IN_IN_DAYS: u64 = 182;
@@ -155,7 +157,7 @@ impl Default for Config {
             key_servers: DEFAULT_KEYSERVERS.iter()
                 .map(|s| s.to_string())
                 .collect(),
-            network_search_iterations: 3,
+            network_search_iterations: DEFAULT_NETWORK_SEARCH_ITERATIONS,
             network_search_use_wkd: true,
             network_search_use_dane: true,
             servers_path: Default::default(),
@@ -488,7 +490,7 @@ impl ConfigFile {
 #keyservers = <DEFAULT-KEY-SERVERS>
 
 [network.search]
-#iterations = 3
+#iterations = <DEFAULT-NETWORK-SEARCH-ITERATIONS>
 #use-wkd = true
 #use-dane = true
 
@@ -517,6 +519,7 @@ impl ConfigFile {
         "<DEFAULT-SERVERS-PATH>",
         "<DEFAULT-POLICY-FILE>",
         "<DEFAULT-POLICY-INLINE>",
+        "<DEFAULT-NETWORK-SEARCH-ITERATIONS>",
     ];
 
     /// Returns a configuration template with the defaults.
@@ -556,6 +559,7 @@ impl ConfigFile {
             }),
             &format!("{:?}", Self::global_crypto_policy_file()),
             &default_policy_inline.to_string(),
+            &format!("{}", DEFAULT_NETWORK_SEARCH_ITERATIONS),
         ]))
     }
 
