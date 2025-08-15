@@ -169,6 +169,10 @@ impl Default for Config {
 }
 
 impl Config {
+    /// Returns the verbosity setting.
+    pub fn verbosity(&self) -> Verbosity {
+        self.verbosity.clone()
+    }
     /// Sets the verbose setting.
     ///
     /// Handles the precedence of the various sources, but since this
@@ -252,6 +256,11 @@ impl Config {
     }
 
     /// Returns the profile for encryption containers.
+    pub fn encrypt_profile(&self) -> Profile {
+        self.encrypt_profile.clone()
+    }
+
+    /// Returns the profile for encryption containers.
     ///
     /// Handles the precedence of the various sources:
     ///
@@ -304,6 +313,11 @@ impl Config {
         }.clone()
     }
 
+    /// Returns the value of the pki vouch expiration setting.
+    pub fn pki_vouch_expiration(&self) -> Expiration {
+        self.pki_vouch_expiration.clone()
+    }
+
     /// Returns the path to the referenced cryptographic policy, if
     /// any.
     pub fn policy_path(&self) -> Option<&Path> {
@@ -335,6 +349,11 @@ impl Config {
         Ok(policy.build())
     }
 
+    /// Returns the cipher suite setting.
+    pub fn cipher_suite(&self) -> CipherSuite {
+        self.cipher_suite.clone()
+    }
+
     /// Returns the cipher suite for generating new keys.
     ///
     /// Handles the precedence of the various sources:
@@ -352,6 +371,12 @@ impl Config {
             ValueSource::DefaultValue => &self.cipher_suite,
             _ => cli,
         }.clone()
+    }
+
+
+    /// Returns the key generate profile setting.
+    pub fn key_generate_profile(&self) -> Profile {
+        self.key_generate_profile.clone()
     }
 
     /// Returns the profile for generating new keys.
@@ -378,6 +403,11 @@ impl Config {
 
 
     /// Returns the key servers to query or publish.
+    pub fn key_servers(&self) -> &[ String ] {
+        &self.key_servers
+    }
+
+    /// Returns the key servers to query or publish.
     ///
     /// Handles the precedence of the various sources:
     ///
@@ -402,6 +432,11 @@ impl Config {
     }
 
     /// Returns the iteration count for network search.
+    pub fn network_search_iterations(&self) -> u8 {
+        self.network_search_iterations
+    }
+
+    /// Returns the iteration count for network search.
     ///
     /// Handles the precedence of the various sources:
     ///
@@ -419,6 +454,12 @@ impl Config {
                 self.network_search_iterations,
             _ => cli,
         }
+    }
+
+
+    /// Returns whether network search should use WKD.
+    pub fn network_search_use_wkd(&self) -> bool {
+        self.network_search_use_wkd
     }
 
     /// Returns whether network search should use WKD.
@@ -440,6 +481,12 @@ impl Config {
                 self.network_search_use_wkd,
             _ => cli,
         }
+    }
+
+
+    /// Returns whether network search should use DANE.
+    pub fn network_search_use_dane(&self) -> bool {
+        self.network_search_use_dane
     }
 
     /// Returns whether network search should use DANE.
