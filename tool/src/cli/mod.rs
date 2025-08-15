@@ -522,7 +522,7 @@ any surrounding whitespace like a trailing newline.",
         help_heading = GLOBAL_OPTIONS_HEADER,
         help = "Be more verbose",
         long_help = config::augment_help(
-            "ui.verbose",
+            "ui.verbosity",
             "Be more verbose"),
     )]
     pub verbose: bool,
@@ -534,7 +534,7 @@ any surrounding whitespace like a trailing newline.",
         help_heading = GLOBAL_OPTIONS_HEADER,
         help = "Be more quiet",
         long_help = config::augment_help(
-            "ui.quiet",
+            "ui.verbosity",
             "Be more quiet"),
         conflicts_with = "verbose",
     )]

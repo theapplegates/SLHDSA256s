@@ -988,11 +988,9 @@ fn apply_ui_verbosity(config: &mut Option<&mut Config>,
 
     if let Some(cli) = cli {
         if verbose {
-            cli.insert("ui.verbose", "verbose".into());
-        }
-
-        if quiet {
-            cli.insert("ui.quiet", "quiet".into());
+            cli.insert("ui.verbosity", "verbose".into());
+        } else if quiet {
+            cli.insert("ui.verbosity", "quiet".into());
         }
     }
 
