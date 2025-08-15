@@ -1182,14 +1182,22 @@ fn apply_pki_vouch_certifier_self(config: &mut Option<&mut Config>,
     let s = item.as_str()
         .ok_or_else(|| Error::bad_item_type(path, item, "string"))?;
 
-    let fp = s.parse::<Fingerprint>()?;
+    let fp = if s.is_empty() {
+        None
+    } else {
+        Some(s.parse::<Fingerprint>()
+             .with_context(|| format!("{:?} is not a valid fingerprint", s))?)
+    };
 
     if let Some(cli) = cli {
-        cli.insert("pki.vouch.certifier-self", fp.to_string());
+        cli.insert("pki.vouch.certifier-self",
+                   fp.as_ref()
+                       .map(|fp| fp.to_string())
+                       .unwrap_or_else(|| "".into()));
     }
 
     if let Some(config) = config {
-        config.pki_vouch_certifier_self = Some(fp);
+        config.pki_vouch_certifier_self = fp;
     }
 
     Ok(())
