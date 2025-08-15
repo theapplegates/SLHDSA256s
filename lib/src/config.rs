@@ -1067,7 +1067,7 @@ fn apply_encrypt_for_self(config: &mut Option<&mut Config>,
     Ok(())
 }
 
-/// Validates the `key.generate.profile` value.
+/// Validates the `encrypt.profile` value.
 fn apply_encrypt_profile(config: &mut Option<&mut Config>,
                          cli: &mut Option<&mut Augmentations>,
                          path: &str, item: &Item)

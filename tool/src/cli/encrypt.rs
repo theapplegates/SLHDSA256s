@@ -158,7 +158,7 @@ to using the one that expired last",
         default_value_t = Default::default(),
         help = "Select the default OpenPGP standard for the encryption container",
         long_help = config::augment_help(
-            "key.generate.profile",
+            "encrypt.profile",
             "Select the default OpenPGP standard for the encryption container
 
 When encrypting for certificates, the encryption container is selected \
