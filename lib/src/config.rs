@@ -173,6 +173,20 @@ impl Config {
     pub fn verbosity(&self) -> Verbosity {
         self.verbosity.clone()
     }
+
+    /// Returns the configuration key for the verbosity setting.
+    pub const fn verbosity_config_key() -> &'static str {
+        "ui.verbosity"
+    }
+
+    /// Returns the configuration value for the verbosity setting.
+    ///
+    /// The returned value can be written directly to the
+    /// configuration file; additional quoting is not required.
+    pub fn verbosity_config_value(&self) -> String {
+        format!("{:?}", self.verbosity)
+    }
+
     /// Sets the verbose setting.
     ///
     /// Handles the precedence of the various sources, but since this
@@ -255,6 +269,26 @@ impl Config {
         &self.encrypt_for_self
     }
 
+    /// Returns the configuration key for the encrypt for self
+    /// setting.
+    pub const fn encrypt_for_self_config_key() -> &'static str {
+        "encrypt.for-self"
+    }
+
+    /// Returns the configuration value for the encrypt for self
+    /// setting.
+    ///
+    /// The returned value can be written directly to the
+    /// configuration file; additional quoting is not required.
+    pub fn encrypt_for_self_config_value(&self) -> String {
+        format!(
+            "[ \"{}\" ]",
+            self.encrypt_for_self
+                .iter()
+                .map(|fpr| fpr.to_string())
+                .collect::<Vec<String>>()
+                .join("\", \""))
+    }
     /// Returns the profile for encryption containers.
     pub fn encrypt_profile(&self) -> Profile {
         self.encrypt_profile.clone()
@@ -280,16 +314,71 @@ impl Config {
         }.clone()
     }
 
+    /// Returns the configuration key for the encrypt profile
+    /// setting.
+    pub const fn encrypt_profile_config_key() -> &'static str {
+        "encrypt.profile"
+    }
+
+    /// Returns the configuration value for the encrypt profile
+    /// setting.
+    ///
+    /// The returned value can be written directly to the
+    /// configuration file; additional quoting is not required.
+    pub fn encrypt_profile_config_value(&self) -> String {
+        format!("{:?}", self.encrypt_profile)
+    }
+
     /// Returns the keys that should be added to the list of
     /// signers if `--signer-self` is given.
     pub fn sign_signer_self(&self) -> &BTreeSet<Fingerprint> {
         &self.sign_signer_self
     }
 
+    /// Returns the configuration key for the sign signer self
+    /// setting.
+    pub const fn sign_signer_self_config_key() -> &'static str {
+        "sign.signer-self"
+    }
+
+    /// Returns the configuration value for the sign signer self
+    /// setting.
+    ///
+    /// The returned value can be written directly to the
+    /// configuration file; additional quoting is not required.
+    pub fn sign_signer_self_config_value(&self) -> String {
+        format!(
+            "[ \"{}\" ]",
+            self.sign_signer_self
+                .iter()
+                .map(|fpr| fpr.to_string())
+                .collect::<Vec<String>>()
+                .join("\", \""))
+    }
+
     /// Returns the key that should be used as certifier if
     /// `--certifier-self` is given.
     pub fn pki_vouch_certifier_self(&self) -> &Option<Fingerprint> {
         &self.pki_vouch_certifier_self
+    }
+
+    /// Returns the configuration key for the pki vouch certifier self
+    /// key setting.
+    pub const fn pki_vouch_certifier_self_config_key() -> &'static str {
+        "pki.vouch.certifier-self"
+    }
+
+    /// Returns the configuration value for the pki vouch certifier
+    /// self key setting.
+    ///
+    /// The returned value can be written directly to the
+    /// configuration file; additional quoting is not required.
+    pub fn pki_vouch_certifier_self_config_value(&self) -> String {
+        if let Some(fpr) = self.pki_vouch_certifier_self.as_ref() {
+            format!("\"{}\"", fpr)
+        } else {
+            "\"\"".into()
+        }
     }
 
     /// Returns the expiration for third-party certifications.
@@ -316,6 +405,21 @@ impl Config {
     /// Returns the value of the pki vouch expiration setting.
     pub fn pki_vouch_expiration(&self) -> Expiration {
         self.pki_vouch_expiration.clone()
+    }
+
+    /// Returns the configuration key for the pki vouch expiration
+    /// setting.
+    pub const fn pki_vouch_expiration_config_key() -> &'static str {
+        "pki.vouch.expiration"
+    }
+
+    /// Returns the configuration value for the pki vouch certifier
+    /// self key setting.
+    ///
+    /// The returned value can be written directly to the
+    /// configuration file; additional quoting is not required.
+    pub fn pki_vouch_expiration_config_value(&self) -> String {
+        format!("\"{}\"", self.pki_vouch_expiration)
     }
 
     /// Returns the path to the referenced cryptographic policy, if
@@ -373,6 +477,18 @@ impl Config {
         }.clone()
     }
 
+    /// Returns the configuration key for the cipher suite setting.
+    pub const fn cipher_suite_config_key() -> &'static str {
+        "key.generate.cipher-suite"
+    }
+
+    /// Returns the configuration value for the cipher suite setting.
+    ///
+    /// The returned value can be written directly to the
+    /// configuration file; additional quoting is not required.
+    pub fn cipher_suite_config_value(&self) -> String {
+        format!("\"{}\"", self.cipher_suite)
+    }
 
     /// Returns the key generate profile setting.
     pub fn key_generate_profile(&self) -> Profile {
@@ -401,6 +517,20 @@ impl Config {
         }.clone()
     }
 
+    /// Returns the configuration key for the key generate profile
+    /// setting.
+    pub const fn key_generate_profile_config_key() -> &'static str {
+        "key.generate.profile"
+    }
+
+    /// Returns the configuration value for the key generate profile
+    /// setting.
+    ///
+    /// The returned value can be written directly to the
+    /// configuration file; additional quoting is not required.
+    pub fn key_generate_profile_config_value(&self) -> String {
+        format!("{:?}", self.key_generate_profile)
+    }
 
     /// Returns the key servers to query or publish.
     pub fn key_servers(&self) -> &[ String ] {
@@ -431,6 +561,25 @@ impl Config {
         }
     }
 
+    /// Returns the configuration key for the keyservers setting.
+    pub const fn key_servers_config_key() -> &'static str {
+        "network.keyservers"
+    }
+
+    /// Returns the configuration value for the key servers setting.
+    ///
+    /// The returned value can be written directly to the
+    /// configuration file; additional quoting is not required.
+    pub fn key_servers_config_value(&self) -> String {
+        format!(
+            "[ {} ]",
+            self.key_servers
+                .iter()
+                .map(|ks| format!("{:?}", ks))
+                .collect::<Vec<String>>()
+                .join(", "))
+    }
+
     /// Returns the iteration count for network search.
     pub fn network_search_iterations(&self) -> u8 {
         self.network_search_iterations
@@ -456,6 +605,20 @@ impl Config {
         }
     }
 
+    /// Returns the configuration key for the network search
+    /// iterations setting.
+    pub const fn network_search_iterations_config_key() -> &'static str {
+        "network.search.iterations"
+    }
+
+    /// Returns the configuration value for the network search
+    /// iterations.
+    ///
+    /// The returned value can be written directly to the
+    /// configuration file; additional quoting is not required.
+    pub fn network_search_iterations_config_value(&self) -> String {
+        self.network_search_iterations.to_string()
+    }
 
     /// Returns whether network search should use WKD.
     pub fn network_search_use_wkd(&self) -> bool {
@@ -483,6 +646,20 @@ impl Config {
         }
     }
 
+    /// Returns the configuration key for the network search
+    /// use wkd setting.
+    pub const fn network_search_use_wkd_config_key() -> &'static str {
+        "network.search.use-wkd"
+    }
+
+    /// Returns the configuration value whether the network search
+    /// should use WKD.
+    ///
+    /// The returned value can be written directly to the
+    /// configuration file; additional quoting is not required.
+    pub fn network_search_use_wkd_config_value(&self) -> String {
+        self.network_search_use_wkd.to_string()
+    }
 
     /// Returns whether network search should use DANE.
     pub fn network_search_use_dane(&self) -> bool {
@@ -508,6 +685,21 @@ impl Config {
                 self.network_search_use_dane,
             _ => cli,
         }
+    }
+
+    /// Returns the configuration key for the network search
+    /// use dane setting.
+    pub const fn network_search_use_dane_config_key() -> &'static str {
+        "network.search.use-dane"
+    }
+
+    /// Returns the configuration value whether the network search
+    /// should use DANE.
+    ///
+    /// The returned value can be written directly to the
+    /// configuration file; additional quoting is not required.
+    pub fn network_search_use_dane_config_value(&self) -> String {
+        self.network_search_use_dane.to_string()
     }
 
     /// Returns the path to the backend servers.
@@ -1600,5 +1792,166 @@ mod tests {
             .expect("can parse the default configuration template");
 
         assert_eq!(config, Config::default());
+    }
+
+    #[test]
+    fn round_trip() {
+        macro_rules! check {
+            // Value is already quoted!!!
+            ($key:ident, $value:expr, $value_str:expr,
+             $value_getter:ident, $conf_getter:ident) => {{
+                 let value_str: &str = &$value_str;
+
+                 // Write the value to the config file, read the
+                 // config file, and make sure we get the same value
+                 // back.
+                 let mut config = Config::default();
+                 let doc = format!("{} = {}", Config::$key(), value_str);
+                 ConfigFile::parse(&doc, Some(&mut config), None).unwrap();
+                 assert_eq!(config.$value_getter, $value);
+
+                 // Get the value from the configuration file, and
+                 // make sure we can round trip it.
+                 let doc = format!("{} = {}", Config::$key(), config.$conf_getter());
+                 let mut config = Config::default();
+                 ConfigFile::parse(&doc, Some(&mut config), None).unwrap();
+                 assert_eq!(config.$value_getter, $value);
+            }};
+        }
+
+        let fpr: Fingerprint
+            = "F7173B3C7C685CD9ECC4191B74E445BA0E15C957".parse().expect("valid");
+
+        // verbosity.
+        for v in Verbosity::variants() {
+            check!(
+                verbosity_config_key,
+                // Value.
+                v,
+                // Value as string for configuration file.
+                format!("{:?}", v),
+                verbosity,
+                verbosity_config_value);
+        }
+
+        // encrypt for self
+        check!(
+            encrypt_for_self_config_key,
+            // Value.
+            BTreeSet::from_iter(std::iter::once(fpr.clone())),
+            // Value as string for configuration file.
+            format!("[ \"{}\" ]", fpr),
+            encrypt_for_self,
+            encrypt_for_self_config_value);
+
+        // encrypt profile
+        for v in Profile::variants() {
+            check!(
+                encrypt_profile_config_key,
+                // Value.
+                v,
+                // Value as string for configuration file.
+                format!("{:?}", v),
+                encrypt_profile,
+                encrypt_profile_config_value);
+        }
+
+        // signer self sign
+        check!(
+            sign_signer_self_config_key,
+            // Value.
+            BTreeSet::from_iter(std::iter::once(fpr.clone())),
+            // Value as string for configuration file.
+            format!("[ \"{}\" ]", fpr),
+            sign_signer_self,
+            sign_signer_self_config_value);
+
+        // pki vouch certifier self
+        check!(
+            pki_vouch_certifier_self_config_key,
+            // Value.
+            Some(fpr.clone()),
+            // Value as string for configuration file.
+            format!("\"{}\"", fpr),
+            pki_vouch_certifier_self,
+            pki_vouch_certifier_self_config_value);
+        check!(
+            pki_vouch_certifier_self_config_key,
+            // Value.
+            None,
+            // Value as string for configuration file.
+            format!("\"\""),
+            pki_vouch_certifier_self,
+            pki_vouch_certifier_self_config_value);
+
+        // pki vouch expiration.
+        check!(
+            pki_vouch_expiration_config_key,
+            // Value.
+            Expiration::new("1d").unwrap(),
+            // Value as string for configuration file.
+            "\"1d\"",
+            pki_vouch_expiration,
+            pki_vouch_expiration_config_value);
+
+        // key generate cipher suite.
+        check!(
+            cipher_suite_config_key,
+            // Value.
+            CipherSuite::Rsa2k,
+            // Value as string for configuration file.
+            "\"rsa2k\"",
+            cipher_suite,
+            cipher_suite_config_value);
+
+        // key generate profile
+        check!(
+            key_generate_profile_config_key,
+            // Value.
+            Profile::RFC9580,
+            // Value as string for configuration file.
+            "\"rfc9580\"",
+            key_generate_profile,
+            key_generate_profile_config_value);
+
+        // keyservers.
+        check!(
+            key_servers_config_key,
+            // Value.
+            &[ "hkps://some.example", "hkp://other.example" ],
+            // Value as string for configuration file.
+            "[ \"hkps://some.example\", \"hkp://other.example\" ]",
+            key_servers,
+            key_servers_config_value);
+
+        // network search iterations.
+        check!(
+            network_search_iterations_config_key,
+            // Value.
+            2,
+            // Value as string for configuration file.
+            "2",
+            network_search_iterations,
+            network_search_iterations_config_value);
+
+        // network search use dane.
+        check!(
+            network_search_use_dane_config_key,
+            // Value.
+            false,
+            // Value as string for configuration file.
+            "false",
+            network_search_use_dane,
+            network_search_use_dane_config_value);
+
+        // network search use wkd.
+        check!(
+            network_search_use_wkd_config_key,
+            // Value.
+            false,
+            // Value as string for configuration file.
+            "false",
+            network_search_use_wkd,
+            network_search_use_wkd_config_value);
     }
 }
