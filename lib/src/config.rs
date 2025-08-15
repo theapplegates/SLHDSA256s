@@ -48,6 +48,8 @@ pub use expiration::Expiration;
 mod profile;
 pub use profile::Profile;
 pub mod toml_edit_tree;
+mod verbosity;
+pub use verbosity::Verbosity;
 
 /// Values read from the config file to be included in help messages.
 pub type Augmentations = BTreeMap<&'static str, String>;
@@ -92,11 +94,8 @@ pub const DEFAULT_KEY_ROTATE_RETIRE_IN_DURATION: Duration =
 /// It is available as `Sq::config`, with suitable accessors that
 /// handle the precedence of the various sources.
 pub struct Config {
-    /// Whether to be more verbose.
-    verbose: bool,
-
-    /// Whether to be more quiet.
-    quiet: bool,
+    /// How verbose the UI should be.
+    verbosity: Verbosity,
 
     /// Whether to show hints.
     hints: Option<bool>,
@@ -145,8 +144,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
-            verbose: false,
-            quiet: false,
+            verbosity: Default::default(),
             hints: None,
             encrypt_for_self: Default::default(),
             encrypt_profile: Default::default(),
@@ -187,7 +185,13 @@ impl Config {
             ValueSource::DefaultValue => {
                 // Use the value from the configuration file.
             },
-            _ => self.verbose = cli,
+            _ => {
+                if cli {
+                    self.verbosity = Verbosity::Verbose;
+                } else {
+                    self.verbosity = Verbosity::Default;
+                }
+            }
         }
     }
 
@@ -196,7 +200,7 @@ impl Config {
     /// The precedence of the various sources has been handled at
     /// initialization time.
     pub fn verbose(&self) -> bool {
-        self.verbose
+        self.verbosity == Verbosity::Verbose
     }
 
     /// Sets the quiet setting.
@@ -217,7 +221,13 @@ impl Config {
             ValueSource::DefaultValue => {
                 // Use the value from the configuration file.
             },
-            _ => self.quiet = cli,
+            _ => {
+                if cli {
+                    self.verbosity = Verbosity::Quiet;
+                } else {
+                    self.verbosity = Verbosity::Default;
+                }
+            }
         }
     }
 
@@ -226,7 +236,7 @@ impl Config {
     /// The precedence of the various sources has been handled at
     /// initialization time.
     pub fn quiet(&self) -> bool {
-        self.quiet
+        self.verbosity == Verbosity::Quiet
     }
 
     /// Returns whether to show hints.
@@ -969,29 +979,24 @@ fn apply_ui_verbosity(config: &mut Option<&mut Config>,
     let s = item.as_str()
         .ok_or_else(|| Error::bad_item_type(path, item, "string"))?;
 
-    let mut verbose = false;
-    let mut quiet = false;
-    match s {
-        "default" => (),
-        "verbose" => verbose = true,
-        "quiet" => quiet = true,
+    let verbosity = match s {
+        "default" => Verbosity::Default,
+        "verbose" => Verbosity::Verbose,
+        "quiet" => Verbosity::Quiet,
         _ => return Err(anyhow::anyhow!("verbosity must be either \
                                          \"default\", \
                                          \"verbose\", \
                                          or \"quiet\"")),
     };
 
-    if let Some(config) = config {
-        config.verbose = verbose;
-        config.quiet = quiet;
+    if let Some(cli) = cli {
+        if verbosity != Verbosity::Default {
+            cli.insert("ui.verbosity", verbosity.to_string());
+        }
     }
 
-    if let Some(cli) = cli {
-        if verbose {
-            cli.insert("ui.verbosity", "verbose".into());
-        } else if quiet {
-            cli.insert("ui.verbosity", "quiet".into());
-        }
+    if let Some(config) = config {
+        config.verbosity = verbosity;
     }
 
     Ok(())
