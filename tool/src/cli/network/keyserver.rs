@@ -34,7 +34,7 @@ pub struct Command {
         value_name = "URI",
         help = "Set a key server to use (can be given multiple times)",
         long_help = config::augment_help(
-            "network.keyserver.servers",
+            "network.keyservers",
             "Set a key server to use (can be given multiple times)"),
     )]
     pub servers: Vec<String>,

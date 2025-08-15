@@ -1342,7 +1342,7 @@ fn apply_network_keyservers(config: &mut Option<&mut Config>,
     }
 
     if let Some(cli) = cli {
-        cli.insert("network.keyserver.servers", servers_str.join(" "));
+        cli.insert("network.keyservers", servers_str.join(" "));
     }
 
     if let Some(config) = config {
