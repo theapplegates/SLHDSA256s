@@ -93,6 +93,7 @@ pub const DEFAULT_KEY_ROTATE_RETIRE_IN_DURATION: Duration =
 /// This struct is manipulated when parsing the configuration file.
 /// It is available as `Sq::config`, with suitable accessors that
 /// handle the precedence of the various sources.
+#[derive(Debug, PartialEq, Eq)]
 pub struct Config {
     /// How verbose the UI should be.
     verbosity: Verbosity,
@@ -539,18 +540,24 @@ impl ConfigFile {
     ];
 
     /// Returns a configuration template with the defaults.
-    fn config_template(path: Option<PathBuf>) -> Result<String> {
+    fn config_template(path: Option<PathBuf>, inline_policy: bool)
+        -> Result<String>
+    {
         let ac = AhoCorasick::new(Self::TEMPLATE_PATTERNS)?;
 
         let mut p = ConfiguredStandardPolicy::new();
         p.parse_default_config()?;
 
-        let mut default_policy_inline = Vec::new();
-        p.dump(&mut default_policy_inline,
-               sequoia_policy_config::DumpDefault::Template)?;
-        let default_policy_inline =
+        let mut default_policy_inline;
+        let default_policy_inline = if inline_policy {
+            default_policy_inline = Vec::new();
+            p.dump(&mut default_policy_inline,
+                   sequoia_policy_config::DumpDefault::Template)?;
             regex::Regex::new(r"(?m)^\[")?.replace_all(
-                std::str::from_utf8(&default_policy_inline)?, "[policy.");
+                std::str::from_utf8(&default_policy_inline)?, "[policy.")
+        } else {
+            "".into()
+        };
 
         Ok(ac.replace_all(Self::TEMPLATE, &[
             &env!("CARGO_PKG_VERSION").to_string(),
@@ -586,7 +593,7 @@ impl ConfigFile {
     /// All the configuration options with their defaults are
     /// commented out.
     pub fn default_template(home: Option<&Home>) -> Result<Self> {
-        let template = Self::config_template(home.map(Self::file_name))?;
+        let template = Self::config_template(home.map(Self::file_name), true)?;
         let doc: DocumentMut = template.parse()
             .context("Parsing default configuration failed")?;
         Ok(Self {
@@ -596,7 +603,7 @@ impl ConfigFile {
 
     /// Returns the default configuration.
     pub fn default_config(home: Option<&Home>) -> Result<Self> {
-        let template = Self::config_template(home.map(Self::file_name))?;
+        let template = Self::config_template(home.map(Self::file_name), true)?;
 
         // Enable all defaults by commenting-in.
         let r = regex::Regex::new(r"(?m)^#([^ ])")?;
@@ -635,30 +642,40 @@ impl ConfigFile {
     /// applies them to the given configuration, and optionally
     /// supplies augmentations for the help texts in the command line
     /// parser.
-    fn read_internal(&mut self, home: &Home, mut config: Option<&mut Config>,
-                     mut cli: Option<&mut Augmentations>)
+    fn read_internal(&mut self, home: &Home, config: Option<&mut Config>,
+                     cli: Option<&mut Augmentations>)
                      -> Result<()>
     {
         let path = Self::file_name(home);
         let raw = match fs::read_to_string(&path) {
             Ok(r) => r,
             Err(e) if e.kind() == io::ErrorKind::NotFound =>
-                Self::config_template(Some(path.clone()))?,
+                Self::config_template(Some(path.clone()), true)?,
             Err(e) => return Err(anyhow::Error::from(e).context(
                 format!("Reading configuration file {} failed",
                         path.display()))),
         };
 
-        let doc: DocumentMut = raw.parse()
+        let config_file = Self::parse(&raw, config, cli)
             .with_context(|| format!("Parsing configuration file {} failed",
                                      path.display()))?;
-
-        apply_schema(&mut config, &mut cli, None, doc.iter(), TOP_LEVEL_SCHEMA)
-            .with_context(|| format!("Parsing configuration file {} failed",
-                                     path.display()))?;
-        self.doc = doc;
+        self.doc = config_file.doc;
 
         Ok(())
+    }
+
+    /// Parses and validates the configuration.
+    fn parse(doc: &str, mut config: Option<&mut Config>,
+             mut cli: Option<&mut Augmentations>)
+        -> Result<Self>
+    {
+        let doc: DocumentMut = doc.parse()?;
+
+        apply_schema(&mut config, &mut cli, None, doc.iter(), TOP_LEVEL_SCHEMA)?;
+
+        Ok(Self {
+            doc,
+        })
     }
 
     /// Writes the configuration to the disk.
@@ -1454,7 +1471,11 @@ fn apply_policy(config: &mut Option<&mut Config>,
 
         let mut inline = DocumentMut::from(table);
         inline.remove("path");
-        config.policy_inline = Some(inline.to_string().into_bytes());
+        if inline.is_empty() {
+            config.policy_inline = None;
+        } else {
+            config.policy_inline = Some(inline.to_string().into_bytes());
+        }
     }
 
     Ok(())
@@ -1506,4 +1527,23 @@ fn apply_servers_path(config: &mut Option<&mut Config>,
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Check that we can parse the configuration template and it only
+    // contains defaults.
+    #[test]
+    fn check_config_template() {
+        let template = ConfigFile::config_template(None, false)
+            .expect("can create a configuration template");
+
+        let mut config = Config::default();
+        ConfigFile::parse(&template, Some(&mut config), None)
+            .expect("can parse the default configuration template");
+
+        assert_eq!(config, Config::default());
+    }
 }
