@@ -88,6 +88,20 @@ pub const DEFAULT_KEY_ROTATE_RETIRE_IN_IN_DAYS: u64 = 182;
 pub const DEFAULT_KEY_ROTATE_RETIRE_IN_DURATION: Duration =
     Duration::new(SECONDS_IN_DAY * DEFAULT_KEY_ROTATE_RETIRE_IN_IN_DAYS, 0);
 
+/// Where a configuration setting got its value from.
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
+pub enum Source {
+    /// Unset (the default value).
+    #[default]
+    Default,
+    /// Set in the configuration file.
+    ConfigFile,
+    /// Set using `init_verbose`, etc.
+    CommandLine,
+    /// Set using a setter.
+    Programmatically,
+}
+
 /// Represents configuration at runtime.
 ///
 /// This struct is manipulated when parsing the configuration file.
@@ -97,46 +111,58 @@ pub const DEFAULT_KEY_ROTATE_RETIRE_IN_DURATION: Duration =
 pub struct Config {
     /// How verbose the UI should be.
     verbosity: Verbosity,
+    verbosity_source: Source,
 
     /// Whether to show hints.
     hints: Option<bool>,
 
     /// The set of encryption certs selected using `--for-self`.
     encrypt_for_self: BTreeSet<Fingerprint>,
+    encrypt_for_self_source: Source,
 
     /// The default profile for encryption containers.
     encrypt_profile: Profile,
+    encrypt_profile_source: Source,
 
     /// The set of signing keys selected using `--signer-self`.
     sign_signer_self: BTreeSet<Fingerprint>,
+    sign_signer_self_source: Source,
 
     /// The default certification key selected using
     /// `--certifier-self`.
     pki_vouch_certifier_self: Option<Fingerprint>,
+    pki_vouch_certifier_self_source: Source,
 
     /// The default validity period for third-party certifications.
     pki_vouch_expiration: Expiration,
+    pki_vouch_expiration_source: Source,
 
     policy_path: Option<PathBuf>,
     policy_inline: Option<Vec<u8>>,
 
     /// The default cipher suite for newly generated keys.
     cipher_suite: CipherSuite,
+    cipher_suite_source: Source,
 
     /// The default profile for newly generated keys.
     key_generate_profile: Profile,
+    key_generate_profile_source: Source,
 
     /// The set of keyservers to use.
     key_servers: Vec<String>,
+    key_servers_source: Source,
 
     /// Iterations for network search.
     network_search_iterations: u8,
+    network_search_iterations_source: Source,
 
     /// Whether network search should use WKD.
     network_search_use_wkd: bool,
+    network_search_use_wkd_source: Source,
 
     /// Whether network search should use DANE.
     network_search_use_dane: bool,
+    network_search_use_dane_source: Source,
 
     /// The location of the backend server executables.
     servers_path: Option<PathBuf>,
@@ -146,23 +172,35 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             verbosity: Default::default(),
+            verbosity_source: Default::default(),
             hints: None,
             encrypt_for_self: Default::default(),
+            encrypt_for_self_source: Default::default(),
             encrypt_profile: Default::default(),
+            encrypt_profile_source: Default::default(),
             sign_signer_self: Default::default(),
+            sign_signer_self_source: Default::default(),
             pki_vouch_certifier_self: None,
+            pki_vouch_certifier_self_source: Default::default(),
             pki_vouch_expiration: Expiration::from_duration(
                 DEFAULT_THIRD_PARTY_CERTIFICATION_VALIDITY_DURATION),
+            pki_vouch_expiration_source: Default::default(),
             policy_path: None,
             policy_inline: None,
             cipher_suite: Default::default(),
+            cipher_suite_source: Default::default(),
             key_generate_profile: Default::default(),
+            key_generate_profile_source: Default::default(),
             key_servers: DEFAULT_KEYSERVERS.iter()
                 .map(|s| s.to_string())
                 .collect(),
+            key_servers_source: Default::default(),
             network_search_iterations: DEFAULT_NETWORK_SEARCH_ITERATIONS,
+            network_search_iterations_source: Default::default(),
             network_search_use_wkd: DEFAULT_NETWORK_SEARCH_USE_WKD,
+            network_search_use_wkd_source: Default::default(),
             network_search_use_dane: DEFAULT_NETWORK_SEARCH_USE_DANE,
+            network_search_use_dane_source: Default::default(),
             servers_path: Default::default(),
         }
     }
@@ -172,6 +210,11 @@ impl Config {
     /// Returns the verbosity setting.
     pub fn verbosity(&self) -> Verbosity {
         self.verbosity.clone()
+    }
+
+    /// Returns where the setting was set.
+    pub fn verbosity_source(&self) -> Source {
+        self.verbosity_source.clone()
     }
 
     /// Returns the configuration key for the verbosity setting.
@@ -205,6 +248,7 @@ impl Config {
                 // Use the value from the configuration file.
             },
             _ => {
+                self.verbosity_source = Source::CommandLine;
                 if cli {
                     self.verbosity = Verbosity::Verbose;
                 } else {
@@ -241,6 +285,7 @@ impl Config {
                 // Use the value from the configuration file.
             },
             _ => {
+                self.verbosity_source = Source::CommandLine;
                 if cli {
                     self.verbosity = Verbosity::Quiet;
                 } else {
@@ -269,6 +314,11 @@ impl Config {
         &self.encrypt_for_self
     }
 
+    /// Returns where the setting was set.
+    pub fn encrypt_for_self_source(&self) -> Source {
+        self.encrypt_for_self_source.clone()
+    }
+
     /// Returns the configuration key for the encrypt for self
     /// setting.
     pub const fn encrypt_for_self_config_key() -> &'static str {
@@ -292,6 +342,11 @@ impl Config {
     /// Returns the profile for encryption containers.
     pub fn encrypt_profile(&self) -> Profile {
         self.encrypt_profile.clone()
+    }
+
+    /// Returns where the setting was set.
+    pub fn encrypt_profile_source(&self) -> Source {
+        self.encrypt_profile_source.clone()
     }
 
     /// Returns the profile for encryption containers.
@@ -335,6 +390,11 @@ impl Config {
         &self.sign_signer_self
     }
 
+    /// Returns where the setting was set.
+    pub fn sign_signer_self_source(&self) -> Source {
+        self.sign_signer_self_source.clone()
+    }
+
     /// Returns the configuration key for the sign signer self
     /// setting.
     pub const fn sign_signer_self_config_key() -> &'static str {
@@ -362,6 +422,11 @@ impl Config {
         &self.pki_vouch_certifier_self
     }
 
+    /// Returns where the setting was set.
+    pub fn pki_vouch_certifier_self_source(&self) -> Source {
+        self.pki_vouch_certifier_self_source.clone()
+    }
+
     /// Returns the configuration key for the pki vouch certifier self
     /// key setting.
     pub const fn pki_vouch_certifier_self_config_key() -> &'static str {
@@ -379,6 +444,16 @@ impl Config {
         } else {
             "\"\"".into()
         }
+    }
+
+    /// Returns the value of the pki vouch expiration setting.
+    pub fn pki_vouch_expiration(&self) -> Expiration {
+        self.pki_vouch_expiration.clone()
+    }
+
+    /// Returns where the setting was set.
+    pub fn pki_vouch_expiration_source(&self) -> Source {
+        self.pki_vouch_expiration_source.clone()
     }
 
     /// Returns the expiration for third-party certifications.
@@ -400,11 +475,6 @@ impl Config {
                 &self.pki_vouch_expiration,
             _ => cli,
         }.clone()
-    }
-
-    /// Returns the value of the pki vouch expiration setting.
-    pub fn pki_vouch_expiration(&self) -> Expiration {
-        self.pki_vouch_expiration.clone()
     }
 
     /// Returns the configuration key for the pki vouch expiration
@@ -458,6 +528,11 @@ impl Config {
         self.cipher_suite.clone()
     }
 
+    /// Returns where the setting was set.
+    pub fn cipher_suite_source(&self) -> Source {
+        self.cipher_suite_source.clone()
+    }
+
     /// Returns the cipher suite for generating new keys.
     ///
     /// Handles the precedence of the various sources:
@@ -493,6 +568,11 @@ impl Config {
     /// Returns the key generate profile setting.
     pub fn key_generate_profile(&self) -> Profile {
         self.key_generate_profile.clone()
+    }
+
+    /// Returns where the setting was set.
+    pub fn key_generate_profile_source(&self) -> Source {
+        self.key_generate_profile_source.clone()
     }
 
     /// Returns the profile for generating new keys.
@@ -535,6 +615,11 @@ impl Config {
     /// Returns the key servers to query or publish.
     pub fn key_servers(&self) -> &[ String ] {
         &self.key_servers
+    }
+
+    /// Returns where the setting was set.
+    pub fn key_servers_source(&self) -> Source {
+        self.key_servers_source.clone()
     }
 
     /// Returns the key servers to query or publish.
@@ -585,6 +670,11 @@ impl Config {
         self.network_search_iterations
     }
 
+    /// Returns where the setting was set.
+    pub fn network_search_iterations_source(&self) -> Source {
+        self.network_search_iterations_source.clone()
+    }
+
     /// Returns the iteration count for network search.
     ///
     /// Handles the precedence of the various sources:
@@ -623,6 +713,11 @@ impl Config {
     /// Returns whether network search should use WKD.
     pub fn network_search_use_wkd(&self) -> bool {
         self.network_search_use_wkd
+    }
+
+    /// Returns where the setting was set.
+    pub fn network_search_use_wkd_source(&self) -> Source {
+        self.network_search_use_wkd_source.clone()
     }
 
     /// Returns whether network search should use WKD.
@@ -664,6 +759,11 @@ impl Config {
     /// Returns whether network search should use DANE.
     pub fn network_search_use_dane(&self) -> bool {
         self.network_search_use_dane
+    }
+
+    /// Returns where the setting was set.
+    pub fn network_search_use_dane_source(&self) -> Source {
+        self.network_search_use_dane_source.clone()
     }
 
     /// Returns whether network search should use DANE.
@@ -1253,6 +1353,7 @@ fn apply_ui_verbosity(config: &mut Option<&mut Config>,
 
     if let Some(config) = config {
         config.verbosity = verbosity;
+        config.verbosity_source = Source::ConfigFile;
     }
 
     Ok(())
@@ -1301,6 +1402,7 @@ fn apply_encrypt_for_self(config: &mut Option<&mut Config>,
 
     if let Some(config) = config {
         config.encrypt_for_self = values;
+        config.encrypt_for_self_source = Source::ConfigFile;
     }
 
     Ok(())
@@ -1318,6 +1420,7 @@ fn apply_encrypt_profile(config: &mut Option<&mut Config>,
 
     if let Some(config) = config {
         config.encrypt_profile = v.clone();
+        config.encrypt_profile_source = Source::ConfigFile;
     }
 
     if let Some(cli) = cli {
@@ -1372,6 +1475,7 @@ fn apply_sign_signer_self(config: &mut Option<&mut Config>,
 
     if let Some(config) = config {
         config.sign_signer_self = values;
+        config.sign_signer_self_source = Source::ConfigFile;
     }
 
     Ok(())
@@ -1437,6 +1541,7 @@ fn apply_pki_vouch_certifier_self(config: &mut Option<&mut Config>,
 
     if let Some(config) = config {
         config.pki_vouch_certifier_self = fp;
+        config.pki_vouch_certifier_self_source = Source::ConfigFile;
     }
 
     Ok(())
@@ -1459,6 +1564,7 @@ fn apply_pki_vouch_expiration(config: &mut Option<&mut Config>,
 
     if let Some(config) = config {
         config.pki_vouch_expiration = v;
+        config.pki_vouch_expiration_source = Source::ConfigFile;
     }
 
     Ok(())
@@ -1510,6 +1616,7 @@ fn apply_key_generate_cipher_suite(config: &mut Option<&mut Config>,
 
     if let Some(config) = config {
         config.cipher_suite = v.clone();
+        config.cipher_suite_source = Source::ConfigFile;
     }
 
     if let Some(cli) = cli {
@@ -1533,6 +1640,7 @@ fn apply_key_generate_profile(config: &mut Option<&mut Config>,
 
     if let Some(config) = config {
         config.key_generate_profile = v.clone();
+        config.key_generate_profile_source = Source::ConfigFile;
     }
 
     if let Some(cli) = cli {
@@ -1594,6 +1702,7 @@ fn apply_network_keyservers(config: &mut Option<&mut Config>,
 
     if let Some(config) = config {
         config.key_servers = servers_str;
+        config.key_servers_source = Source::ConfigFile;
     }
 
     Ok(())
@@ -1635,6 +1744,7 @@ fn apply_network_search_iterations(config: &mut Option<&mut Config>,
 
         config.network_search_iterations = s.try_into()
             .map_err(|_| anyhow::anyhow!("value must not exceed 255"))?;
+        config.network_search_iterations_source = Source::ConfigFile;
     }
 
     if let Some(cli) = cli {
@@ -1655,6 +1765,7 @@ fn apply_network_search_use_dane(config: &mut Option<&mut Config>,
 
     if let Some(config) = config {
         config.network_search_use_dane = s;
+        config.network_search_use_dane_source = Source::ConfigFile;
     }
 
     if let Some(cli) = cli {
@@ -1675,6 +1786,7 @@ fn apply_network_search_use_wkd(config: &mut Option<&mut Config>,
 
     if let Some(config) = config {
         config.network_search_use_wkd = s;
+        config.network_search_use_wkd_source = Source::ConfigFile;
     }
 
     if let Some(cli) = cli {
@@ -1799,16 +1911,19 @@ mod tests {
         macro_rules! check {
             // Value is already quoted!!!
             ($key:ident, $value:expr, $value_str:expr,
-             $value_getter:ident, $conf_getter:ident) => {{
+             $value_getter:ident, $conf_getter:ident,
+             $source:ident) => {{
                  let value_str: &str = &$value_str;
 
                  // Write the value to the config file, read the
                  // config file, and make sure we get the same value
                  // back.
                  let mut config = Config::default();
+                 assert_eq!(config.$source, Source::Default);
                  let doc = format!("{} = {}", Config::$key(), value_str);
                  ConfigFile::parse(&doc, Some(&mut config), None).unwrap();
                  assert_eq!(config.$value_getter, $value);
+                 assert_eq!(config.$source, Source::ConfigFile);
 
                  // Get the value from the configuration file, and
                  // make sure we can round trip it.
@@ -1816,6 +1931,7 @@ mod tests {
                  let mut config = Config::default();
                  ConfigFile::parse(&doc, Some(&mut config), None).unwrap();
                  assert_eq!(config.$value_getter, $value);
+                 assert_eq!(config.$source, Source::ConfigFile);
             }};
         }
 
@@ -1831,7 +1947,8 @@ mod tests {
                 // Value as string for configuration file.
                 format!("{:?}", v),
                 verbosity,
-                verbosity_config_value);
+                verbosity_config_value,
+                verbosity_source);
         }
 
         // encrypt for self
@@ -1842,7 +1959,8 @@ mod tests {
             // Value as string for configuration file.
             format!("[ \"{}\" ]", fpr),
             encrypt_for_self,
-            encrypt_for_self_config_value);
+            encrypt_for_self_config_value,
+            encrypt_for_self_source);
 
         // encrypt profile
         for v in Profile::variants() {
@@ -1853,7 +1971,8 @@ mod tests {
                 // Value as string for configuration file.
                 format!("{:?}", v),
                 encrypt_profile,
-                encrypt_profile_config_value);
+                encrypt_profile_config_value,
+                encrypt_profile_source);
         }
 
         // signer self sign
@@ -1864,7 +1983,8 @@ mod tests {
             // Value as string for configuration file.
             format!("[ \"{}\" ]", fpr),
             sign_signer_self,
-            sign_signer_self_config_value);
+            sign_signer_self_config_value,
+            sign_signer_self_source);
 
         // pki vouch certifier self
         check!(
@@ -1874,7 +1994,8 @@ mod tests {
             // Value as string for configuration file.
             format!("\"{}\"", fpr),
             pki_vouch_certifier_self,
-            pki_vouch_certifier_self_config_value);
+            pki_vouch_certifier_self_config_value,
+            pki_vouch_certifier_self_source);
         check!(
             pki_vouch_certifier_self_config_key,
             // Value.
@@ -1882,7 +2003,8 @@ mod tests {
             // Value as string for configuration file.
             format!("\"\""),
             pki_vouch_certifier_self,
-            pki_vouch_certifier_self_config_value);
+            pki_vouch_certifier_self_config_value,
+            pki_vouch_certifier_self_source);
 
         // pki vouch expiration.
         check!(
@@ -1892,7 +2014,8 @@ mod tests {
             // Value as string for configuration file.
             "\"1d\"",
             pki_vouch_expiration,
-            pki_vouch_expiration_config_value);
+            pki_vouch_expiration_config_value,
+            pki_vouch_expiration_source);
 
         // key generate cipher suite.
         check!(
@@ -1902,7 +2025,8 @@ mod tests {
             // Value as string for configuration file.
             "\"rsa2k\"",
             cipher_suite,
-            cipher_suite_config_value);
+            cipher_suite_config_value,
+            cipher_suite_source);
 
         // key generate profile
         check!(
@@ -1912,7 +2036,8 @@ mod tests {
             // Value as string for configuration file.
             "\"rfc9580\"",
             key_generate_profile,
-            key_generate_profile_config_value);
+            key_generate_profile_config_value,
+            key_generate_profile_source);
 
         // keyservers.
         check!(
@@ -1922,7 +2047,8 @@ mod tests {
             // Value as string for configuration file.
             "[ \"hkps://some.example\", \"hkp://other.example\" ]",
             key_servers,
-            key_servers_config_value);
+            key_servers_config_value,
+            key_servers_source);
 
         // network search iterations.
         check!(
@@ -1932,7 +2058,8 @@ mod tests {
             // Value as string for configuration file.
             "2",
             network_search_iterations,
-            network_search_iterations_config_value);
+            network_search_iterations_config_value,
+            network_search_iterations_source);
 
         // network search use dane.
         check!(
@@ -1942,7 +2069,8 @@ mod tests {
             // Value as string for configuration file.
             "false",
             network_search_use_dane,
-            network_search_use_dane_config_value);
+            network_search_use_dane_config_value,
+            network_search_use_dane_source);
 
         // network search use wkd.
         check!(
@@ -1952,6 +2080,7 @@ mod tests {
             // Value as string for configuration file.
             "false",
             network_search_use_wkd,
-            network_search_use_wkd_config_value);
+            network_search_use_wkd_config_value,
+            network_search_use_wkd_source);
     }
 }
