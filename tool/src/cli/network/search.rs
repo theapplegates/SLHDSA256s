@@ -1,5 +1,6 @@
 use clap::Parser;
 
+use sequoia::config::Config;
 use sequoia::config::DEFAULT_KEYSERVERS;
 
 use crate::cli::config;
@@ -53,7 +54,7 @@ pub struct Command {
         default_value_t = 3,
         help = "Iterate to find related updates and certs",
         long_help = config::augment_help(
-            "network.search.iterations",
+            Config::network_search_iterations_config_key(),
             "Iterate to find related updates and certs"),
     )]
     pub iterations: u8,
@@ -68,7 +69,7 @@ pub struct Command {
         value_name = "URI",
         help = "Set a key server to use (can be given multiple times)",
         long_help = config::augment_help(
-            "network.keyservers",
+            Config::key_servers_config_key(),
             "Set a key server to use (can be given multiple times)"),
     )]
     pub servers: Vec<String>,
@@ -83,7 +84,7 @@ pub struct Command {
         default_value = "true",
         help = "Use WKD to search for certs",
         long_help = config::augment_help(
-            "network.search.use-wkd",
+            Config::network_search_use_wkd_config_key(),
             "Use WKD to search for certs"),
     )]
     pub use_wkd: Option<bool>,
@@ -98,7 +99,7 @@ pub struct Command {
         default_value = "true",
         help = "Use DANE to search for certs",
         long_help = config::augment_help(
-            "network.search.use-dane",
+            Config::network_search_use_dane_config_key(),
             "Use DANE to search for certs"),
     )]
     pub use_dane: Option<bool>,

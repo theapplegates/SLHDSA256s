@@ -3,6 +3,8 @@ use std::time::SystemTime;
 
 use anyhow::Context;
 
+use sequoia::config::Config;
+
 use sequoia::openpgp;
 use openpgp::armor;
 use openpgp::cert::amalgamation::ValidAmalgamation;
@@ -322,7 +324,7 @@ pub fn encrypt<'a, 'b: 'a>(
                  Consider adding yourself as recipient, for example by \
                  adding your cert to `{}` in the configuration file ({}), \
                  and using the `--for-self` argument.",
-                cli::encrypt::ENCRYPT_FOR_SELF,
+                Config::encrypt_for_self_config_key(),
                 crate::config::ConfigFile::file_name(home).display()));
         } else {
             sq.hint(format_args!(

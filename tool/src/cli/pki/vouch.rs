@@ -9,12 +9,6 @@ use clap::{Parser, Subcommand};
 
 use crate::cli::examples::*;
 
-/// Key for the help augmentation.
-pub const CERTIFIER_SELF: &str = "pki.vouch.certifier-self";
-
-/// Key for the help augmentation.
-pub const CERTIFICATION_EXPIRATION: &str = "pki.vouch.expiration";
-
 #[derive(Parser, Debug)]
 #[clap(
     name = "vouch",

@@ -11,11 +11,10 @@ use sequoia::openpgp;
 use openpgp::KeyHandle;
 use openpgp::packet::UserID;
 
+use sequoia::config::Config;
+
 use crate::cli::config;
-use crate::cli::encrypt::ENCRYPT_FOR_SELF;
 use crate::cli::escape_for_shell;
-use crate::cli::sign::SIGNER_SELF;
-use crate::cli::pki::vouch::CERTIFIER_SELF;
 use crate::cli::types::SpecialName;
 
 /// The prefix for the designators.
@@ -850,8 +849,10 @@ This can be used to make sure that you yourself can decrypt the message.
 
 {}
 ",
-                        ENCRYPT_FOR_SELF,
-                        if let Some(certs) = config::get_augmentation(ENCRYPT_FOR_SELF) {
+                        Config::encrypt_for_self_config_key(),
+                        if let Some(certs)
+                            = config::get_augmentation(Config::encrypt_for_self_config_key())
+                        {
                             format!("The following certs will be added: {}.", certs)
                         } else {
                             "Currently, the list of certificates to be added is empty."
@@ -869,8 +870,10 @@ This adds the certificates listed in the configuration file under \
 
 {}
 ",
-                        SIGNER_SELF,
-                        if let Some(certs) = config::get_augmentation(SIGNER_SELF) {
+                        Config::sign_signer_self_config_key(),
+                        if let Some(certs)
+                            = config::get_augmentation(Config::sign_signer_self_config_key())
+                        {
                             format!("The following keys will be added: {}.", certs)
                         } else {
                             "Currently, the list of keys to be added is empty."
@@ -889,9 +892,9 @@ This uses the certificates set in the configuration file under \
 
 {}
 ",
-                        CERTIFIER_SELF,
-                        if let Some(cert)
-                            = config::get_augmentation(CERTIFIER_SELF)
+                        Config::pki_vouch_certifier_self_config_key(),
+                        if let Some(cert) = config::get_augmentation(
+                            Config::pki_vouch_certifier_self_config_key())
                         {
                             format!("The following key will be used: {}.",
                                     cert)

@@ -210,11 +210,11 @@ fn real_main() -> Result<()> {
                 // We want to try to parse the configuration file.  To
                 // that end, we first need to find the path to it.
                 let mut config = config::ConfigFile::default();
-                if let Some(augmentations) = cli::config::find_home().and_then(
-                    |home| config.read_and_augment(&home).ok())
-                {
-                    cli::config::set_augmentations(augmentations);
-                }
+                cli::config::find_home().and_then(|home| {
+                    config.read(&home).ok()
+                }).map(|config: config::Config| {
+                    cli::config::set_augmentations(&config);
+                });
 
                 let output = err.render();
                 let output = if output == cli.render_long_help() {

@@ -13,6 +13,8 @@ use typenum::Unsigned;
 use anyhow::anyhow;
 use anyhow::Context as _;
 
+use sequoia::config::Config;
+
 use sequoia::openpgp;
 use openpgp::Cert;
 use openpgp::crypto;
@@ -47,7 +49,6 @@ use keystore::Protection;
 
 use sequoia::Sequoia;
 
-use crate::cli;
 use crate::cli::types::CertDesignators;
 use crate::cli::types::FileStdinOrKeyHandle;
 use crate::cli::types::KeyDesignators;
@@ -1888,15 +1889,15 @@ impl Sq {
                     {
                         "for-" => (
                             Box::new(self.config.encrypt_for_self().iter()),
-                            cli::encrypt::ENCRYPT_FOR_SELF,
+                            Config::encrypt_for_self_config_key(),
                         ),
                         "signer-" => (
                             Box::new(self.config.sign_signer_self().iter()),
-                            cli::sign::SIGNER_SELF,
+                            Config::sign_signer_self_config_key(),
                         ),
                         "certifier-" => (
                             Box::new(self.config.pki_vouch_certifier_self().iter()),
-                            cli::pki::vouch::CERTIFIER_SELF,
+                            Config::pki_vouch_certifier_self_config_key(),
                         ),
                         _ => return Err(anyhow::anyhow!(
                             "self designator used with unexpected prefix: {}", prefix)),

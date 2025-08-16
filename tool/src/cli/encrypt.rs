@@ -2,6 +2,7 @@
 
 use clap::{ValueEnum, Parser};
 
+use sequoia::config::Config;
 use sequoia::config::Profile;
 
 use super::types::ClapData;
@@ -15,9 +16,6 @@ use crate::cli::types::cert_designator::*;
 
 use crate::cli::examples;
 use examples::*;
-
-/// Key for the help augmentation.
-pub const ENCRYPT_FOR_SELF: &str = "encrypt.for-self";
 
 const ENCRYPT_EXAMPLES: Actions = Actions {
     actions: &[
@@ -158,7 +156,7 @@ to using the one that expired last",
         default_value_t = Default::default(),
         help = "Select the default OpenPGP standard for the encryption container",
         long_help = config::augment_help(
-            "encrypt.profile",
+            Config::encrypt_profile_config_key(),
             "Select the default OpenPGP standard for the encryption container
 
 When encrypting for certificates, the encryption container is selected \

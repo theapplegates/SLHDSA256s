@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::{ArgGroup, Args};
 
 use sequoia::config::CipherSuite;
+use sequoia::config::Config;
 use sequoia::config::DEFAULT_KEY_ROTATE_RETIRE_IN_DURATION;
 use sequoia::config::DEFAULT_KEY_ROTATE_RETIRE_IN_IN_DAYS;
 use sequoia::config::DEFAULT_KEY_VALIDITY_DURATION;
@@ -115,7 +116,7 @@ might want to do this is a shared mailbox."
         default_value_t = Default::default(),
         help = "Select the cryptographic algorithms for the key",
         long_help = config::augment_help(
-            "key.generate.cipher-suite",
+            Config::cipher_suite_config_key(),
             "Select the cryptographic algorithms for the key"),
         value_enum,
     )]
@@ -131,7 +132,7 @@ might want to do this is a shared mailbox."
         default_value_t = Default::default(),
         help = "Select the OpenPGP standard for the key",
         long_help = config::augment_help(
-            "key.generate.profile",
+            Config::key_generate_profile_config_key(),
             "Select the OpenPGP standard for the key
 
 As OpenPGP evolves, new versions will become available.  This option \

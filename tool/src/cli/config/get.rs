@@ -2,6 +2,8 @@
 
 use clap::Args;
 
+use sequoia::config::Config;
+
 use crate::cli::examples::*;
 
 #[derive(Debug, Args)]
@@ -38,7 +40,7 @@ List all configuration options.",
             comment: "\
 Get the default cipher suite for key generation.",
             command: &[
-                "sq", "config", "get", "key.generate.cipher-suite",
+                "sq", "config", "get", Config::cipher_suite_config_key(),
             ],
             hide: &[],
         }),

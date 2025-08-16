@@ -13,6 +13,8 @@ use clap::{
 };
 use clap_lex::OsStrExt;
 
+use sequoia::config::Config;
+use sequoia::config::Source;
 use sequoia::directories::Home;
 
 pub mod get;
@@ -90,7 +92,95 @@ pub fn get_augmentation(key: &str) -> Option<&str> {
 }
 
 /// Includes values from the config file in help messages.
-pub fn set_augmentations(augmentations: Augmentations) {
+pub fn set_augmentations(config: &Config) {
+    let mut augmentations = Augmentations::default();
+
+    if config.verbosity_source() == Source::ConfigFile {
+        let key = Config::verbosity_config_key();
+        let value = config.verbosity_config_value();
+        augmentations.insert(key, value);
+    }
+
+    if config.encrypt_for_self_source() == Source::ConfigFile {
+        if ! config.encrypt_for_self().is_empty() {
+            let key = Config::encrypt_for_self_config_key();
+            let value = config.encrypt_for_self()
+                .iter()
+                .map(|fpr| fpr.to_string())
+                .collect::<Vec<String>>()
+                .join(" ");
+
+            augmentations.insert(key, value);
+        }
+    }
+
+    if config.encrypt_profile_source() == Source::ConfigFile {
+        augmentations.insert(Config::encrypt_profile_config_key(),
+                             config.encrypt_profile().to_string());
+    }
+
+    if config.sign_signer_self_source() == Source::ConfigFile {
+        if ! config.sign_signer_self().is_empty() {
+            let key = Config::sign_signer_self_config_key();
+            let value = config.sign_signer_self()
+                .iter()
+                .map(|fpr| fpr.to_string())
+                .collect::<Vec<String>>()
+                .join(" ");
+
+            augmentations.insert(key, value);
+        }
+    }
+
+    if config.pki_vouch_certifier_self_source() == Source::ConfigFile {
+        if let Some(value) = config.pki_vouch_certifier_self() {
+            let key = Config::pki_vouch_certifier_self_config_key();
+            augmentations.insert(key, value.to_string());
+        }
+    }
+
+    if config.pki_vouch_expiration_source() == Source::ConfigFile {
+        augmentations.insert(
+            Config::pki_vouch_expiration_config_key(),
+            config.pki_vouch_expiration().to_string());
+    }
+
+    if config.cipher_suite_source() == Source::ConfigFile {
+        augmentations.insert(
+            Config::cipher_suite_config_key(),
+            config.cipher_suite().to_string());
+    }
+
+    if config.key_generate_profile_source() == Source::ConfigFile {
+        augmentations.insert(
+            Config::key_generate_profile_config_key(),
+            config.key_generate_profile().to_string());
+    }
+
+    if config.key_servers_source() == Source::ConfigFile {
+        augmentations.insert(
+            Config::key_servers_config_key(),
+            config.key_servers().join(" "));
+    }
+
+    if config.network_search_iterations_source() == Source::ConfigFile {
+        augmentations.insert(
+            Config::network_search_iterations_config_key(),
+            config.network_search_iterations().to_string());
+    }
+
+    if config.network_search_use_dane_source() == Source::ConfigFile {
+        augmentations.insert(
+            Config::network_search_use_dane_config_key(),
+            config.network_search_use_dane().to_string());
+    }
+
+    if config.network_search_use_wkd_source() == Source::ConfigFile {
+        augmentations.insert(
+            Config::network_search_use_wkd_config_key(),
+            config.network_search_use_wkd().to_string());
+    }
+
     AUGMENTATIONS.set(augmentations)
         .expect("augmentations must only be set once");
 }

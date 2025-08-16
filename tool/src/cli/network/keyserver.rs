@@ -1,5 +1,6 @@
 use clap::{Args, Parser, Subcommand};
 
+use sequoia::config::Config;
 use sequoia::config::DEFAULT_KEYSERVERS;
 
 use crate::cli::config;
@@ -34,7 +35,7 @@ pub struct Command {
         value_name = "URI",
         help = "Set a key server to use (can be given multiple times)",
         long_help = config::augment_help(
-            "network.keyservers",
+            Config::key_servers_config_key(),
             "Set a key server to use (can be given multiple times)"),
     )]
     pub servers: Vec<String>,

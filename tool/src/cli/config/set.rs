@@ -2,6 +2,8 @@
 
 use clap::Args;
 
+use sequoia::config::Config;
+
 use crate::cli::examples::*;
 
 // XXX: We don't currently expose the set command.
@@ -62,7 +64,7 @@ const SET_EXAMPLES: Actions = Actions {
             comment: "\
 Set the default cipher suite for key generation.",
             command: &[
-                "sq", "config", "set", "key.generate.cipher-suite",
+                "sq", "config", "set", Config::cipher_suite_config_key(),
                 "rsa3k",
             ],
             hide: &[],
@@ -72,7 +74,7 @@ Set the default cipher suite for key generation.",
             comment: "\
 Delete the default cipher suite for key generation.",
             command: &[
-                "sq", "config", "set", "key.generate.cipher-suite",
+                "sq", "config", "set", Config::cipher_suite_config_key(),
                 "--delete",
             ],
             hide: &[],
@@ -82,7 +84,7 @@ Delete the default cipher suite for key generation.",
             comment: "\
 Add a default key server for network queries.",
             command: &[
-                "sq", "config", "set", "network.keyservers",
+                "sq", "config", "set", Config::key_servers_config_key(),
                 "--add", "hkps://keys.example.org",
             ],
             hide: &[],

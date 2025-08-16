@@ -6,6 +6,7 @@ use sequoia::openpgp;
 use openpgp::packet::UserID;
 
 use sequoia::config::CipherSuite;
+use sequoia::config::Config;
 use sequoia::config::DEFAULT_KEY_VALIDITY_DURATION;
 use sequoia::config::DEFAULT_KEY_VALIDITY_IN_YEARS;
 use sequoia::config::Profile;
@@ -139,7 +140,7 @@ Canonical user IDs are of the form `Name (Comment) \
         default_value_t = Default::default(),
         help = "Select the cryptographic algorithms for the key",
         long_help = config::augment_help(
-            "key.generate.cipher-suite",
+            Config::cipher_suite_config_key(),
             "Select the cryptographic algorithms for the key"),
         value_enum,
     )]
@@ -155,7 +156,7 @@ Canonical user IDs are of the form `Name (Comment) \
         default_value_t = Default::default(),
         help = "Select the OpenPGP standard for the key",
         long_help = config::augment_help(
-            "key.generate.profile",
+            Config::key_generate_profile_config_key(),
             "Select the OpenPGP standard for the key
 
 As OpenPGP evolves, new versions will become available.  This option \

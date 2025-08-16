@@ -1,7 +1,7 @@
 //! Configuration model and file parsing.
 
 use std::{
-    collections::{BTreeMap, BTreeSet, HashSet},
+    collections::{BTreeSet, HashSet},
     fs,
     io,
     path::{Path, PathBuf},
@@ -50,9 +50,6 @@ pub use profile::Profile;
 pub mod toml_edit_tree;
 mod verbosity;
 pub use verbosity::Verbosity;
-
-/// Values read from the config file to be included in help messages.
-pub type Augmentations = BTreeMap<&'static str, String>;
 
 /// The default validity (in years) for keys and subkeys
 pub const DEFAULT_KEY_VALIDITY_IN_YEARS: u64 = 3;
@@ -965,25 +962,14 @@ impl ConfigFile {
                 -> Result<Config>
     {
         let mut config = Config::default();
-        self.read_internal(home, Some(&mut config), None)?;
+        self.read_internal(home, Some(&mut config))?;
         Ok(config)
     }
 
-    /// Reads and validates the configuration file.
-    pub fn read_and_augment(&mut self, home: &Home) -> Result<Augmentations>
-    {
-        let mut augmentations = Augmentations::default();
-        self.read_internal(home, None, Some(&mut augmentations))?;
-        Ok(augmentations)
-    }
-
     /// Reads and validates the configuration file, and optionally
-    /// applies them to the given configuration, and optionally
-    /// supplies augmentations for the help texts in the command line
-    /// parser.
-    fn read_internal(&mut self, home: &Home, config: Option<&mut Config>,
-                     cli: Option<&mut Augmentations>)
-                     -> Result<()>
+    /// applies them to the given configuration.
+    fn read_internal(&mut self, home: &Home, config: Option<&mut Config>)
+        -> Result<()>
     {
         let path = Self::file_name(home);
         let raw = match fs::read_to_string(&path) {
@@ -995,7 +981,7 @@ impl ConfigFile {
                         path.display()))),
         };
 
-        let config_file = Self::parse(&raw, config, cli)
+        let config_file = Self::parse(&raw, config)
             .with_context(|| format!("Parsing configuration file {} failed",
                                      path.display()))?;
         self.doc = config_file.doc;
@@ -1004,13 +990,12 @@ impl ConfigFile {
     }
 
     /// Parses and validates the configuration.
-    fn parse(doc: &str, mut config: Option<&mut Config>,
-             mut cli: Option<&mut Augmentations>)
+    fn parse(doc: &str, mut config: Option<&mut Config>)
         -> Result<Self>
     {
         let doc: DocumentMut = doc.parse()?;
 
-        apply_schema(&mut config, &mut cli, None, doc.iter(), TOP_LEVEL_SCHEMA)?;
+        apply_schema(&mut config, None, doc.iter(), TOP_LEVEL_SCHEMA)?;
 
         Ok(Self {
             doc,
@@ -1041,7 +1026,7 @@ impl ConfigFile {
     /// Verifies the configuration.
     pub fn verify(&self) -> Result<()> {
         let mut config = Default::default();
-        apply_schema(&mut Some(&mut config), &mut None, None, self.doc.iter(),
+        apply_schema(&mut Some(&mut config), None, self.doc.iter(),
                      TOP_LEVEL_SCHEMA)?;
         config.policy(SystemTime::now())?;
         Ok(())
@@ -1102,7 +1087,7 @@ impl ConfigFile {
             .set(&"hints".into(), hints.into())?;
 
         // Double check that it is well-formed.
-        apply_schema(&mut None, &mut None, None, doc.iter(), TOP_LEVEL_SCHEMA)?;
+        apply_schema(&mut None, None, doc.iter(), TOP_LEVEL_SCHEMA)?;
 
         Ok(Self {
             doc,
@@ -1129,13 +1114,12 @@ impl ConfigFile {
 }
 
 /// Validates a configuration section using a schema, and optionally
-/// applies changes to the configuration and CLI augmentations.
+/// applies changes to the configuration.
 ///
 /// Returns an error if a key is unknown.
 ///
 /// known_keys better be lowercase.
 fn apply_schema<'toml>(config: &mut Option<&mut Config>,
-                       cli: &mut Option<&mut Augmentations>,
                        path: Option<&str>,
                        section: toml_edit::Iter<'toml>,
                        schema: Schema) -> Result<()> {
@@ -1216,7 +1200,7 @@ fn apply_schema<'toml>(config: &mut Option<&mut Config>,
     for (key, value) in &section {
         if let Ok(i) = schema.binary_search_by_key(key, |(k, _)| k) {
             let apply = schema[i].1;
-            (apply)(config, cli, &format!("{}{}", prefix, key), value)
+            (apply)(config, &format!("{}{}", prefix, key), value)
                 .with_context(|| format!("Error validating {:?}", key))?;
         }
     }
@@ -1264,17 +1248,11 @@ impl Error {
 }
 
 /// A function that validates a node in the configuration tree with
-/// the given path, and optionally makes changes to the configuration
-/// and CLI augmentations.
-type Applicator = fn(&mut Option<&mut Config>, &mut Option<&mut Augmentations>,
-                     &str, &Item)
-                     -> Result<()>;
+/// the given path.
+type Applicator = fn(&mut Option<&mut Config>, &str, &Item) -> Result<()>;
 
 /// Ignores a node.
-fn apply_nop(_: &mut Option<&mut Config>, _: &mut Option<&mut Augmentations>,
-             _: &str, _: &Item)
-             -> Result<()>
-{
+fn apply_nop(_: &mut Option<&mut Config>, _: &str, _: &Item) -> Result<()> {
     Ok(())
 }
 
@@ -1300,20 +1278,17 @@ const UI_SCHEMA: Schema = &[
 ];
 
 /// Validates the `ui` section.
-fn apply_ui(config: &mut Option<&mut Config>, cli: &mut Option<&mut Augmentations>,
-            path: &str, item: &Item)
+fn apply_ui(config: &mut Option<&mut Config>, path: &str, item: &Item)
             -> Result<()>
 {
     let section = item.as_table_like()
         .ok_or_else(|| Error::bad_item_type(path, item, "table"))?;
-    apply_schema(config, cli, Some(path), section.iter(), UI_SCHEMA)?;
+    apply_schema(config, Some(path), section.iter(), UI_SCHEMA)?;
     Ok(())
 }
 
 /// Validates the `ui.hints` value.
-fn apply_ui_hints(config: &mut Option<&mut Config>,
-                  _cli: &mut Option<&mut Augmentations>,
-                  path: &str, item: &Item)
+fn apply_ui_hints(config: &mut Option<&mut Config>, path: &str, item: &Item)
                   -> Result<()>
 {
     let s = item.as_bool()
@@ -1328,9 +1303,8 @@ fn apply_ui_hints(config: &mut Option<&mut Config>,
 
 /// Validates the `ui.verbosity` value.
 fn apply_ui_verbosity(config: &mut Option<&mut Config>,
-                      cli: &mut Option<&mut Augmentations>,
                       path: &str, item: &Item)
-                      -> Result<()>
+    -> Result<()>
 {
     let s = item.as_str()
         .ok_or_else(|| Error::bad_item_type(path, item, "string"))?;
@@ -1344,12 +1318,6 @@ fn apply_ui_verbosity(config: &mut Option<&mut Config>,
                                          \"verbose\", \
                                          or \"quiet\"")),
     };
-
-    if let Some(cli) = cli {
-        if verbosity != Verbosity::Default {
-            cli.insert("ui.verbosity", verbosity.to_string());
-        }
-    }
 
     if let Some(config) = config {
         config.verbosity = verbosity;
@@ -1366,19 +1334,18 @@ const ENCRYPT_SCHEMA: Schema = &[
 ];
 
 /// Validates the `encrypt` section.
-fn apply_encrypt(config: &mut Option<&mut Config>, cli: &mut Option<&mut Augmentations>,
+fn apply_encrypt(config: &mut Option<&mut Config>,
                  path: &str, item: &Item)
-                 -> Result<()>
+    -> Result<()>
 {
     let section = item.as_table_like()
         .ok_or_else(|| Error::bad_item_type(path, item, "table"))?;
-    apply_schema(config, cli, Some(path), section.iter(), ENCRYPT_SCHEMA)?;
+    apply_schema(config, Some(path), section.iter(), ENCRYPT_SCHEMA)?;
     Ok(())
 }
 
 /// Validates the `encrypt.for-self` value.
 fn apply_encrypt_for_self(config: &mut Option<&mut Config>,
-                          cli: &mut Option<&mut Augmentations>,
                           path: &str, item: &Item)
                           -> Result<()>
 {
@@ -1394,10 +1361,6 @@ fn apply_encrypt_for_self(config: &mut Option<&mut Config>,
 
         strs.push(s);
         values.insert(s.parse::<Fingerprint>()?);
-    }
-
-    if let Some(cli) = cli {
-        cli.insert("encrypt.for-self", strs.join(" "));
     }
 
     if let Some(config) = config {
@@ -1410,7 +1373,6 @@ fn apply_encrypt_for_self(config: &mut Option<&mut Config>,
 
 /// Validates the `encrypt.profile` value.
 fn apply_encrypt_profile(config: &mut Option<&mut Config>,
-                         cli: &mut Option<&mut Augmentations>,
                          path: &str, item: &Item)
                          -> Result<()>
 {
@@ -1423,12 +1385,6 @@ fn apply_encrypt_profile(config: &mut Option<&mut Config>,
         config.encrypt_profile_source = Source::ConfigFile;
     }
 
-    if let Some(cli) = cli {
-        cli.insert(
-            "encrypt.profile",
-            v.to_string());
-    }
-
     Ok(())
 }
 
@@ -1439,19 +1395,17 @@ const SIGN_SCHEMA: Schema = &[
 
 /// Validates the `sign` section.
 fn apply_sign(config: &mut Option<&mut Config>,
-              cli: &mut Option<&mut Augmentations>,
               path: &str, item: &Item)
               -> Result<()>
 {
     let section = item.as_table_like()
         .ok_or_else(|| Error::bad_item_type(path, item, "table"))?;
-    apply_schema(config, cli, Some(path), section.iter(), SIGN_SCHEMA)?;
+    apply_schema(config, Some(path), section.iter(), SIGN_SCHEMA)?;
     Ok(())
 }
 
 /// Validates the `sign.signer-self` value.
 fn apply_sign_signer_self(config: &mut Option<&mut Config>,
-                          cli: &mut Option<&mut Augmentations>,
                           path: &str, item: &Item)
                           -> Result<()>
 {
@@ -1467,10 +1421,6 @@ fn apply_sign_signer_self(config: &mut Option<&mut Config>,
 
         strs.push(s);
         values.insert(s.parse::<Fingerprint>()?);
-    }
-
-    if let Some(cli) = cli {
-        cli.insert("sign.signer-self", strs.join(" "));
     }
 
     if let Some(config) = config {
@@ -1488,13 +1438,12 @@ const PKI_SCHEMA: Schema = &[
 
 /// Validates the `pki` section.
 fn apply_pki(config: &mut Option<&mut Config>,
-              cli: &mut Option<&mut Augmentations>,
-              path: &str, item: &Item)
-              -> Result<()>
+             path: &str, item: &Item)
+    -> Result<()>
 {
     let section = item.as_table_like()
         .ok_or_else(|| Error::bad_item_type(path, item, "table"))?;
-    apply_schema(config, cli, Some(path), section.iter(), PKI_SCHEMA)?;
+    apply_schema(config, Some(path), section.iter(), PKI_SCHEMA)?;
     Ok(())
 }
 
@@ -1506,21 +1455,19 @@ const PKI_VOUCH_SCHEMA: Schema = &[
 
 /// Validates the `pki.vouch` section.
 fn apply_pki_vouch(config: &mut Option<&mut Config>,
-              cli: &mut Option<&mut Augmentations>,
-              path: &str, item: &Item)
-              -> Result<()>
+                   path: &str, item: &Item)
+    -> Result<()>
 {
     let section = item.as_table_like()
         .ok_or_else(|| Error::bad_item_type(path, item, "table"))?;
-    apply_schema(config, cli, Some(path), section.iter(), PKI_VOUCH_SCHEMA)?;
+    apply_schema(config, Some(path), section.iter(), PKI_VOUCH_SCHEMA)?;
     Ok(())
 }
 
 /// Validates the `pki.vouch.certifier-self` value.
 fn apply_pki_vouch_certifier_self(config: &mut Option<&mut Config>,
-                                  cli: &mut Option<&mut Augmentations>,
                                   path: &str, item: &Item)
-                                  -> Result<()>
+    -> Result<()>
 {
     let s = item.as_str()
         .ok_or_else(|| Error::bad_item_type(path, item, "string"))?;
@@ -1532,13 +1479,6 @@ fn apply_pki_vouch_certifier_self(config: &mut Option<&mut Config>,
              .with_context(|| format!("{:?} is not a valid fingerprint", s))?)
     };
 
-    if let Some(cli) = cli {
-        cli.insert("pki.vouch.certifier-self",
-                   fp.as_ref()
-                       .map(|fp| fp.to_string())
-                       .unwrap_or_else(|| "".into()));
-    }
-
     if let Some(config) = config {
         config.pki_vouch_certifier_self = fp;
         config.pki_vouch_certifier_self_source = Source::ConfigFile;
@@ -1549,18 +1489,13 @@ fn apply_pki_vouch_certifier_self(config: &mut Option<&mut Config>,
 
 /// Validates the `pki.vouch.expiration` value.
 fn apply_pki_vouch_expiration(config: &mut Option<&mut Config>,
-                              cli: &mut Option<&mut Augmentations>,
                               path: &str, item: &Item)
-                              -> Result<()>
+    -> Result<()>
 {
     let s = item.as_str()
         .ok_or_else(|| Error::bad_item_type(path, item, "string"))?;
 
     let v = s.parse::<Expiration>()?;
-
-    if let Some(cli) = cli {
-        cli.insert("pki.vouch.expiration", v.to_string());
-    }
 
     if let Some(config) = config {
         config.pki_vouch_expiration = v;
@@ -1576,13 +1511,13 @@ const KEY_SCHEMA: Schema = &[
 ];
 
 /// Validates the `key` section.
-fn apply_key(config: &mut Option<&mut Config>, cli: &mut Option<&mut Augmentations>,
-                 path: &str, item: &Item)
-                 -> Result<()>
+fn apply_key(config: &mut Option<&mut Config>,
+             path: &str, item: &Item)
+    -> Result<()>
 {
     let section = item.as_table_like()
         .ok_or_else(|| Error::bad_item_type(path, item, "table"))?;
-    apply_schema(config, cli, Some(path), section.iter(), KEY_SCHEMA)?;
+    apply_schema(config, Some(path), section.iter(), KEY_SCHEMA)?;
     Ok(())
 }
 
@@ -1594,21 +1529,19 @@ const KEY_GENERATE_SCHEMA: Schema = &[
 
 /// Validates the `key.generate` section.
 fn apply_key_generate(config: &mut Option<&mut Config>,
-                      cli: &mut Option<&mut Augmentations>,
                       path: &str, item: &Item)
-                      -> Result<()>
+    -> Result<()>
 {
     let section = item.as_table_like()
         .ok_or_else(|| Error::bad_item_type(path, item, "table"))?;
-    apply_schema(config, cli, Some(path), section.iter(), KEY_GENERATE_SCHEMA)?;
+    apply_schema(config, Some(path), section.iter(), KEY_GENERATE_SCHEMA)?;
     Ok(())
 }
 
 /// Validates the `key.generate.cipher-suite` value.
 fn apply_key_generate_cipher_suite(config: &mut Option<&mut Config>,
-                                   cli: &mut Option<&mut Augmentations>,
                                    path: &str, item: &Item)
-                                   -> Result<()>
+    -> Result<()>
 {
     let s = item.as_str()
         .ok_or_else(|| Error::bad_item_type(path, item, "string"))?;
@@ -1619,20 +1552,13 @@ fn apply_key_generate_cipher_suite(config: &mut Option<&mut Config>,
         config.cipher_suite_source = Source::ConfigFile;
     }
 
-    if let Some(cli) = cli {
-        cli.insert(
-            "key.generate.cipher-suite",
-            v.to_string());
-    }
-
     Ok(())
 }
 
 /// Validates the `key.generate.profile` value.
 fn apply_key_generate_profile(config: &mut Option<&mut Config>,
-                              cli: &mut Option<&mut Augmentations>,
                               path: &str, item: &Item)
-                              -> Result<()>
+    -> Result<()>
 {
     let s = item.as_str()
         .ok_or_else(|| Error::bad_item_type(path, item, "string"))?;
@@ -1641,12 +1567,6 @@ fn apply_key_generate_profile(config: &mut Option<&mut Config>,
     if let Some(config) = config {
         config.key_generate_profile = v.clone();
         config.key_generate_profile_source = Source::ConfigFile;
-    }
-
-    if let Some(cli) = cli {
-        cli.insert(
-            "key.generate.profile",
-            v.to_string());
     }
 
     Ok(())
@@ -1659,21 +1579,20 @@ const NETWORK_SCHEMA: Schema = &[
 ];
 
 /// Validates the `network` section.
-fn apply_network(config: &mut Option<&mut Config>, cli: &mut Option<&mut Augmentations>,
+fn apply_network(config: &mut Option<&mut Config>,
                  path: &str, item: &Item)
-                 -> Result<()>
+    -> Result<()>
 {
     let section = item.as_table_like()
         .ok_or_else(|| Error::bad_item_type(path, item, "table"))?;
-    apply_schema(config, cli, Some(path), section.iter(), NETWORK_SCHEMA)?;
+    apply_schema(config, Some(path), section.iter(), NETWORK_SCHEMA)?;
     Ok(())
 }
 
 /// Validates the `network.keyservers` value.
 fn apply_network_keyservers(config: &mut Option<&mut Config>,
-                            cli: &mut Option<&mut Augmentations>,
                             path: &str, item: &Item)
-                            -> Result<()>
+    -> Result<()>
 {
     let list = item.as_array()
         .ok_or_else(|| Error::bad_item_type(path, item, "array"))?;
@@ -1696,10 +1615,6 @@ fn apply_network_keyservers(config: &mut Option<&mut Config>,
         servers_str.push(server_str.to_string());
     }
 
-    if let Some(cli) = cli {
-        cli.insert("network.keyservers", servers_str.join(" "));
-    }
-
     if let Some(config) = config {
         config.key_servers = servers_str;
         config.key_servers_source = Source::ConfigFile;
@@ -1717,22 +1632,20 @@ const NETWORK_SEARCH_SCHEMA: Schema = &[
 
 /// Validates the `network.search` section.
 fn apply_network_search(config: &mut Option<&mut Config>,
-                        cli: &mut Option<&mut Augmentations>,
                         path: &str, item: &Item)
-                        -> Result<()>
+    -> Result<()>
 {
     let section = item.as_table_like()
         .ok_or_else(|| Error::bad_item_type(path, item, "table"))?;
-    apply_schema(config, cli, Some(path), section.iter(),
+    apply_schema(config, Some(path), section.iter(),
                  NETWORK_SEARCH_SCHEMA)?;
     Ok(())
 }
 
 /// Validates the `network.search.iterations` value.
 fn apply_network_search_iterations(config: &mut Option<&mut Config>,
-                                   cli: &mut Option<&mut Augmentations>,
                                    path: &str, item: &Item)
-                                   -> Result<()>
+    -> Result<()>
 {
     let s = item.as_integer()
         .ok_or_else(|| Error::bad_item_type(path, item, "integer"))?;
@@ -1747,18 +1660,13 @@ fn apply_network_search_iterations(config: &mut Option<&mut Config>,
         config.network_search_iterations_source = Source::ConfigFile;
     }
 
-    if let Some(cli) = cli {
-        cli.insert("network.search.iterations", s.to_string());
-    }
-
     Ok(())
 }
 
 /// Validates the `network.search.use-dane` value.
 fn apply_network_search_use_dane(config: &mut Option<&mut Config>,
-                                 cli: &mut Option<&mut Augmentations>,
                                  path: &str, item: &Item)
-                                 -> Result<()>
+    -> Result<()>
 {
     let s = item.as_bool()
         .ok_or_else(|| Error::bad_item_type(path, item, "bool"))?;
@@ -1768,18 +1676,13 @@ fn apply_network_search_use_dane(config: &mut Option<&mut Config>,
         config.network_search_use_dane_source = Source::ConfigFile;
     }
 
-    if let Some(cli) = cli {
-        cli.insert("network.search.use-dane", s.to_string());
-    }
-
     Ok(())
 }
 
 /// Validates the `network.search.use-wkd` value.
 fn apply_network_search_use_wkd(config: &mut Option<&mut Config>,
-                                cli: &mut Option<&mut Augmentations>,
                                 path: &str, item: &Item)
-                                -> Result<()>
+    -> Result<()>
 {
     let s = item.as_bool()
         .ok_or_else(|| Error::bad_item_type(path, item, "bool"))?;
@@ -1787,10 +1690,6 @@ fn apply_network_search_use_wkd(config: &mut Option<&mut Config>,
     if let Some(config) = config {
         config.network_search_use_wkd = s;
         config.network_search_use_wkd_source = Source::ConfigFile;
-    }
-
-    if let Some(cli) = cli {
-        cli.insert("network.search.use-wkd", s.to_string());
     }
 
     Ok(())
@@ -1808,13 +1707,12 @@ const POLICY_SCHEMA: Schema = &[
 
 /// Validates the `policy` section.
 fn apply_policy(config: &mut Option<&mut Config>,
-                cli: &mut Option<&mut Augmentations>,
                 path: &str, item: &Item)
-                -> Result<()>
+    -> Result<()>
 {
     let section = item.as_table_like()
         .ok_or_else(|| Error::bad_item_type(path, item, "table"))?;
-    apply_schema(config, cli, Some(path), section.iter(), POLICY_SCHEMA)?;
+    apply_schema(config, Some(path), section.iter(), POLICY_SCHEMA)?;
 
     if let Some(config) = config {
         // Extract the inline policy.
@@ -1842,9 +1740,8 @@ fn apply_policy(config: &mut Option<&mut Config>,
 
 /// Validates the `policy.path` value.
 fn apply_policy_path(config: &mut Option<&mut Config>,
-                     _: &mut Option<&mut Augmentations>,
                      path: &str, item: &Item)
-                     -> Result<()>
+    -> Result<()>
 {
     let path = item.as_str()
         .ok_or_else(|| Error::bad_item_type(path, item, "string"))?;
@@ -1862,21 +1759,20 @@ const SERVERS_SCHEMA: Schema = &[
 ];
 
 /// Validates the `servers` section.
-fn apply_servers(config: &mut Option<&mut Config>, cli: &mut Option<&mut Augmentations>,
+fn apply_servers(config: &mut Option<&mut Config>,
                  path: &str, item: &Item)
-                 -> Result<()>
+    -> Result<()>
 {
     let section = item.as_table_like()
         .ok_or_else(|| Error::bad_item_type(path, item, "table"))?;
-    apply_schema(config, cli, Some(path), section.iter(), SERVERS_SCHEMA)?;
+    apply_schema(config, Some(path), section.iter(), SERVERS_SCHEMA)?;
     Ok(())
 }
 
 /// Validates the `servers.path` value.
 fn apply_servers_path(config: &mut Option<&mut Config>,
-                      _: &mut Option<&mut Augmentations>,
                       path: &str, item: &Item)
-                      -> Result<()>
+    -> Result<()>
 {
     let path = item.as_str()
         .ok_or_else(|| Error::bad_item_type(path, item, "string"))?;
@@ -1900,7 +1796,7 @@ mod tests {
             .expect("can create a configuration template");
 
         let mut config = Config::default();
-        ConfigFile::parse(&template, Some(&mut config), None)
+        ConfigFile::parse(&template, Some(&mut config))
             .expect("can parse the default configuration template");
 
         assert_eq!(config, Config::default());
@@ -1921,7 +1817,7 @@ mod tests {
                  let mut config = Config::default();
                  assert_eq!(config.$source, Source::Default);
                  let doc = format!("{} = {}", Config::$key(), value_str);
-                 ConfigFile::parse(&doc, Some(&mut config), None).unwrap();
+                 ConfigFile::parse(&doc, Some(&mut config)).unwrap();
                  assert_eq!(config.$value_getter, $value);
                  assert_eq!(config.$source, Source::ConfigFile);
 
@@ -1929,7 +1825,7 @@ mod tests {
                  // make sure we can round trip it.
                  let doc = format!("{} = {}", Config::$key(), config.$conf_getter());
                  let mut config = Config::default();
-                 ConfigFile::parse(&doc, Some(&mut config), None).unwrap();
+                 ConfigFile::parse(&doc, Some(&mut config)).unwrap();
                  assert_eq!(config.$value_getter, $value);
                  assert_eq!(config.$source, Source::ConfigFile);
             }};

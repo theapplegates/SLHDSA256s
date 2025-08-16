@@ -4,6 +4,7 @@ use clap::Args;
 use clap::ArgGroup;
 
 use sequoia::config::CipherSuite;
+use sequoia::config::Config;
 
 use crate::cli::examples;
 use examples::Action;
@@ -92,7 +93,7 @@ pub struct Command {
         default_value_t = CipherSuite::Cv25519,
         help = "Select the cryptographic algorithms for the subkey",
         long_help = config::augment_help(
-            "key.generate.cipher-suite",
+            Config::cipher_suite_config_key(),
             "Select the cryptographic algorithms for the subkey"),
         value_enum,
     )]

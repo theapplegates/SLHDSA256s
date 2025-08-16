@@ -89,6 +89,7 @@ use clap::builder::StyledStr;
 use sequoia::openpgp;
 use openpgp::Fingerprint;
 
+use sequoia::config::Config;
 use sequoia::Time;
 
 #[macro_use]
@@ -522,7 +523,7 @@ any surrounding whitespace like a trailing newline.",
         help_heading = GLOBAL_OPTIONS_HEADER,
         help = "Be more verbose",
         long_help = config::augment_help(
-            "ui.verbosity",
+            Config::verbosity_config_key(),
             "Be more verbose"),
     )]
     pub verbose: bool,
@@ -534,7 +535,7 @@ any surrounding whitespace like a trailing newline.",
         help_heading = GLOBAL_OPTIONS_HEADER,
         help = "Be more quiet",
         long_help = config::augment_help(
-            "ui.verbosity",
+            Config::verbosity_config_key(),
             "Be more quiet"),
         conflicts_with = "verbose",
     )]

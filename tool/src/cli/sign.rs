@@ -16,9 +16,6 @@ use crate::cli::examples;
 use examples::*;
 use crate::cli::types::cert_designator::*;
 
-/// Key for the help augmentation.
-pub const SIGNER_SELF: &str = "sign.signer-self";
-
 const SIGN_EXAMPLES: Actions = Actions {
     actions: &[
         Action::example().comment(
