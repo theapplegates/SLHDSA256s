@@ -973,6 +973,20 @@ example#certifier-self = \"fingerprint of your key\"
         home.config_dir(Component::Sq).join("config.toml")
     }
 
+    /// Reads and validates the configuration file from the default
+    /// home directory.
+    ///
+    /// If the configuration file does not exist, the default
+    /// configuration file is returned.  Any other error that occurs
+    /// while reading the configuration is propagated to the caller.
+    pub fn parse_default_home() -> Result<Self> {
+        if let Some(home) = sequoia_directories::Home::default() {
+            Self::parse_home(home)
+        } else {
+            Err(anyhow::anyhow!("Platform does not have a default home directory"))
+        }
+    }
+
     /// Reads and validates the configuration file from the specified
     /// home directory.
     ///
