@@ -100,11 +100,19 @@ pub enum Source {
     Programmatically,
 }
 
-/// Represents configuration at runtime.
+/// Holds the runtime configuration.
 ///
-/// This struct is manipulated when parsing the configuration file.
-/// It is available as `Sq::config`, with suitable accessors that
-/// handle the precedence of the various sources.
+/// [`Config::default`] returns the default configuration.  To read
+/// the configuration from a file, use [`ConfigFile::parse_home`]:
+///
+/// ```rust,norun
+/// use sequoia::config::ConfigFile;
+///
+/// # fn main() -> anyhow::Result<()> {
+/// let config_file = ConfigFile::parse_default_home()?;
+/// let config = config_file.into_config();
+/// # Ok(()) }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Config {
     /// How verbose the UI should be.
@@ -257,9 +265,6 @@ impl Config {
     }
 
     /// Returns the verbose setting.
-    ///
-    /// The precedence of the various sources has been handled at
-    /// initialization time.
     pub fn verbose(&self) -> bool {
         self.verbosity == Verbosity::Verbose
     }
@@ -294,9 +299,6 @@ impl Config {
     }
 
     /// Returns the quiet setting.
-    ///
-    /// The precedence of the various sources has been handled at
-    /// initialization time.
     pub fn quiet(&self) -> bool {
         self.verbosity == Verbosity::Quiet
     }
@@ -337,6 +339,7 @@ impl Config {
                 .collect::<Vec<String>>()
                 .join("\", \""))
     }
+
     /// Returns the profile for encryption containers.
     pub fn encrypt_profile(&self) -> Profile {
         self.encrypt_profile.clone()
@@ -807,6 +810,20 @@ impl Config {
 }
 
 /// Holds the document tree of the configuration file.
+///
+/// Most applications just need to use [`ConfigFile::parse_home`] to
+/// parse and validate the configuration file.  Then, given a
+/// configuration file, you can get the configuration using
+/// [`ConfigFile::config`] or [`ConfigFile::into_config`].
+///
+/// To modify a configuration file, you can use
+/// [`ConfigFile::into_doc`] to convert a `ConfigFile` into a
+/// `toml_edit::DocumentMut`.  You can then modify the document tree.
+/// When you are done, you can convert it back to a `ConfigFile` using
+/// [`ConfigFile::from_doc`], which also validates the new
+/// configuration.  Note that if you use `doc.remove` to remove a key,
+/// it may leave comments behind, which can make the resulting file
+/// misleading.
 #[derive(Debug, Default, Clone)]
 pub struct ConfigFile {
     doc: DocumentMut,
@@ -957,6 +974,9 @@ example#certifier-self = \"fingerprint of your key\"
     }
 
     /// Returns the default configuration.
+    ///
+    /// Unlike [`ConfigFile::default_template`], the default
+    /// configuration options are explicitly set.
     pub fn default_config(home: Option<&Home>) -> Result<Self> {
         let template = Self::config_template(
             home.map(Self::file_name).as_deref(), true, true)?;
@@ -967,8 +987,8 @@ example#certifier-self = \"fingerprint of your key\"
         Ok(Self::from_doc(doc).expect("Default configuration is valid"))
     }
 
-    /// Returns the absolute path of the config file for the specified
-    /// home directory.
+    /// Returns the absolute path of the configuration file for the
+    /// specified home directory.
     pub fn file_name(home: &Home) -> PathBuf {
         home.config_dir(Component::Sq).join("config.toml")
     }
@@ -1029,7 +1049,10 @@ example#certifier-self = \"fingerprint of your key\"
         Self::from_doc(doc)
     }
 
-    /// Validates the configuration.
+    /// Uses and validates the document tree.
+    ///
+    /// This returns an error if the document tree does not contain a
+    /// valid configuration.
     pub fn from_doc(doc: DocumentMut) -> Result<Self> {
         let mut config = Config::default();
         apply_schema(&mut Some(&mut config), None, doc.iter(),
@@ -1151,6 +1174,10 @@ example#certifier-self = \"fingerprint of your key\"
     }
 
     /// Returns the mutable document tree.
+    ///
+    /// You can use this to get a mutable reference to the underlying
+    /// document.  After editing it, you can convert it back to a
+    /// `ConfigFile` using [`ConfigFile::from_doc`].
     pub fn into_doc(self) -> DocumentMut {
         self.doc
     }
