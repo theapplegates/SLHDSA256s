@@ -1058,15 +1058,6 @@ example#certifier-self = \"fingerprint of your key\"
         Ok(())
     }
 
-    /// Verifies the configuration.
-    pub fn verify(&self) -> Result<()> {
-        let mut config = Default::default();
-        apply_schema(&mut Some(&mut config), None, self.doc.iter(),
-                     TOP_LEVEL_SCHEMA)?;
-        config.policy(SystemTime::now())?;
-        Ok(())
-    }
-
     /// Augments the configuration with the effective configuration
     /// and policy.
     ///
