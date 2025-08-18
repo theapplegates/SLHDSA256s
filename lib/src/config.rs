@@ -876,7 +876,7 @@ impl ConfigFile {
     ];
 
     /// Returns a configuration template with the defaults.
-    fn config_template(path: Option<PathBuf>, inline_policy: bool)
+    fn config_template(path: Option<&Path>, inline_policy: bool)
         -> Result<String>
     {
         let ac = AhoCorasick::new(Self::TEMPLATE_PATTERNS)?;
@@ -929,7 +929,8 @@ impl ConfigFile {
     /// All the configuration options with their defaults are
     /// commented out.
     pub fn default_template(home: Option<&Home>) -> Result<Self> {
-        let template = Self::config_template(home.map(Self::file_name), true)?;
+        let template = Self::config_template(
+            home.map(Self::file_name).as_deref(), true)?;
         let doc: DocumentMut = template.parse()
             .context("Parsing default configuration failed")?;
         Ok(Self {
@@ -939,7 +940,8 @@ impl ConfigFile {
 
     /// Returns the default configuration.
     pub fn default_config(home: Option<&Home>) -> Result<Self> {
-        let template = Self::config_template(home.map(Self::file_name), true)?;
+        let template = Self::config_template(
+            home.map(Self::file_name).as_deref(), true)?;
 
         // Enable all defaults by commenting-in.
         let r = regex::Regex::new(r"(?m)^#([^ ])")?;
@@ -975,7 +977,7 @@ impl ConfigFile {
         let raw = match fs::read_to_string(&path) {
             Ok(r) => r,
             Err(e) if e.kind() == io::ErrorKind::NotFound =>
-                Self::config_template(Some(path.clone()), true)?,
+                Self::config_template(Some(&path), true)?,
             Err(e) => return Err(anyhow::Error::from(e).context(
                 format!("Reading configuration file {} failed",
                         path.display()))),
