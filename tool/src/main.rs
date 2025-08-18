@@ -209,10 +209,10 @@ fn real_main() -> Result<()> {
             {
                 // We want to try to parse the configuration file.  To
                 // that end, we first need to find the path to it.
-                let mut config = config::ConfigFile::default();
                 cli::config::find_home().and_then(|home| {
-                    config.read(&home).ok()
-                }).map(|config: config::Config| {
+                    config::ConfigFile::parse_home(&home).ok()
+                }).map(|config_file: config::ConfigFile| {
+                    let config = config_file.into_config();
                     cli::config::set_augmentations(&config);
                 });
 
@@ -269,18 +269,19 @@ fn real_main() -> Result<()> {
     };
 
     // Parse the configuration file.
-    let mut config_file = config::ConfigFile::default_config(home.as_ref())?;
-    let mut config = if let Some(home) = &home {
+    let (config_file, mut config) = if let Some(home) = &home {
         // Sanity check `cli::config::find_home`.
         debug_assert_eq!(home.location(),
                          cli::config::find_home().unwrap().location());
 
-        config_file.read(home)
+        let config_file = config::ConfigFile::parse_home(home)
             .with_context(|| format!(
                 "while reading configuration file {}",
-                config::ConfigFile::file_name(home).display()))?
+                config::ConfigFile::file_name(home).display()))?;
+        (config_file.clone(), config_file.into_config())
     } else {
-        Default::default()
+        (config::ConfigFile::default_config(home.as_ref())?,
+         Default::default())
     };
 
     config.init_verbose(c.verbose, matches.value_source("verbose"));

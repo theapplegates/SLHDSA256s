@@ -105,7 +105,7 @@ pub enum Source {
 /// This struct is manipulated when parsing the configuration file.
 /// It is available as `Sq::config`, with suitable accessors that
 /// handle the precedence of the various sources.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Config {
     /// How verbose the UI should be.
     verbosity: Verbosity,
@@ -807,9 +807,10 @@ impl Config {
 }
 
 /// Holds the document tree of the configuration file.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct ConfigFile {
     doc: DocumentMut,
+    config: Config,
 }
 
 impl ConfigFile {
@@ -952,9 +953,7 @@ example#certifier-self = \"fingerprint of your key\"
 
         let doc: DocumentMut = template.parse()
             .context("Parsing default configuration failed")?;
-        Ok(Self {
-            doc,
-        })
+        Ok(Self::from_doc(doc).expect("Default configuration is valid"))
     }
 
     /// Returns the default configuration.
@@ -965,37 +964,35 @@ example#certifier-self = \"fingerprint of your key\"
         let doc: DocumentMut = template.parse()
             .context("Parsing default configuration failed")?;
 
-        let config_file = Self {
-            doc,
-        };
-
-        // It better be valid.
-        debug_assert!(config_file.verify().is_ok());
-
-        Ok(config_file)
+        Ok(Self::from_doc(doc).expect("Default configuration is valid"))
     }
 
-    /// Returns the path of the config file.
+    /// Returns the absolute path of the config file for the specified
+    /// home directory.
     pub fn file_name(home: &Home) -> PathBuf {
         home.config_dir(Component::Sq).join("config.toml")
     }
 
-    /// Reads and validates the configuration file.
-    pub fn read(&mut self, home: &Home)
-                -> Result<Config>
-    {
-        let mut config = Config::default();
-        self.read_internal(home, Some(&mut config))?;
-        Ok(config)
+    /// Reads and validates the configuration file from the specified
+    /// home directory.
+    ///
+    /// If the configuration file does not exist, the default
+    /// configuration file is returned.  Any other error that occurs
+    /// while reading the configuration is propagated to the caller.
+    pub fn parse_home(home: &Home) -> Result<Self> {
+        Self::parse_file(&Self::file_name(home))
     }
 
-    /// Reads and validates the configuration file, and optionally
-    /// applies them to the given configuration.
-    fn read_internal(&mut self, home: &Home, config: Option<&mut Config>)
-        -> Result<()>
-    {
-        let path = Self::file_name(home);
-        let raw = match fs::read_to_string(&path) {
+    /// Reads and validates the specified configuration file.
+    ///
+    /// The file must contain a valid toml document, which is
+    /// consistent with the schema.
+    ///
+    /// If the file does not exist, the default configuration file is
+    /// used.  Any other error that occurs while reading the
+    /// configuration is propagated to the caller.
+    pub fn parse_file(path: &Path) -> Result<Self> {
+        let config = match fs::read_to_string(&path) {
             Ok(r) => r,
             Err(e) if e.kind() == io::ErrorKind::NotFound =>
                 Self::config_template(Some(&path), true, false)?,
@@ -1004,25 +1001,40 @@ example#certifier-self = \"fingerprint of your key\"
                         path.display()))),
         };
 
-        let config_file = Self::parse(&raw, config)
-            .with_context(|| format!("Parsing configuration file {} failed",
-                                     path.display()))?;
-        self.doc = config_file.doc;
-
-        Ok(())
+        Self::parse(&config)
+            .with_context(|| {
+                format!("Reading configuration file {}", path.display())
+            })
     }
 
     /// Parses and validates the configuration.
-    fn parse(doc: &str, mut config: Option<&mut Config>)
-        -> Result<Self>
+    fn parse(doc: &str) -> Result<Self>
     {
         let doc: DocumentMut = doc.parse()?;
 
-        apply_schema(&mut config, None, doc.iter(), TOP_LEVEL_SCHEMA)?;
+        Self::from_doc(doc)
+    }
+
+    /// Validates the configuration.
+    pub fn from_doc(doc: DocumentMut) -> Result<Self> {
+        let mut config = Config::default();
+        apply_schema(&mut Some(&mut config), None, doc.iter(),
+                     TOP_LEVEL_SCHEMA)?;
 
         Ok(Self {
             doc,
+            config,
         })
+    }
+
+    /// Returns the parsed `Config`.
+    pub fn config(&self) -> &Config {
+        &self.config
+    }
+
+    /// Returns the parsed `Config`.
+    pub fn into_config(self) -> Config {
+        self.config
     }
 
     /// Writes the configuration to the disk.
@@ -1110,10 +1122,13 @@ example#certifier-self = \"fingerprint of your key\"
             .set(&"hints".into(), hints.into())?;
 
         // Double check that it is well-formed.
-        apply_schema(&mut None, None, doc.iter(), TOP_LEVEL_SCHEMA)?;
+        let mut config = Config::default();
+        apply_schema(&mut Some(&mut config), None, doc.iter(),
+                     TOP_LEVEL_SCHEMA)?;
 
         Ok(Self {
             doc,
+            config,
         })
     }
 
@@ -1131,8 +1146,8 @@ example#certifier-self = \"fingerprint of your key\"
     }
 
     /// Returns the mutable document tree.
-    pub fn as_item_mut(&mut self) -> &mut Item {
-        self.doc.as_item_mut()
+    pub fn into_doc(self) -> DocumentMut {
+        self.doc
     }
 }
 
@@ -1818,11 +1833,10 @@ mod tests {
         let template = ConfigFile::config_template(None, false, false)
             .expect("can create a configuration template");
 
-        let mut config = Config::default();
-        ConfigFile::parse(&template, Some(&mut config))
+        let config_file = ConfigFile::parse(&template)
             .expect("can parse the default configuration template");
 
-        assert_eq!(config, Config::default());
+        assert_eq!(config_file.into_config(), Config::default());
     }
 
     #[test]
@@ -1834,21 +1848,21 @@ mod tests {
              $source:ident) => {{
                  let value_str: &str = &$value_str;
 
+                 let config = Config::default();
+                 assert_eq!(config.$source, Source::Default);
+
                  // Write the value to the config file, read the
                  // config file, and make sure we get the same value
                  // back.
-                 let mut config = Config::default();
-                 assert_eq!(config.$source, Source::Default);
                  let doc = format!("{} = {}", Config::$key(), value_str);
-                 ConfigFile::parse(&doc, Some(&mut config)).unwrap();
+                 let config = ConfigFile::parse(&doc).unwrap().into_config();
                  assert_eq!(config.$value_getter, $value);
                  assert_eq!(config.$source, Source::ConfigFile);
 
                  // Get the value from the configuration file, and
                  // make sure we can round trip it.
                  let doc = format!("{} = {}", Config::$key(), config.$conf_getter());
-                 let mut config = Config::default();
-                 ConfigFile::parse(&doc, Some(&mut config)).unwrap();
+                 let config = ConfigFile::parse(&doc).unwrap().into_config();
                  assert_eq!(config.$value_getter, $value);
                  assert_eq!(config.$source, Source::ConfigFile);
             }};

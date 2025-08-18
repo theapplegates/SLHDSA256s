@@ -132,14 +132,14 @@ fn set(mut sq: Sq, cmd: config::set::Command) -> Result<()> {
         return Err(anyhow::anyhow!("Either VALUE or --delete must be given"));
     }
 
-    let mut config = std::mem::take(&mut sq.config_file);
-    let doc = config.as_item_mut();
+    let mut doc = std::mem::take(&mut sq.config_file).into_doc();
+    let top = doc.as_item_mut();
     if let Some(value) = &cmd.value {
         let value: Value = value.parse().unwrap_or_else(|_| value.into());
 
         // Like Node::traverse_mut, but we also create intermediate
         // nodes on demand.
-        let mut node: &mut dyn Node = doc as _;
+        let mut node: &mut dyn Node = top as _;
 
         for (i, pc) in path.iter().cloned().enumerate() {
             let type_name = node.type_name();
@@ -200,18 +200,18 @@ fn set(mut sq: Sq, cmd: config::set::Command) -> Result<()> {
         }
     } else {
         assert!(cmd.delete);
-        let node = Node::traverse_mut(&mut *doc as _, &path)?;
+        let node = Node::traverse_mut(&mut *top as _, &path)?;
         node.remove(&last)?;
     }
 
     // Verify the configuration.
-    config.verify()
+    let config_file = ConfigFile::from_doc(doc)
         .with_context(|| format!("Failed to {} {:?}",
                                  if cmd.delete { "delete" } else { "set" },
                                  cmd.name))?;
 
     // The updated config verified, now persist it.
-    config.persist(
+    config_file.persist(
         sq.sequoia.home().ok_or(anyhow::anyhow!("No home directory given"))?)?;
 
     Ok(())
