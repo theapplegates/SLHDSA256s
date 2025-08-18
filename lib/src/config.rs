@@ -1,6 +1,7 @@
 //! Configuration model and file parsing.
 
 use std::{
+    borrow::Cow,
     collections::{BTreeSet, HashSet},
     fs,
     io,
@@ -814,6 +815,9 @@ pub struct ConfigFile {
 impl ConfigFile {
     /// A template for the configuration containing the default
     /// values.
+    ///
+    /// Not all of the comment out values are valid.  Those that are
+    /// not valid are prefixed with "example".
     const TEMPLATE: &'static str = "\
 # Configuration template for sequoia <SEQUOIA-VERSION>
 <SQ-CONFIG-PATH-HINT>
@@ -823,14 +827,14 @@ impl ConfigFile {
 #hints = true
 
 [encrypt]
-#for-self = [\"fingerprint of your key\"]
+example#for-self = [\"fingerprint of your key\"]
 #profile = <DEFAULT-ENCRYPT-PROFILE>
 
 [sign]
-#signer-self = [\"fingerprint of your key\"]
+example#signer-self = [\"fingerprint of your key\"]
 
 [pki.vouch]
-#certifier-self = \"fingerprint of your key\"
+example#certifier-self = \"fingerprint of your key\"
 #expiration = \"<DEFAULT-PKI-VOUCH-EXPIRATION>y\"
 
 [key.generate]
@@ -876,7 +880,9 @@ impl ConfigFile {
     ];
 
     /// Returns a configuration template with the defaults.
-    fn config_template(path: Option<&Path>, inline_policy: bool)
+    fn config_template(path: Option<&Path>,
+                       inline_policy: bool,
+                       uncomment_defaults: bool)
         -> Result<String>
     {
         let ac = AhoCorasick::new(Self::TEMPLATE_PATTERNS)?;
@@ -895,7 +901,19 @@ impl ConfigFile {
             "".into()
         };
 
-        Ok(ac.replace_all(Self::TEMPLATE, &[
+        let template = if uncomment_defaults {
+            // Enable all defaults by commenting-in.
+            let r = regex::Regex::new(r"(?m)^#([^ ])")?;
+            r.replace_all(Self::TEMPLATE, "$1")
+        } else {
+            Cow::Borrowed(Self::TEMPLATE)
+        };
+
+        // Remove the example tag.
+        let r = regex::Regex::new(r"(?m)^example(#[^ ])")?;
+        let template = r.replace_all(&template, "$1");
+
+        Ok(ac.replace_all(&template, &[
             &env!("CARGO_PKG_VERSION").to_string(),
             &if let Some(path) = path {
                 format!(
@@ -930,7 +948,8 @@ impl ConfigFile {
     /// commented out.
     pub fn default_template(home: Option<&Home>) -> Result<Self> {
         let template = Self::config_template(
-            home.map(Self::file_name).as_deref(), true)?;
+            home.map(Self::file_name).as_deref(), true, false)?;
+
         let doc: DocumentMut = template.parse()
             .context("Parsing default configuration failed")?;
         Ok(Self {
@@ -941,17 +960,19 @@ impl ConfigFile {
     /// Returns the default configuration.
     pub fn default_config(home: Option<&Home>) -> Result<Self> {
         let template = Self::config_template(
-            home.map(Self::file_name).as_deref(), true)?;
+            home.map(Self::file_name).as_deref(), true, true)?;
 
-        // Enable all defaults by commenting-in.
-        let r = regex::Regex::new(r"(?m)^#([^ ])")?;
-        let defaults = r.replace_all(&template, "$1");
-
-        let doc: DocumentMut = defaults.parse()
+        let doc: DocumentMut = template.parse()
             .context("Parsing default configuration failed")?;
-        Ok(Self {
+
+        let config_file = Self {
             doc,
-        })
+        };
+
+        // It better be valid.
+        debug_assert!(config_file.verify().is_ok());
+
+        Ok(config_file)
     }
 
     /// Returns the path of the config file.
@@ -977,7 +998,7 @@ impl ConfigFile {
         let raw = match fs::read_to_string(&path) {
             Ok(r) => r,
             Err(e) if e.kind() == io::ErrorKind::NotFound =>
-                Self::config_template(Some(&path), true)?,
+                Self::config_template(Some(&path), true, false)?,
             Err(e) => return Err(anyhow::Error::from(e).context(
                 format!("Reading configuration file {} failed",
                         path.display()))),
@@ -1790,11 +1811,11 @@ fn apply_servers_path(config: &mut Option<&mut Config>,
 mod tests {
     use super::*;
 
-    // Check that we can parse the configuration template and it only
+    // Check that we can parse the configuration template when it only
     // contains defaults.
     #[test]
     fn check_config_template() {
-        let template = ConfigFile::config_template(None, false)
+        let template = ConfigFile::config_template(None, false, false)
             .expect("can create a configuration template");
 
         let mut config = Config::default();
