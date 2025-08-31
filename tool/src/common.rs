@@ -1,7 +1,5 @@
 use std::borrow::Cow;
 use std::collections::BTreeSet;
-use std::time::Duration;
-use std::time::SystemTime;
 
 use anyhow::Result;
 
@@ -181,16 +179,6 @@ impl PreferredUserID {
     pub fn trust_amount(&self) -> usize {
         self.trust_amount
     }
-}
-
-/// The creation time for the trust root and intermediate CAs.
-///
-/// We use a creation time in the past (Feb 2002) so that it is still
-/// possible to use the CA when the reference time is in the past.
-// XXX: This is copied from sequoia-cert-store.  It would be nice to
-// import it, but it is private.
-pub fn ca_creation_time() -> SystemTime {
-    SystemTime::UNIX_EPOCH + Duration::new(1014235320, 0)
 }
 
 /// Dealias and deduplicate a list of key handles.

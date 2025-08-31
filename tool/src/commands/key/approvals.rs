@@ -10,10 +10,12 @@ use sequoia::openpgp::{
 use sequoia::cert_store::Store;
 use sequoia::wot;
 
+use sequoia::ca_creation_time;
+
 use crate::Sq;
 use crate::cli::key::approvals;
 use crate::cli;
-use crate::common::{ca_creation_time, ui};
+use crate::common::ui;
 use crate::sq::TrustThreshold;
 
 pub fn dispatch(sq: Sq, command: approvals::Command)

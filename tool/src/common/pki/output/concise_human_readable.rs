@@ -24,10 +24,10 @@ use wot::FULLY_TRUSTED;
 use wot::PARTIALLY_TRUSTED;
 
 use sequoia::Time;
+use sequoia::ca_creation_time;
 
 use crate::Convert;
 use crate::Sq;
-use crate::common::ca_creation_time;
 use crate::common::ui;
 use crate::error_chain;
 use crate::output::wrapping::NBSP;
