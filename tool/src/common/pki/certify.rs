@@ -21,11 +21,12 @@ use sequoia::cert_store;
 use cert_store::StoreUpdate;
 use cert_store::store::UserIDQueryParams;
 
+use sequoia::types::TrustAmount;
+
 use crate::Convert;
 use crate::Sq;
 use crate::cli::types::Expiration;
 use crate::cli::types::FileOrStdout;
-use crate::cli::types::TrustAmount;
 use crate::cli::types::userid_designator::ResolvedUserID;
 use crate::commands::active_certification;
 use crate::common::ui;

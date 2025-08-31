@@ -29,10 +29,11 @@ use openpgp::types::SignatureType;
 use sequoia::cert_store;
 use cert_store::StoreUpdate;
 
+use sequoia::types::TrustAmount;
+
 use crate::Sq;
 use crate::cli::types::Expiration;
 use crate::cli::types::FileOrStdout;
-use crate::cli::types::TrustAmount;
 use crate::cli;
 use crate::commands::inspect::inspect;
 use crate::common::key::certify_generated;

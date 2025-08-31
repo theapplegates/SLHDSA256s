@@ -4,7 +4,7 @@ use std::ops::Deref;
 
 use clap::Parser;
 
-use crate::cli::types::TrustAmount;
+use sequoia::types::TrustAmount;
 
 pub mod authenticate;
 pub mod identify;

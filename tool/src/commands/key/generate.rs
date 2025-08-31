@@ -13,6 +13,8 @@ use openpgp::Packet;
 use openpgp::packet::UserID;
 use openpgp::Result;
 
+use sequoia::types::TrustAmount;
+
 use crate::common::password;
 use crate::common::userid::{lint_userids, lint_names, lint_emails};
 use crate::Sq;
@@ -21,7 +23,6 @@ use crate::cli::{
     types::{
         Expiration,
         FileOrStdout,
-        TrustAmount,
     },
 };
 use crate::commands::inspect::inspect;

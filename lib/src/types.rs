@@ -9,6 +9,8 @@ use crate::errors::Result;
 mod query;
 pub use query::Query;
 pub use query::QueryKind;
+mod trust_amount;
+pub use trust_amount::TrustAmount;
 
 /// Either an absolute path, or a default path.
 ///

@@ -4,12 +4,12 @@ use clap::ArgGroup;
 use clap::Parser;
 
 use sequoia::config::DEFAULT_THIRD_PARTY_CERTIFICATION_VALIDITY_IN_YEARS;
+use sequoia::types::TrustAmount;
 
 use crate::cli::types::ClapData;
 use crate::cli::types::expiration;
 use crate::cli::types::ExpirationArg;
 use crate::cli::types::FileOrStdout;
-use crate::cli::types::TrustAmount;
 use crate::cli::types::UserIDDesignators;
 use crate::cli::types::cert_designator::{self, *};
 use crate::cli::types::userid_designator;

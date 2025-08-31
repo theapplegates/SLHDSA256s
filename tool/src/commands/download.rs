@@ -36,11 +36,11 @@ use openpgp::parse::buffered_reader::{self, BufferedReader};
 use openpgp::types::KeyFlags;
 
 use sequoia::types::Query;
+use sequoia::types::TrustAmount;
 
 use crate::Result;
 use crate::Sq;
 use crate::cli::download;
-use crate::cli::types::TrustAmount;
 use crate::commands::network::CONNECT_TIMEOUT;
 use crate::commands::network::USER_AGENT;
 use crate::commands::verify::verify;

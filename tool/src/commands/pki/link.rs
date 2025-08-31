@@ -4,12 +4,13 @@ use std::{
 
 use anyhow::Result;
 
+use sequoia::types::TrustAmount;
+
 use crate::Sq;
 use crate::common::NULL_POLICY;
 
 use crate::cli::pki::link;
 use crate::cli::types::Expiration;
-use crate::cli::types::TrustAmount;
 use crate::sq::TrustThreshold;
 
 mod list;

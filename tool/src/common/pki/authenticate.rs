@@ -23,10 +23,10 @@ use wot::store::Store;
 
 use sequoia::types::Query;
 use sequoia::types::QueryKind;
+use sequoia::types::TrustAmount;
 
 use crate::cli;
 use cli::types::CertDesignators;
-use cli::types::TrustAmount;
 use cli::types::UserIDDesignators;
 use cli::types::cert_designator;
 use cli::types::userid_designator;

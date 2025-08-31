@@ -2,13 +2,14 @@
 
 use clap::{ArgGroup, Parser, Subcommand};
 
+use sequoia::types::TrustAmount;
+
 use crate::cli::examples::*;
 use crate::cli::types::CertDesignators;
 use crate::cli::types::cert_designator;
 use crate::cli::types::UserIDDesignators;
 use crate::cli::types::userid_designator;
 use crate::cli::types::ExpirationArg;
-use crate::cli::types::TrustAmount;
 use crate::cli::types::cert_designator::*;
 
 #[derive(Parser, Debug)]
