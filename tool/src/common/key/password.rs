@@ -15,7 +15,8 @@ use openpgp::serialize::Serialize;
 use sequoia::key_store as keystore;
 use keystore::Protection;
 
-use crate::Convert;
+use sequoia::types::Convert;
+
 use crate::Sq;
 use crate::cli::types::FileOrStdout;
 use crate::cli::types::FileStdinOrKeyHandle;

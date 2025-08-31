@@ -25,8 +25,9 @@ use openpgp::{
 };
 use openpgp::serialize::stream::Message;
 
+use sequoia::types::Convert;
+
 use crate::Sq;
-use crate::Convert;
 use crate::Result;
 use crate::cli::packet::{
     Command,

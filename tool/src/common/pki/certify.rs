@@ -21,9 +21,9 @@ use sequoia::cert_store;
 use cert_store::StoreUpdate;
 use cert_store::store::UserIDQueryParams;
 
+use sequoia::types::Convert;
 use sequoia::types::TrustAmount;
 
-use crate::Convert;
 use crate::Sq;
 use crate::cli::types::Expiration;
 use crate::cli::types::FileOrStdout;

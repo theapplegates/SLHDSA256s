@@ -24,7 +24,8 @@ use openpgp::types::KeyFlags;
 use openpgp::types::RevocationStatus;
 use openpgp::types::SignatureType;
 
-use crate::Convert;
+use sequoia::types::Convert;
+
 use crate::Result;
 use crate::Sq;
 use crate::cli::types::EncryptPurpose;

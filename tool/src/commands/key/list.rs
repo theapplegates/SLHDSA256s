@@ -18,7 +18,8 @@ use sequoia::openpgp::{
 use sequoia::key_store as keystore;
 use keystore::Protection;
 
-use crate::Convert;
+use sequoia::types::Convert;
+
 use crate::PreferredUserID;
 use crate::Result;
 use crate::Sq;

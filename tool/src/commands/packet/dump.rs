@@ -21,7 +21,8 @@ use self::openpgp::parse::{
     stream::DecryptionHelper,
 };
 
-use crate::Convert;
+use sequoia::types::Convert;
+
 use crate::cli::types::SessionKey;
 use crate::common::ui;
 use crate::Sq;

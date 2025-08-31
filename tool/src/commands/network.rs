@@ -50,8 +50,9 @@ use cert_store::Store;
 use cert_store::StoreUpdate;
 use cert_store::store::UserIDQueryParams;
 
+use sequoia::types::Convert;
+
 use crate::{
-    Convert,
     commands::{
         FileOrStdout,
         active_certification,

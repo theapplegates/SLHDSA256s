@@ -6,6 +6,8 @@ use std::{
 
 use crate::errors::Result;
 
+mod convert;
+pub use convert::Convert;
 mod query;
 pub use query::Query;
 pub use query::QueryKind;

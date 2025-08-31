@@ -25,8 +25,8 @@ use wot::PARTIALLY_TRUSTED;
 
 use sequoia::Time;
 use sequoia::ca_creation_time;
+use sequoia::types::Convert;
 
-use crate::Convert;
 use crate::Sq;
 use crate::common::ui;
 use crate::error_chain;

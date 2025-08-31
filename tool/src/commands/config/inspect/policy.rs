@@ -26,9 +26,9 @@ use sequoia_policy_config::ConfiguredStandardPolicy;
 
 use sequoia::config::ConfigFile;
 use sequoia::config::toml_edit_tree::Node;
+use sequoia::types::Convert;
 
 use crate::{
-    Convert,
     Sq,
     cli::config::inspect,
 };

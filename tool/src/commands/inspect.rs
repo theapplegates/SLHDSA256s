@@ -34,8 +34,7 @@ use openpgp::serialize::Serialize;
 
 use sequoia::consts::SECONDS_IN_DAY;
 use sequoia::consts::SECONDS_IN_YEAR;
-
-use crate::Convert;
+use sequoia::types::Convert;
 
 use crate::Sq;
 use crate::one_line_error_chain;
