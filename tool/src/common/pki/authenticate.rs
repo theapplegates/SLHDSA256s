@@ -21,6 +21,9 @@ use sequoia::wot;
 use wot::store::Backend;
 use wot::store::Store;
 
+use sequoia::types::Query;
+use sequoia::types::QueryKind;
+
 use crate::cli;
 use cli::types::CertDesignators;
 use cli::types::TrustAmount;
@@ -38,56 +41,15 @@ use crate::{
 
 const TRACE: bool = false;
 
-/// The different kinds of queries that we support.
-pub enum QueryKind {
-    AuthenticatedCert(KeyHandle),
-    Cert(KeyHandle),
-    UserID(String),
-    Email(String),
-    UserIDBinding(KeyHandle, String),
-    EmailBinding(KeyHandle, String),
-    Domain(String),
-    Pattern(String),
-    All,
-}
-
-pub struct Query {
-    /// The user-supplied command-line argument, e.g., `--cert
-    /// FINGERPRINT`.
-    pub argument: Option<String>,
-    pub kind: QueryKind,
-}
-
-impl Query {
-    /// Returns a `Query` that matches all bindings.
-    pub fn all() -> Self {
-        Query {
-            argument: None,
-            kind: QueryKind::All,
-        }
-    }
-
-    /// Returns a `Query` for a key handle.
-    ///
-    /// `argument` is the user-supplied command-line argument, e.g.,
-    /// `--cert FINGERPRINT`.
-    pub fn for_key_handle(argument: Option<String>, kh: KeyHandle)
-        -> Query
-    {
-        Query {
-            argument,
-            kind: QueryKind::Cert(kh),
-        }
-    }
-
+impl<Arguments, Prefix, Options, Doc>
+    CertDesignators<Arguments, Prefix, Options, Doc>
+where
+    Arguments: typenum::Unsigned,
+    Prefix: cert_designator::ArgumentPrefix,
+{
     /// Converts a set of certificate designators to a set of queries.
-    pub fn for_cert_designators<Arguments, Prefix, Options, Doc>(
-        designators: CertDesignators<Arguments, Prefix, Options, Doc>,
-        certs_are_authenticated: bool)
+    pub fn cert_query(self, certs_are_authenticated: bool)
         -> Vec<Query>
-    where
-        Arguments: typenum::Unsigned,
-        Prefix: cert_designator::ArgumentPrefix,
     {
         let arguments = Arguments::to_usize();
         let file_arg = (arguments & cert_designator::FileArg::to_usize()) > 0;
@@ -98,7 +60,7 @@ impl Query {
         assert!(! special_arg);
         assert!(! self_arg);
 
-        designators.iter()
+        self.iter()
             .map(|designator| {
                 use cert_designator::CertDesignator::*;
                 let kind = match designator {
@@ -125,24 +87,27 @@ impl Query {
             })
             .collect()
     }
+}
 
+impl<Prefix, Options, Doc>
+    CertDesignators<cert_designator::CertArg, Prefix, Options, Doc>
+where
+    Options: typenum::Unsigned,
+    Prefix: cert_designator::ArgumentPrefix,
+{
     /// Creates a query for a binding consisting of a certificate
     /// designator and a user ID designator.
-    pub fn for_binding<CertPrefix, CertOptions, CertDoc,
-                       UserIDArguments, UserIDOptions, UserIDDocumentation>
-        (cert: CertDesignators<cert_designator::CertArg,
-                               CertPrefix, CertOptions, CertDoc>,
+    pub fn binding_query<UserIDArguments, UserIDOptions, UserIDDocumentation>
+        (self,
          userid: UserIDDesignators<UserIDArguments,
                                    UserIDOptions, UserIDDocumentation>)
         -> Vec<Query>
     where
-        CertOptions: typenum::Unsigned,
-        CertPrefix: cert_designator::ArgumentPrefix,
         UserIDArguments: typenum::Unsigned,
         UserIDOptions: typenum::Unsigned,
     {
         // One required value.
-        let cert_options = CertOptions::to_usize();
+        let cert_options = Options::to_usize();
         let cert_one_value
             = (cert_options & cert_designator::OneValue::to_usize()) > 0;
         let cert_optional_value
@@ -159,8 +124,8 @@ impl Query {
         assert!(userid_one_value);
         assert!(! userid_optional_value);
 
-        assert_eq!(cert.len(), 1);
-        let cert = cert.iter().next().unwrap();
+        assert_eq!(self.len(), 1);
+        let cert = self.iter().next().unwrap();
         let kh = if let cert_designator::CertDesignator::Cert(kh) = cert {
             kh
         } else {
@@ -184,7 +149,7 @@ impl Query {
         vec![
             Query {
                 argument: Some(format!("{} {}",
-                                       cert.argument::<CertPrefix>(),
+                                       cert.argument::<Prefix>(),
                                        userid.argument::<UserIDArguments>())),
                 kind,
             }
@@ -201,7 +166,7 @@ where
     fn from(designators: CertDesignators<Arguments, Prefix, Options, Doc>)
         -> Vec<Query>
     {
-        Query::for_cert_designators(designators, false)
+        designators.cert_query(false)
     }
 }
 

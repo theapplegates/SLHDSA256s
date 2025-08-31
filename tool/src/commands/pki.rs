@@ -12,7 +12,6 @@ use crate::cli;
 use crate::Sq;
 use crate::common::pki::authenticate;
 use crate::commands::pki::authenticate::AuthenticateContext;
-use crate::commands::pki::authenticate::Query;
 
 pub fn dispatch(sq: Sq, cli: cli::pki::Command, matches: &ArgMatches)
                 -> Result<()>
@@ -34,7 +33,7 @@ pub fn dispatch(sq: Sq, cli: cli::pki::Command, matches: &ArgMatches)
                 &mut std::io::stdout(),
                 &sq,
                 AuthenticateContext::PKI,
-                Query::for_binding(cert, userid),
+                cert.binding_query(userid),
                 *gossip,
                 *unusable,
                 *certification_network,

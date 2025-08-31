@@ -6,13 +6,14 @@ use openpgp::{
     KeyHandle,
 };
 
+use sequoia::types::Query;
+use sequoia::types::QueryKind;
+
 use crate::{
     Result,
     Sq,
     cli::cert::{Command, list, Subcommands},
     commands::cert::authenticate::AuthenticateContext,
-    commands::cert::authenticate::Query,
-    commands::cert::authenticate::QueryKind,
     common::pki::authenticate,
 };
 
@@ -34,7 +35,7 @@ pub fn dispatch(sq: Sq, command: Command) -> Result<()>
             certs, pattern, gossip, unusable, certification_network,
             trust_amount, show_paths,
         }) => {
-            let mut certs: Vec<Query> = Query::for_cert_designators(certs, true);
+            let mut certs: Vec<Query> = certs.cert_query(true);
 
             if let Some(pattern) = pattern.as_ref() {
                 let mut query_kind = None;

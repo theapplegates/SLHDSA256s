@@ -6,6 +6,10 @@ use std::{
 
 use crate::errors::Result;
 
+mod query;
+pub use query::Query;
+pub use query::QueryKind;
+
 /// Either an absolute path, or a default path.
 ///
 /// Even though this type is homomorphic to [`Option<PathBuf>`], we

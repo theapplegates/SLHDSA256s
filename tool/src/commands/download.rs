@@ -35,6 +35,8 @@ use openpgp::parse::Parse;
 use openpgp::parse::buffered_reader::{self, BufferedReader};
 use openpgp::types::KeyFlags;
 
+use sequoia::types::Query;
+
 use crate::Result;
 use crate::Sq;
 use crate::cli::download;
@@ -44,7 +46,6 @@ use crate::commands::network::USER_AGENT;
 use crate::commands::verify::verify;
 use crate::common::key_handle_dealias;
 use crate::common::pki::authenticate::AuthenticateContext;
-use crate::common::pki::authenticate::Query;
 use crate::common::pki::authenticate;
 use crate::common::ui;
 use crate::sq::TrustThreshold;
