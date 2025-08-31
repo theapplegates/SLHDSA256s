@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use sequoia::openpgp::{
+use sequoia_openpgp::{
     packet::{
         UserID,
         signature::subpacket::NotationData,

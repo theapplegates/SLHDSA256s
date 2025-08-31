@@ -14,7 +14,7 @@ use openpgp::policy::NullPolicy;
 
 use sequoia::wot;
 
-use crate::output::sanitize::Safe;
+use sequoia::types::Safe;
 
 pub mod cert_designator;
 pub mod file;

@@ -8,11 +8,11 @@ use sequoia::openpgp::{
     packet::UserID,
 };
 
+pub use sequoia::types::Safe;
+
 use crate::{
     Sq,
 };
-
-pub use crate::output::sanitize::Safe;
 
 /// Emits a certificate header.
 pub fn emit_cert(o: &mut dyn std::io::Write, sq: &Sq, cert: &openpgp::Cert)

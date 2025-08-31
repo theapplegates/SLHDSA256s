@@ -9,6 +9,8 @@ use crate::errors::Result;
 mod query;
 pub use query::Query;
 pub use query::QueryKind;
+mod safe;
+pub use safe::Safe;
 mod trust_amount;
 pub use trust_amount::TrustAmount;
 

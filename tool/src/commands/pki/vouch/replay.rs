@@ -10,9 +10,10 @@ use openpgp::serialize::Serialize;
 use sequoia::cert_store;
 use cert_store::StoreUpdate;
 
+use sequoia::types::Safe;
+
 use crate::Sq;
 use crate::cli::pki::vouch::replay;
-use crate::output::sanitize::Safe;
 use crate::sq::TrustThreshold;
 
 const TRACE: bool = false;
