@@ -105,7 +105,7 @@ pub enum Source {
 /// [`Config::default`] returns the default configuration.  To read
 /// the configuration from a file, use [`ConfigFile::parse_home`]:
 ///
-/// ```rust,norun
+/// ```rust,no_run
 /// use sequoia::config::ConfigFile;
 ///
 /// # fn main() -> anyhow::Result<()> {
