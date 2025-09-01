@@ -113,7 +113,7 @@ pub enum Source {
 /// let config = config_file.into_config();
 /// # Ok(()) }
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Config {
     /// How verbose the UI should be.
     verbosity: Verbosity,
@@ -172,6 +172,52 @@ pub struct Config {
 
     /// The location of the backend server executables.
     servers_path: Option<PathBuf>,
+
+    // WARNING: If you add anything to this struct, be sure to update
+    // Config::cmp_some!
+}
+
+impl Config {
+    // Returns whether two `Config`s are mostly equal.
+    //
+    // This is used by the unit tests.  We provide a function instead
+    // of implementing PartialEq and Eq, because We don't want them to
+    // become part of our public API.
+    //
+    // The following fields are not checked for equality:
+    //
+    // - Nothing.
+    #[cfg(test)]
+    fn mostly_eq(&self, other: &Self) -> bool {
+        self.verbosity == other.verbosity
+            && self.verbosity_source == other.verbosity_source
+            && self.hints == other.hints
+            && self.encrypt_for_self == other.encrypt_for_self
+            && self.encrypt_for_self_source == other.encrypt_for_self_source
+            && self.encrypt_profile == other.encrypt_profile
+            && self.encrypt_profile_source == other.encrypt_profile_source
+            && self.sign_signer_self == other.sign_signer_self
+            && self.sign_signer_self_source == other.sign_signer_self_source
+            && self.pki_vouch_certifier_self == other.pki_vouch_certifier_self
+            && self.pki_vouch_certifier_self_source == other.pki_vouch_certifier_self_source
+            && self.pki_vouch_expiration == other.pki_vouch_expiration
+            && self.pki_vouch_expiration_source == other.pki_vouch_expiration_source
+            && self.policy_path == other.policy_path
+            && self.policy_inline == other.policy_inline
+            && self.cipher_suite == other.cipher_suite
+            && self.cipher_suite_source == other.cipher_suite_source
+            && self.key_generate_profile == other.key_generate_profile
+            && self.key_generate_profile_source == other.key_generate_profile_source
+            && self.key_servers == other.key_servers
+            && self.key_servers_source == other.key_servers_source
+            && self.network_search_iterations == other.network_search_iterations
+            && self.network_search_iterations_source == other.network_search_iterations_source
+            && self.network_search_use_wkd == other.network_search_use_wkd
+            && self.network_search_use_wkd_source == other.network_search_use_wkd_source
+            && self.network_search_use_dane == other.network_search_use_dane
+            && self.network_search_use_dane_source == other.network_search_use_dane_source
+            && self.servers_path == other.servers_path
+    }
 }
 
 impl Default for Config {
@@ -1868,7 +1914,7 @@ mod tests {
         let config_file = ConfigFile::parse(&template)
             .expect("can parse the default configuration template");
 
-        assert_eq!(config_file.into_config(), Config::default());
+        assert!(config_file.into_config().mostly_eq(&Config::default()));
     }
 
     #[test]
