@@ -114,7 +114,7 @@ pub enum Source {
 /// # Ok(()) }
 /// ```
 #[derive(Debug, Clone)]
-pub struct Config {
+struct ParsedConfig {
     /// How verbose the UI should be.
     verbosity: Verbosity,
     verbosity_source: Source,
@@ -177,52 +177,9 @@ pub struct Config {
     // Config::cmp_some!
 }
 
-impl Config {
-    // Returns whether two `Config`s are mostly equal.
-    //
-    // This is used by the unit tests.  We provide a function instead
-    // of implementing PartialEq and Eq, because We don't want them to
-    // become part of our public API.
-    //
-    // The following fields are not checked for equality:
-    //
-    // - Nothing.
-    #[cfg(test)]
-    fn mostly_eq(&self, other: &Self) -> bool {
-        self.verbosity == other.verbosity
-            && self.verbosity_source == other.verbosity_source
-            && self.hints == other.hints
-            && self.encrypt_for_self == other.encrypt_for_self
-            && self.encrypt_for_self_source == other.encrypt_for_self_source
-            && self.encrypt_profile == other.encrypt_profile
-            && self.encrypt_profile_source == other.encrypt_profile_source
-            && self.sign_signer_self == other.sign_signer_self
-            && self.sign_signer_self_source == other.sign_signer_self_source
-            && self.pki_vouch_certifier_self == other.pki_vouch_certifier_self
-            && self.pki_vouch_certifier_self_source == other.pki_vouch_certifier_self_source
-            && self.pki_vouch_expiration == other.pki_vouch_expiration
-            && self.pki_vouch_expiration_source == other.pki_vouch_expiration_source
-            && self.policy_path == other.policy_path
-            && self.policy_inline == other.policy_inline
-            && self.cipher_suite == other.cipher_suite
-            && self.cipher_suite_source == other.cipher_suite_source
-            && self.key_generate_profile == other.key_generate_profile
-            && self.key_generate_profile_source == other.key_generate_profile_source
-            && self.key_servers == other.key_servers
-            && self.key_servers_source == other.key_servers_source
-            && self.network_search_iterations == other.network_search_iterations
-            && self.network_search_iterations_source == other.network_search_iterations_source
-            && self.network_search_use_wkd == other.network_search_use_wkd
-            && self.network_search_use_wkd_source == other.network_search_use_wkd_source
-            && self.network_search_use_dane == other.network_search_use_dane
-            && self.network_search_use_dane_source == other.network_search_use_dane_source
-            && self.servers_path == other.servers_path
-    }
-}
-
-impl Default for Config {
+impl Default for ParsedConfig {
     fn default() -> Self {
-        Config {
+        ParsedConfig {
             verbosity: Default::default(),
             verbosity_source: Default::default(),
             hints: None,
@@ -258,15 +215,87 @@ impl Default for Config {
     }
 }
 
+/// Holds the runtime configuration.
+///
+/// [`Config::default`] returns the default configuration.  To read
+/// the configuration from a file, use [`ConfigFile::parse_home`]:
+///
+/// ```rust,no_run
+/// use sequoia::config::ConfigFile;
+///
+/// # fn main() -> anyhow::Result<()> {
+/// let config_file = ConfigFile::parse_default_home()?;
+/// let config = config_file.into_config();
+/// # Ok(()) }
+/// ```
+#[derive(Debug, Clone)]
+pub struct Config {
+    p: ParsedConfig,
+
+    // WARNING: If you add anything to this struct, be sure to update
+    // Config::cmp_some!
+}
+
+impl Config {
+    // Returns whether two `Config`s are mostly equal.
+    //
+    // This is used by the unit tests.  We provide a function instead
+    // of implementing PartialEq and Eq, because We don't want them to
+    // become part of our public API.
+    //
+    // The following fields are not checked for equality:
+    //
+    // - Nothing.
+    #[cfg(test)]
+    fn mostly_eq(&self, other: &Self) -> bool {
+        self.p.verbosity == other.p.verbosity
+            && self.p.verbosity_source == other.p.verbosity_source
+            && self.p.hints == other.p.hints
+            && self.p.encrypt_for_self == other.p.encrypt_for_self
+            && self.p.encrypt_for_self_source == other.p.encrypt_for_self_source
+            && self.p.encrypt_profile == other.p.encrypt_profile
+            && self.p.encrypt_profile_source == other.p.encrypt_profile_source
+            && self.p.sign_signer_self == other.p.sign_signer_self
+            && self.p.sign_signer_self_source == other.p.sign_signer_self_source
+            && self.p.pki_vouch_certifier_self == other.p.pki_vouch_certifier_self
+            && self.p.pki_vouch_certifier_self_source == other.p.pki_vouch_certifier_self_source
+            && self.p.pki_vouch_expiration == other.p.pki_vouch_expiration
+            && self.p.pki_vouch_expiration_source == other.p.pki_vouch_expiration_source
+            && self.p.policy_path == other.p.policy_path
+            && self.p.policy_inline == other.p.policy_inline
+            && self.p.cipher_suite == other.p.cipher_suite
+            && self.p.cipher_suite_source == other.p.cipher_suite_source
+            && self.p.key_generate_profile == other.p.key_generate_profile
+            && self.p.key_generate_profile_source == other.p.key_generate_profile_source
+            && self.p.key_servers == other.p.key_servers
+            && self.p.key_servers_source == other.p.key_servers_source
+            && self.p.network_search_iterations == other.p.network_search_iterations
+            && self.p.network_search_iterations_source == other.p.network_search_iterations_source
+            && self.p.network_search_use_wkd == other.p.network_search_use_wkd
+            && self.p.network_search_use_wkd_source == other.p.network_search_use_wkd_source
+            && self.p.network_search_use_dane == other.p.network_search_use_dane
+            && self.p.network_search_use_dane_source == other.p.network_search_use_dane_source
+            && self.p.servers_path == other.p.servers_path
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            p: Default::default(),
+        }
+    }
+}
+
 impl Config {
     /// Returns the verbosity setting.
     pub fn verbosity(&self) -> Verbosity {
-        self.verbosity.clone()
+        self.p.verbosity.clone()
     }
 
     /// Returns where the setting was set.
     pub fn verbosity_source(&self) -> Source {
-        self.verbosity_source.clone()
+        self.p.verbosity_source.clone()
     }
 
     /// Returns the configuration key for the verbosity setting.
@@ -279,7 +308,7 @@ impl Config {
     /// The returned value can be written directly to the
     /// configuration file; additional quoting is not required.
     pub fn verbosity_config_value(&self) -> String {
-        format!("{:?}", self.verbosity)
+        format!("{:?}", self.p.verbosity)
     }
 
     /// Sets the verbose setting.
@@ -300,11 +329,11 @@ impl Config {
                 // Use the value from the configuration file.
             },
             _ => {
-                self.verbosity_source = Source::CommandLine;
+                self.p.verbosity_source = Source::CommandLine;
                 if cli {
-                    self.verbosity = Verbosity::Verbose;
+                    self.p.verbosity = Verbosity::Verbose;
                 } else {
-                    self.verbosity = Verbosity::Default;
+                    self.p.verbosity = Verbosity::Default;
                 }
             }
         }
@@ -312,7 +341,7 @@ impl Config {
 
     /// Returns the verbose setting.
     pub fn verbose(&self) -> bool {
-        self.verbosity == Verbosity::Verbose
+        self.p.verbosity == Verbosity::Verbose
     }
 
     /// Sets the quiet setting.
@@ -334,11 +363,11 @@ impl Config {
                 // Use the value from the configuration file.
             },
             _ => {
-                self.verbosity_source = Source::CommandLine;
+                self.p.verbosity_source = Source::CommandLine;
                 if cli {
-                    self.verbosity = Verbosity::Quiet;
+                    self.p.verbosity = Verbosity::Quiet;
                 } else {
-                    self.verbosity = Verbosity::Default;
+                    self.p.verbosity = Verbosity::Default;
                 }
             }
         }
@@ -346,23 +375,23 @@ impl Config {
 
     /// Returns the quiet setting.
     pub fn quiet(&self) -> bool {
-        self.verbosity == Verbosity::Quiet
+        self.p.verbosity == Verbosity::Quiet
     }
 
     /// Returns whether to show hints.
     pub fn hints(&self) -> bool {
-        self.hints.unwrap_or(! self.quiet())
+        self.p.hints.unwrap_or(! self.quiet())
     }
 
     /// Returns the certificates that should be added to the list of
     /// recipients if `encrypt --for-self` is given.
     pub fn encrypt_for_self(&self) -> &BTreeSet<Fingerprint> {
-        &self.encrypt_for_self
+        &self.p.encrypt_for_self
     }
 
     /// Returns where the setting was set.
     pub fn encrypt_for_self_source(&self) -> Source {
-        self.encrypt_for_self_source.clone()
+        self.p.encrypt_for_self_source.clone()
     }
 
     /// Returns the configuration key for the encrypt for self
@@ -379,7 +408,7 @@ impl Config {
     pub fn encrypt_for_self_config_value(&self) -> String {
         format!(
             "[ \"{}\" ]",
-            self.encrypt_for_self
+            self.p.encrypt_for_self
                 .iter()
                 .map(|fpr| fpr.to_string())
                 .collect::<Vec<String>>()
@@ -388,12 +417,12 @@ impl Config {
 
     /// Returns the profile for encryption containers.
     pub fn encrypt_profile(&self) -> Profile {
-        self.encrypt_profile.clone()
+        self.p.encrypt_profile.clone()
     }
 
     /// Returns where the setting was set.
     pub fn encrypt_profile_source(&self) -> Source {
-        self.encrypt_profile_source.clone()
+        self.p.encrypt_profile_source.clone()
     }
 
     /// Returns the profile for encryption containers.
@@ -411,7 +440,7 @@ impl Config {
     {
         match source.expect("set by the cli parser") {
             ValueSource::DefaultValue =>
-                &self.encrypt_profile,
+                &self.p.encrypt_profile,
             _ => cli,
         }.clone()
     }
@@ -428,18 +457,18 @@ impl Config {
     /// The returned value can be written directly to the
     /// configuration file; additional quoting is not required.
     pub fn encrypt_profile_config_value(&self) -> String {
-        format!("{:?}", self.encrypt_profile)
+        format!("{:?}", self.p.encrypt_profile)
     }
 
     /// Returns the keys that should be added to the list of
     /// signers if `--signer-self` is given.
     pub fn sign_signer_self(&self) -> &BTreeSet<Fingerprint> {
-        &self.sign_signer_self
+        &self.p.sign_signer_self
     }
 
     /// Returns where the setting was set.
     pub fn sign_signer_self_source(&self) -> Source {
-        self.sign_signer_self_source.clone()
+        self.p.sign_signer_self_source.clone()
     }
 
     /// Returns the configuration key for the sign signer self
@@ -456,7 +485,7 @@ impl Config {
     pub fn sign_signer_self_config_value(&self) -> String {
         format!(
             "[ \"{}\" ]",
-            self.sign_signer_self
+            self.p.sign_signer_self
                 .iter()
                 .map(|fpr| fpr.to_string())
                 .collect::<Vec<String>>()
@@ -466,12 +495,12 @@ impl Config {
     /// Returns the key that should be used as certifier if
     /// `--certifier-self` is given.
     pub fn pki_vouch_certifier_self(&self) -> &Option<Fingerprint> {
-        &self.pki_vouch_certifier_self
+        &self.p.pki_vouch_certifier_self
     }
 
     /// Returns where the setting was set.
     pub fn pki_vouch_certifier_self_source(&self) -> Source {
-        self.pki_vouch_certifier_self_source.clone()
+        self.p.pki_vouch_certifier_self_source.clone()
     }
 
     /// Returns the configuration key for the pki vouch certifier self
@@ -486,7 +515,7 @@ impl Config {
     /// The returned value can be written directly to the
     /// configuration file; additional quoting is not required.
     pub fn pki_vouch_certifier_self_config_value(&self) -> String {
-        if let Some(fpr) = self.pki_vouch_certifier_self.as_ref() {
+        if let Some(fpr) = self.p.pki_vouch_certifier_self.as_ref() {
             format!("\"{}\"", fpr)
         } else {
             "\"\"".into()
@@ -495,12 +524,12 @@ impl Config {
 
     /// Returns the value of the pki vouch expiration setting.
     pub fn pki_vouch_expiration(&self) -> Expiration {
-        self.pki_vouch_expiration.clone()
+        self.p.pki_vouch_expiration.clone()
     }
 
     /// Returns where the setting was set.
     pub fn pki_vouch_expiration_source(&self) -> Source {
-        self.pki_vouch_expiration_source.clone()
+        self.p.pki_vouch_expiration_source.clone()
     }
 
     /// Returns the expiration for third-party certifications.
@@ -519,7 +548,7 @@ impl Config {
     {
         match source.expect("set by the cli parser") {
             ValueSource::DefaultValue =>
-                &self.pki_vouch_expiration,
+                &self.p.pki_vouch_expiration,
             _ => cli,
         }.clone()
     }
@@ -536,13 +565,13 @@ impl Config {
     /// The returned value can be written directly to the
     /// configuration file; additional quoting is not required.
     pub fn pki_vouch_expiration_config_value(&self) -> String {
-        format!("\"{}\"", self.pki_vouch_expiration)
+        format!("\"{}\"", self.p.pki_vouch_expiration)
     }
 
     /// Returns the path to the referenced cryptographic policy, if
     /// any.
     pub fn policy_path(&self) -> Option<&Path> {
-        self.policy_path.as_deref()
+        self.p.policy_path.as_deref()
     }
 
     /// Returns the cryptographic policy.
@@ -556,14 +585,14 @@ impl Config {
 
         policy.parse_default_config()?;
 
-        if let Some(p) = &self.policy_path {
+        if let Some(p) = &self.p.policy_path {
             if ! policy.parse_config_file(p)? {
                 return Err(anyhow::anyhow!(
                     "referenced policy file {:?} does not exist", p));
             }
         }
 
-        if let Some(p) = &self.policy_inline {
+        if let Some(p) = &self.p.policy_inline {
             policy.parse_bytes(p)?;
         }
 
@@ -572,12 +601,12 @@ impl Config {
 
     /// Returns the cipher suite setting.
     pub fn cipher_suite(&self) -> CipherSuite {
-        self.cipher_suite.clone()
+        self.p.cipher_suite.clone()
     }
 
     /// Returns where the setting was set.
     pub fn cipher_suite_source(&self) -> Source {
-        self.cipher_suite_source.clone()
+        self.p.cipher_suite_source.clone()
     }
 
     /// Returns the cipher suite for generating new keys.
@@ -594,7 +623,7 @@ impl Config {
         -> CipherSuite
     {
         match source.expect("set by the cli parser") {
-            ValueSource::DefaultValue => &self.cipher_suite,
+            ValueSource::DefaultValue => &self.p.cipher_suite,
             _ => cli,
         }.clone()
     }
@@ -609,17 +638,17 @@ impl Config {
     /// The returned value can be written directly to the
     /// configuration file; additional quoting is not required.
     pub fn cipher_suite_config_value(&self) -> String {
-        format!("\"{}\"", self.cipher_suite)
+        format!("\"{}\"", self.p.cipher_suite)
     }
 
     /// Returns the key generate profile setting.
     pub fn key_generate_profile(&self) -> Profile {
-        self.key_generate_profile.clone()
+        self.p.key_generate_profile.clone()
     }
 
     /// Returns where the setting was set.
     pub fn key_generate_profile_source(&self) -> Source {
-        self.key_generate_profile_source.clone()
+        self.p.key_generate_profile_source.clone()
     }
 
     /// Returns the profile for generating new keys.
@@ -638,7 +667,7 @@ impl Config {
     {
         match source.expect("set by the cli parser") {
             ValueSource::DefaultValue => {
-                &self.key_generate_profile
+                &self.p.key_generate_profile
             }
             _ => cli,
         }.clone()
@@ -656,17 +685,17 @@ impl Config {
     /// The returned value can be written directly to the
     /// configuration file; additional quoting is not required.
     pub fn key_generate_profile_config_value(&self) -> String {
-        format!("{:?}", self.key_generate_profile)
+        format!("{:?}", self.p.key_generate_profile)
     }
 
     /// Returns the key servers to query or publish.
     pub fn key_servers(&self) -> &[ String ] {
-        &self.key_servers
+        &self.p.key_servers
     }
 
     /// Returns where the setting was set.
     pub fn key_servers_source(&self) -> Source {
-        self.key_servers_source.clone()
+        self.p.key_servers_source.clone()
     }
 
     /// Returns the key servers to query or publish.
@@ -686,7 +715,7 @@ impl Config {
     {
         match source.expect("set by the cli parser") {
             ValueSource::DefaultValue =>
-                Box::new(self.key_servers.iter().map(|s| s.as_str()))
+                Box::new(self.p.key_servers.iter().map(|s| s.as_str()))
                     as Box<dyn Iterator<Item = &str>>,
             _ => Box::new(cli.iter().map(|s| s.as_ref()))
                     as Box<dyn Iterator<Item = &str>>,
@@ -705,7 +734,7 @@ impl Config {
     pub fn key_servers_config_value(&self) -> String {
         format!(
             "[ {} ]",
-            self.key_servers
+            self.p.key_servers
                 .iter()
                 .map(|ks| format!("{:?}", ks))
                 .collect::<Vec<String>>()
@@ -714,12 +743,12 @@ impl Config {
 
     /// Returns the iteration count for network search.
     pub fn network_search_iterations(&self) -> u8 {
-        self.network_search_iterations
+        self.p.network_search_iterations
     }
 
     /// Returns where the setting was set.
     pub fn network_search_iterations_source(&self) -> Source {
-        self.network_search_iterations_source.clone()
+        self.p.network_search_iterations_source.clone()
     }
 
     /// Returns the iteration count for network search.
@@ -737,7 +766,7 @@ impl Config {
     {
         match source.expect("set by the cli parser") {
             ValueSource::DefaultValue =>
-                self.network_search_iterations,
+                self.p.network_search_iterations,
             _ => cli,
         }
     }
@@ -754,17 +783,17 @@ impl Config {
     /// The returned value can be written directly to the
     /// configuration file; additional quoting is not required.
     pub fn network_search_iterations_config_value(&self) -> String {
-        self.network_search_iterations.to_string()
+        self.p.network_search_iterations.to_string()
     }
 
     /// Returns whether network search should use WKD.
     pub fn network_search_use_wkd(&self) -> bool {
-        self.network_search_use_wkd
+        self.p.network_search_use_wkd
     }
 
     /// Returns where the setting was set.
     pub fn network_search_use_wkd_source(&self) -> Source {
-        self.network_search_use_wkd_source.clone()
+        self.p.network_search_use_wkd_source.clone()
     }
 
     /// Returns whether network search should use WKD.
@@ -783,7 +812,7 @@ impl Config {
         let cli = cli.expect("has a default");
         match source.expect("set by the cli parser") {
             ValueSource::DefaultValue =>
-                self.network_search_use_wkd,
+                self.p.network_search_use_wkd,
             _ => cli,
         }
     }
@@ -800,17 +829,17 @@ impl Config {
     /// The returned value can be written directly to the
     /// configuration file; additional quoting is not required.
     pub fn network_search_use_wkd_config_value(&self) -> String {
-        self.network_search_use_wkd.to_string()
+        self.p.network_search_use_wkd.to_string()
     }
 
     /// Returns whether network search should use DANE.
     pub fn network_search_use_dane(&self) -> bool {
-        self.network_search_use_dane
+        self.p.network_search_use_dane
     }
 
     /// Returns where the setting was set.
     pub fn network_search_use_dane_source(&self) -> Source {
-        self.network_search_use_dane_source.clone()
+        self.p.network_search_use_dane_source.clone()
     }
 
     /// Returns whether network search should use DANE.
@@ -829,7 +858,7 @@ impl Config {
         let cli = cli.expect("has a default");
         match source.expect("set by the cli parser") {
             ValueSource::DefaultValue =>
-                self.network_search_use_dane,
+                self.p.network_search_use_dane,
             _ => cli,
         }
     }
@@ -846,12 +875,12 @@ impl Config {
     /// The returned value can be written directly to the
     /// configuration file; additional quoting is not required.
     pub fn network_search_use_dane_config_value(&self) -> String {
-        self.network_search_use_dane.to_string()
+        self.p.network_search_use_dane.to_string()
     }
 
     /// Returns the path to the backend servers.
     pub fn servers_path(&self) -> Option<&Path> {
-        self.servers_path.as_ref().map(|p| p.as_path())
+        self.p.servers_path.as_ref().map(|p| p.as_path())
     }
 }
 
@@ -873,7 +902,7 @@ impl Config {
 #[derive(Debug, Default, Clone)]
 pub struct ConfigFile {
     doc: DocumentMut,
-    config: Config,
+    config: ParsedConfig,
 }
 
 impl ConfigFile {
@@ -1100,7 +1129,7 @@ example#certifier-self = \"fingerprint of your key\"
     /// This returns an error if the document tree does not contain a
     /// valid configuration.
     pub fn from_doc(doc: DocumentMut) -> Result<Self> {
-        let mut config = Config::default();
+        let mut config = ParsedConfig::default();
         apply_schema(&mut Some(&mut config), None, doc.iter(),
                      TOP_LEVEL_SCHEMA)?;
 
@@ -1111,13 +1140,17 @@ example#certifier-self = \"fingerprint of your key\"
     }
 
     /// Returns the parsed `Config`.
-    pub fn config(&self) -> &Config {
-        &self.config
+    pub fn config(&self) -> Config {
+        Config {
+            p: self.config.clone(),
+        }
     }
 
     /// Returns the parsed `Config`.
     pub fn into_config(self) -> Config {
-        self.config
+        Config {
+            p: self.config,
+        }
     }
 
     /// Writes the configuration to the disk.
@@ -1196,7 +1229,7 @@ example#certifier-self = \"fingerprint of your key\"
             .set(&"hints".into(), hints.into())?;
 
         // Double check that it is well-formed.
-        let mut config = Config::default();
+        let mut config = ParsedConfig::default();
         apply_schema(&mut Some(&mut config), None, doc.iter(),
                      TOP_LEVEL_SCHEMA)?;
 
@@ -1235,7 +1268,7 @@ example#certifier-self = \"fingerprint of your key\"
 /// Returns an error if a key is unknown.
 ///
 /// known_keys better be lowercase.
-fn apply_schema<'toml>(config: &mut Option<&mut Config>,
+fn apply_schema<'toml>(config: &mut Option<&mut ParsedConfig>,
                        path: Option<&str>,
                        section: toml_edit::Iter<'toml>,
                        schema: Schema) -> Result<()> {
@@ -1365,10 +1398,10 @@ impl Error {
 
 /// A function that validates a node in the configuration tree with
 /// the given path.
-type Applicator = fn(&mut Option<&mut Config>, &str, &Item) -> Result<()>;
+type Applicator = fn(&mut Option<&mut ParsedConfig>, &str, &Item) -> Result<()>;
 
 /// Ignores a node.
-fn apply_nop(_: &mut Option<&mut Config>, _: &str, _: &Item) -> Result<()> {
+fn apply_nop(_: &mut Option<&mut ParsedConfig>, _: &str, _: &Item) -> Result<()> {
     Ok(())
 }
 
@@ -1394,7 +1427,7 @@ const UI_SCHEMA: Schema = &[
 ];
 
 /// Validates the `ui` section.
-fn apply_ui(config: &mut Option<&mut Config>, path: &str, item: &Item)
+fn apply_ui(config: &mut Option<&mut ParsedConfig>, path: &str, item: &Item)
             -> Result<()>
 {
     let section = item.as_table_like()
@@ -1404,7 +1437,7 @@ fn apply_ui(config: &mut Option<&mut Config>, path: &str, item: &Item)
 }
 
 /// Validates the `ui.hints` value.
-fn apply_ui_hints(config: &mut Option<&mut Config>, path: &str, item: &Item)
+fn apply_ui_hints(config: &mut Option<&mut ParsedConfig>, path: &str, item: &Item)
                   -> Result<()>
 {
     let s = item.as_bool()
@@ -1418,7 +1451,7 @@ fn apply_ui_hints(config: &mut Option<&mut Config>, path: &str, item: &Item)
 }
 
 /// Validates the `ui.verbosity` value.
-fn apply_ui_verbosity(config: &mut Option<&mut Config>,
+fn apply_ui_verbosity(config: &mut Option<&mut ParsedConfig>,
                       path: &str, item: &Item)
     -> Result<()>
 {
@@ -1450,7 +1483,7 @@ const ENCRYPT_SCHEMA: Schema = &[
 ];
 
 /// Validates the `encrypt` section.
-fn apply_encrypt(config: &mut Option<&mut Config>,
+fn apply_encrypt(config: &mut Option<&mut ParsedConfig>,
                  path: &str, item: &Item)
     -> Result<()>
 {
@@ -1461,7 +1494,7 @@ fn apply_encrypt(config: &mut Option<&mut Config>,
 }
 
 /// Validates the `encrypt.for-self` value.
-fn apply_encrypt_for_self(config: &mut Option<&mut Config>,
+fn apply_encrypt_for_self(config: &mut Option<&mut ParsedConfig>,
                           path: &str, item: &Item)
                           -> Result<()>
 {
@@ -1488,7 +1521,7 @@ fn apply_encrypt_for_self(config: &mut Option<&mut Config>,
 }
 
 /// Validates the `encrypt.profile` value.
-fn apply_encrypt_profile(config: &mut Option<&mut Config>,
+fn apply_encrypt_profile(config: &mut Option<&mut ParsedConfig>,
                          path: &str, item: &Item)
                          -> Result<()>
 {
@@ -1510,7 +1543,7 @@ const SIGN_SCHEMA: Schema = &[
 ];
 
 /// Validates the `sign` section.
-fn apply_sign(config: &mut Option<&mut Config>,
+fn apply_sign(config: &mut Option<&mut ParsedConfig>,
               path: &str, item: &Item)
               -> Result<()>
 {
@@ -1521,7 +1554,7 @@ fn apply_sign(config: &mut Option<&mut Config>,
 }
 
 /// Validates the `sign.signer-self` value.
-fn apply_sign_signer_self(config: &mut Option<&mut Config>,
+fn apply_sign_signer_self(config: &mut Option<&mut ParsedConfig>,
                           path: &str, item: &Item)
                           -> Result<()>
 {
@@ -1553,7 +1586,7 @@ const PKI_SCHEMA: Schema = &[
 ];
 
 /// Validates the `pki` section.
-fn apply_pki(config: &mut Option<&mut Config>,
+fn apply_pki(config: &mut Option<&mut ParsedConfig>,
              path: &str, item: &Item)
     -> Result<()>
 {
@@ -1570,7 +1603,7 @@ const PKI_VOUCH_SCHEMA: Schema = &[
 ];
 
 /// Validates the `pki.vouch` section.
-fn apply_pki_vouch(config: &mut Option<&mut Config>,
+fn apply_pki_vouch(config: &mut Option<&mut ParsedConfig>,
                    path: &str, item: &Item)
     -> Result<()>
 {
@@ -1581,7 +1614,7 @@ fn apply_pki_vouch(config: &mut Option<&mut Config>,
 }
 
 /// Validates the `pki.vouch.certifier-self` value.
-fn apply_pki_vouch_certifier_self(config: &mut Option<&mut Config>,
+fn apply_pki_vouch_certifier_self(config: &mut Option<&mut ParsedConfig>,
                                   path: &str, item: &Item)
     -> Result<()>
 {
@@ -1604,7 +1637,7 @@ fn apply_pki_vouch_certifier_self(config: &mut Option<&mut Config>,
 }
 
 /// Validates the `pki.vouch.expiration` value.
-fn apply_pki_vouch_expiration(config: &mut Option<&mut Config>,
+fn apply_pki_vouch_expiration(config: &mut Option<&mut ParsedConfig>,
                               path: &str, item: &Item)
     -> Result<()>
 {
@@ -1627,7 +1660,7 @@ const KEY_SCHEMA: Schema = &[
 ];
 
 /// Validates the `key` section.
-fn apply_key(config: &mut Option<&mut Config>,
+fn apply_key(config: &mut Option<&mut ParsedConfig>,
              path: &str, item: &Item)
     -> Result<()>
 {
@@ -1644,7 +1677,7 @@ const KEY_GENERATE_SCHEMA: Schema = &[
 ];
 
 /// Validates the `key.generate` section.
-fn apply_key_generate(config: &mut Option<&mut Config>,
+fn apply_key_generate(config: &mut Option<&mut ParsedConfig>,
                       path: &str, item: &Item)
     -> Result<()>
 {
@@ -1655,7 +1688,7 @@ fn apply_key_generate(config: &mut Option<&mut Config>,
 }
 
 /// Validates the `key.generate.cipher-suite` value.
-fn apply_key_generate_cipher_suite(config: &mut Option<&mut Config>,
+fn apply_key_generate_cipher_suite(config: &mut Option<&mut ParsedConfig>,
                                    path: &str, item: &Item)
     -> Result<()>
 {
@@ -1672,7 +1705,7 @@ fn apply_key_generate_cipher_suite(config: &mut Option<&mut Config>,
 }
 
 /// Validates the `key.generate.profile` value.
-fn apply_key_generate_profile(config: &mut Option<&mut Config>,
+fn apply_key_generate_profile(config: &mut Option<&mut ParsedConfig>,
                               path: &str, item: &Item)
     -> Result<()>
 {
@@ -1695,7 +1728,7 @@ const NETWORK_SCHEMA: Schema = &[
 ];
 
 /// Validates the `network` section.
-fn apply_network(config: &mut Option<&mut Config>,
+fn apply_network(config: &mut Option<&mut ParsedConfig>,
                  path: &str, item: &Item)
     -> Result<()>
 {
@@ -1706,7 +1739,7 @@ fn apply_network(config: &mut Option<&mut Config>,
 }
 
 /// Validates the `network.keyservers` value.
-fn apply_network_keyservers(config: &mut Option<&mut Config>,
+fn apply_network_keyservers(config: &mut Option<&mut ParsedConfig>,
                             path: &str, item: &Item)
     -> Result<()>
 {
@@ -1747,7 +1780,7 @@ const NETWORK_SEARCH_SCHEMA: Schema = &[
 ];
 
 /// Validates the `network.search` section.
-fn apply_network_search(config: &mut Option<&mut Config>,
+fn apply_network_search(config: &mut Option<&mut ParsedConfig>,
                         path: &str, item: &Item)
     -> Result<()>
 {
@@ -1759,7 +1792,7 @@ fn apply_network_search(config: &mut Option<&mut Config>,
 }
 
 /// Validates the `network.search.iterations` value.
-fn apply_network_search_iterations(config: &mut Option<&mut Config>,
+fn apply_network_search_iterations(config: &mut Option<&mut ParsedConfig>,
                                    path: &str, item: &Item)
     -> Result<()>
 {
@@ -1780,7 +1813,7 @@ fn apply_network_search_iterations(config: &mut Option<&mut Config>,
 }
 
 /// Validates the `network.search.use-dane` value.
-fn apply_network_search_use_dane(config: &mut Option<&mut Config>,
+fn apply_network_search_use_dane(config: &mut Option<&mut ParsedConfig>,
                                  path: &str, item: &Item)
     -> Result<()>
 {
@@ -1796,7 +1829,7 @@ fn apply_network_search_use_dane(config: &mut Option<&mut Config>,
 }
 
 /// Validates the `network.search.use-wkd` value.
-fn apply_network_search_use_wkd(config: &mut Option<&mut Config>,
+fn apply_network_search_use_wkd(config: &mut Option<&mut ParsedConfig>,
                                 path: &str, item: &Item)
     -> Result<()>
 {
@@ -1822,7 +1855,7 @@ const POLICY_SCHEMA: Schema = &[
 ];
 
 /// Validates the `policy` section.
-fn apply_policy(config: &mut Option<&mut Config>,
+fn apply_policy(config: &mut Option<&mut ParsedConfig>,
                 path: &str, item: &Item)
     -> Result<()>
 {
@@ -1855,7 +1888,7 @@ fn apply_policy(config: &mut Option<&mut Config>,
 }
 
 /// Validates the `policy.path` value.
-fn apply_policy_path(config: &mut Option<&mut Config>,
+fn apply_policy_path(config: &mut Option<&mut ParsedConfig>,
                      path: &str, item: &Item)
     -> Result<()>
 {
@@ -1875,7 +1908,7 @@ const SERVERS_SCHEMA: Schema = &[
 ];
 
 /// Validates the `servers` section.
-fn apply_servers(config: &mut Option<&mut Config>,
+fn apply_servers(config: &mut Option<&mut ParsedConfig>,
                  path: &str, item: &Item)
     -> Result<()>
 {
@@ -1886,7 +1919,7 @@ fn apply_servers(config: &mut Option<&mut Config>,
 }
 
 /// Validates the `servers.path` value.
-fn apply_servers_path(config: &mut Option<&mut Config>,
+fn apply_servers_path(config: &mut Option<&mut ParsedConfig>,
                       path: &str, item: &Item)
     -> Result<()>
 {
@@ -1927,22 +1960,22 @@ mod tests {
                  let value_str: &str = &$value_str;
 
                  let config = Config::default();
-                 assert_eq!(config.$source, Source::Default);
+                 assert_eq!(config.p.$source, Source::Default);
 
                  // Write the value to the config file, read the
                  // config file, and make sure we get the same value
                  // back.
                  let doc = format!("{} = {}", Config::$key(), value_str);
                  let config = ConfigFile::parse(&doc).unwrap().into_config();
-                 assert_eq!(config.$value_getter, $value);
-                 assert_eq!(config.$source, Source::ConfigFile);
+                 assert_eq!(config.p.$value_getter, $value);
+                 assert_eq!(config.p.$source, Source::ConfigFile);
 
                  // Get the value from the configuration file, and
                  // make sure we can round trip it.
                  let doc = format!("{} = {}", Config::$key(), config.$conf_getter());
                  let config = ConfigFile::parse(&doc).unwrap().into_config();
-                 assert_eq!(config.$value_getter, $value);
-                 assert_eq!(config.$source, Source::ConfigFile);
+                 assert_eq!(config.p.$value_getter, $value);
+                 assert_eq!(config.p.$source, Source::ConfigFile);
             }};
         }
 
