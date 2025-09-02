@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::Error;
 
-use sequoia::openpgp;
+use sequoia_openpgp as openpgp;
 use openpgp::Cert;
 use openpgp::Fingerprint;
 use openpgp::KeyHandle;
@@ -14,24 +14,52 @@ use openpgp::cert::amalgamation::ValidAmalgamation;
 use openpgp::packet::UserID;
 use openpgp::types::RevocationStatus;
 
-use sequoia::cert_store;
+use sequoia_cert_store as cert_store;
 use cert_store::Store;
 
-use sequoia::wot;
+use sequoia_wot as wot;
 use wot::Path;
 use wot::PathLints;
 use wot::FULLY_TRUSTED;
 use wot::PARTIALLY_TRUSTED;
 
-use sequoia::Time;
-use sequoia::ca_creation_time;
-use sequoia::types::Convert;
+use crate::Sequoia;
+use crate::Time;
+use crate::ca_creation_time;
+use crate::transitional::error_chain;
+use crate::transitional::output::wrapping::NBSP;
+use crate::types::Convert;
+use crate::types::Safe;
 
-use crate::Sq;
-use crate::common::ui;
-use crate::error_chain;
-use crate::output::wrapping::NBSP;
-use super::OutputType;
+/// Trait to implement adding of Paths and outputting them in a specific format
+///
+/// This trait is implemented to consume a vector of Path, trust amount tuples,
+/// a target Fingerprint, a target UserID, and aggregated trust amount (for the
+/// target UserID) to allow further processing and eventual output in a desired
+/// output format.
+pub trait OutputType {
+    /// Starts emitting a new cert.
+    ///
+    /// Must be called before calling [`OutputType::add_paths`] with a
+    /// new fingerprint.
+    fn add_cert(&mut self, fingerprint: &Fingerprint) -> Result<()>;
+
+    /// Add Paths for a UserID associated with a Fingerprint
+    ///
+    /// Paths are provided in a vector of Path, trust amount tuples.
+    /// The aggregated_amount represents the (total) trust amount (derived from
+    /// the Paths) for the UserID associated with the Fingerprint
+    fn add_paths(
+        &mut self,
+        paths: Vec<(Path, usize)>,
+        fingerprint: &Fingerprint,
+        userid: &UserID,
+        aggregated_amount: usize,
+    ) -> Result<()>;
+
+    /// Output the data consumed via add_paths() in a specific output format
+    fn finalize(&mut self) -> Result<()>;
+}
 
 /// Prints a Path Error
 pub fn print_path_error(output: &mut dyn std::io::Write, err: Error) {
@@ -57,7 +85,7 @@ pub fn print_path_header(
             " "
         },
         target_kh,
-        ui::Safe(target_userid),
+        Safe(target_userid),
         if amount >= 2 * FULLY_TRUSTED {
             "doubly"
         } else if amount >= FULLY_TRUSTED {
@@ -86,9 +114,9 @@ pub fn print_path(output: &mut dyn std::io::Write,
               subsequent_indent=format!("{}│   ", prefix),
               "{}",
               if certification_count == 0 {
-                  format!("{}", ui::Safe(target_userid))
+                  format!("{}", Safe(target_userid))
               } else if let Some(userid) = path.root().primary_userid() {
-                  format!("({})", ui::Safe(&userid))
+                  format!("({})", Safe(&userid))
               } else {
                   format!("")
               });
@@ -198,11 +226,11 @@ pub fn print_path(output: &mut dyn std::io::Write,
                                             if last { " " } else { "│" }),
                   "{}",
                   if last {
-                      format!("{}", ui::Safe(target_userid))
+                      format!("{}", Safe(target_userid))
                   } else if let Some(userid) =
                   certification.target_cert().and_then(|c| c.primary_userid())
                   {
-                      format!("({})", ui::Safe(userid.userid()))
+                      format!("({})", Safe(userid.userid()))
                   } else {
                       "".into()
                   });
@@ -229,7 +257,7 @@ pub fn print_path(output: &mut dyn std::io::Write,
 /// OutputNetwork
 pub struct ConciseHumanReadableOutputNetwork<'a> {
     output: &'a mut dyn std::io::Write,
-    sq: &'a Sq,
+    sq: &'a Sequoia,
     paths: bool,
     required_amount: usize,
     current_cert: Option<Cert>,
@@ -239,7 +267,7 @@ pub struct ConciseHumanReadableOutputNetwork<'a> {
 impl<'a> ConciseHumanReadableOutputNetwork<'a> {
     /// Creates a new ConciseHumanReadableOutputNetwork
     pub fn new(output: &'a mut dyn std::io::Write,
-               sq: &'a Sq,
+               sq: &'a Sequoia,
                required_amount: usize, paths: bool)
         -> Self
     {
@@ -307,7 +335,7 @@ impl OutputType for ConciseHumanReadableOutputNetwork<'_> {
                     reason_ = reason.to_string();
                     if ! message.is_empty() {
                         reason_.push_str(": ");
-                        reason_.push_str(&ui::Safe(message).to_string());
+                        reason_.push_str(&Safe(message).to_string());
                     }
                     &reason_
                 } else {
@@ -341,7 +369,7 @@ impl OutputType for ConciseHumanReadableOutputNetwork<'_> {
                 Some(Err(err)) => {
                     extra_info.push(
                         format!("not valid: {}",
-                                crate::one_line_error_chain(err)));
+                                crate::transitional::one_line_error_chain(err)));
                 }
                 None => (),
             }
@@ -415,7 +443,7 @@ impl OutputType for ConciseHumanReadableOutputNetwork<'_> {
                   } else {
                       format!("{:3}/120", aggregated_amount)
                   },
-                  ui::Safe(userid));
+                  Safe(userid));
 
         if self.paths {
             wwriteln!(stream=self.output);

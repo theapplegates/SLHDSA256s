@@ -35,6 +35,7 @@ use openpgp::parse::Parse;
 use openpgp::parse::buffered_reader::{self, BufferedReader};
 use openpgp::types::KeyFlags;
 
+use sequoia::list::ListContext;
 use sequoia::types::Query;
 use sequoia::types::TrustAmount;
 
@@ -45,8 +46,6 @@ use crate::commands::network::CONNECT_TIMEOUT;
 use crate::commands::network::USER_AGENT;
 use crate::commands::verify::verify;
 use crate::common::key_handle_dealias;
-use crate::common::pki::authenticate::AuthenticateContext;
-use crate::common::pki::authenticate;
 use crate::common::ui;
 use crate::sq::TrustThreshold;
 
@@ -402,10 +401,9 @@ pub fn dispatch(sq: Sq, c: download::Command)
                                 }
 
                                 let mut auth = || {
-                                    let result = authenticate(
+                                    let result = sq.sequoia.list(
                                         &mut std::io::stderr(),
-                                        &sq,
-                                        AuthenticateContext::Download,
+                                        ListContext::Download,
                                         vec![
                                             Query::for_key_handle(
                                                 None, cert.key_handle())

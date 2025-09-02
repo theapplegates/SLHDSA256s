@@ -3,6 +3,8 @@ use clap::ArgMatches;
 use sequoia::openpgp;
 use openpgp::Result;
 
+use sequoia::list::ListContext;
+
 pub mod link;
 pub mod path;
 pub mod vouch;
@@ -10,8 +12,6 @@ pub mod vouch;
 use crate::cli;
 
 use crate::Sq;
-use crate::common::pki::authenticate;
-use crate::commands::pki::authenticate::AuthenticateContext;
 
 pub fn dispatch(sq: Sq, cli: cli::pki::Command, matches: &ArgMatches)
                 -> Result<()>
@@ -29,10 +29,9 @@ pub fn dispatch(sq: Sq, cli: cli::pki::Command, matches: &ArgMatches)
             assert_eq!(cert.len(), 1);
             assert_eq!(userid.len(), 1);
 
-            authenticate(
+            sq.sequoia.list(
                 &mut std::io::stdout(),
-                &sq,
-                AuthenticateContext::PKI,
+                ListContext::PKI,
                 cert.binding_query(userid),
                 *gossip,
                 *unusable,
@@ -50,10 +49,9 @@ pub fn dispatch(sq: Sq, cli: cli::pki::Command, matches: &ArgMatches)
         }) => {
             assert_eq!(userid.len(), 1);
 
-            authenticate(
+            sq.sequoia.list(
                 &mut std::io::stdout(),
-                &sq,
-                AuthenticateContext::PKI,
+                ListContext::PKI,
                 userid.into(),
                 *gossip,
                 *unusable,
@@ -70,10 +68,9 @@ pub fn dispatch(sq: Sq, cli: cli::pki::Command, matches: &ArgMatches)
         }) => {
             assert_eq!(cert.len(), 1);
 
-            authenticate(
+            sq.sequoia.list(
                 &mut std::io::stdout(),
-                &sq,
-                AuthenticateContext::PKI,
+                ListContext::PKI,
                 cert.into(),
                 *gossip,
                 *unusable,

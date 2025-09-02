@@ -7,6 +7,8 @@ use std::borrow::Borrow;
 
 #[allow(unused_macros)]
 #[macro_use] mod macros;
+
+pub mod concise_human_readable;
 pub mod output;
 
 use output::hint::Hint;

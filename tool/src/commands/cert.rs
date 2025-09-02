@@ -6,6 +6,7 @@ use openpgp::{
     KeyHandle,
 };
 
+use sequoia::list::ListContext;
 use sequoia::types::Query;
 use sequoia::types::QueryKind;
 
@@ -13,8 +14,6 @@ use crate::{
     Result,
     Sq,
     cli::cert::{Command, list, Subcommands},
-    commands::cert::authenticate::AuthenticateContext,
-    common::pki::authenticate,
 };
 
 pub mod import;
@@ -66,10 +65,9 @@ pub fn dispatch(sq: Sq, command: Command) -> Result<()>
                 });
             }
 
-            authenticate(
+            sq.sequoia.list(
                 &mut std::io::stdout(),
-                &sq,
-                AuthenticateContext::PKI,
+                ListContext::PKI,
                 certs,
                 *gossip,
                 *unusable,

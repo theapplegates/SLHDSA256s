@@ -183,7 +183,7 @@ impl<'c> VHelper<'c> {
 
     fn print_sigs(&mut self, results: &[VerificationResult]) -> Result<()> {
         make_qprintln!(self.quiet);
-        use crate::common::pki::output::print_path;
+        use sequoia::list::print_path;
         use crate::print_error_chain;
 
         let reference_time = self.sq.time();
