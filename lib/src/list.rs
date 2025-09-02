@@ -64,41 +64,196 @@ pub enum ListContext {
 impl Sequoia {
     /// List bindings.
     ///
-    /// If `gossip` is specified, paths that are not rooted are still
-    /// shown (with a trust amount of 0, of course).
-    pub fn list<Q>(
-        &self,
-        o: &mut dyn std::io::Write,
-        context: ListContext,
-        queries: Vec<Q>,
-        gossip: bool,
-        unusable: bool,
-        certification_network: bool,
-        trust_amount: Option<TrustAmount<usize>>,
-        show_paths: bool,
-    ) -> Result<()>
+    /// See [`Builder`] for details.
+    pub fn list<Q>(&self, queries: Vec<Q>,
+                   o: &mut dyn std::io::Write)
+        -> Result<()>
     where
         Q: Into<Query>,
     {
-        tracer!(TRACE, "list");
+        self.list_builder(queries).execute(o)
+    }
 
-        make_qprintln!(self.config().quiet());
-
-        let mut queries: Vec<Query>
+    /// Returns a builder that can be used to configure
+    /// `Sequoia::list`'s behavior.
+    pub fn list_builder<Q>(&self, queries: Vec<Q>) -> Builder
+    where
+        Q: Into<Query>,
+    {
+        let queries: Vec<Query>
             = queries.into_iter().map(|q| q.into()).collect();
-        if queries.is_empty() {
-            queries.push(Query::all());
+
+        Builder {
+            sequoia: self,
+            context: ListContext::PKI,
+            queries,
+            gossip: false,
+            unusable: false,
+            certification_network: false,
+            trust_amount: None,
+            show_paths: false,
+        }
+    }
+}
+
+/// Lists bindings.
+///
+/// This command builder lists bindings.
+///
+/// By default, it returns all bindings that are fully authenticated.
+pub struct Builder<'a> {
+    sequoia: &'a Sequoia,
+    context: ListContext,
+    queries: Vec<Query>,
+    gossip: bool,
+    unusable: bool,
+    certification_network: bool,
+    trust_amount: Option<TrustAmount<usize>>,
+    show_paths: bool,
+}
+
+impl Builder<'_> {
+    /// Sets gossip mode.
+    ///
+    /// By default gossip mode is disabled.
+    ///
+    /// When gossip mode is enabled, this function returns all usable
+    /// bindings (see [`Builder::unusable`]) and any
+    /// unauthenticated paths to binding.  An unauthenticated path is
+    /// one that doesn't include a trust root.
+    ///
+    /// Consider the following scenario: Alice has certified Bob's
+    /// certificate and the caller wants to authenticate Bob's
+    /// certificate.  If the caller does not consider Alice to be a
+    /// trusted introducer (either directly as a trust root, or
+    /// indirectly), then the path `Alice -> Bob` will not be
+    /// returned.  When gossip mode is enabled, such paths are also
+    /// returned.  The aggregate trust amount is still accurate.
+    ///
+    /// Gossip is useful to determine who certified a given binding
+    /// even if the certified is not considered a trusted introducer.
+    ///
+    /// Note: Enabling gossip mode is not equivalent to setting the
+    /// trust amount to 0 using [`Builder::trust_amount`].
+    /// Setting the trust amount to 0 will return all valid bindings,
+    /// but it will not return any unauthenticated paths.
+    pub fn gossip(&mut self, gossip: bool) -> &mut Self {
+        self.gossip = gossip;
+        self
+    }
+
+    /// Sets whether unusable bindings should be returned.
+    ///
+    /// By default unusable bindings are not returned.  An unusable
+    /// binding is one where the binding is not valid according to the
+    /// current cryptographic policy, the certificate or user ID is
+    /// revoked, or the binding is not live.  Setting this option
+    /// causes these bindings to be returned.
+    ///
+    /// Note: the bindings still have to meet the trust threshold.  As
+    /// such, this option is only meaningful if gossip mode is also
+    /// enabled (see [`Builder::gossip`]).
+    pub fn unusable(&mut self, unusable: bool) -> &mut Self {
+        self.unusable = unusable;
+        self
+    }
+
+    /// Sets whether the network should be viewed as a certification
+    /// network.
+    ///
+    /// By default, `Sequoia::authenticate` treats the network as an
+    /// authentication network.  That means if Alice certifies Bob's
+    /// certificate and Bob certifies Carol's certificate, then
+    /// relying on Alice is not enough to authenticate Carol's
+    /// certificate: Alice only certified Bob's certificate; she did
+    /// not indicate that he should be treated as a trusted
+    /// introducer.  In a certification network, all certifications
+    /// are treated as delegations.
+    ///
+    /// Certification networks are useful for understanding how well a
+    /// group of people are connected.  They should not be use for
+    /// authentication purposes.
+    pub fn certification_network(&mut self, certification_network: bool)
+        -> &mut Self
+    {
+        self.certification_network = certification_network;
+        self
+    }
+
+    /// Sets the threshold at which a binding is considered
+    /// authenticated.
+    ///
+    /// By default a binding is considered authenticated if the trust
+    /// amount is at least `sequoia_wot::FULLY_TRUSTED` (120).
+    ///
+    /// If gossip mode is enabled, that mode takes precedence, and the
+    /// trust amount is ignored.
+    pub fn trust_amount<T>(&mut self, trust_amount: T)
+        -> &mut Self
+    where
+        T: Into<Option<TrustAmount<usize>>>
+    {
+        self.trust_amount = trust_amount.into();
+        self
+    }
+
+    /// Sets the execution context.
+    ///
+    /// This controls what output is shown.
+    ///
+    /// TRANSITIONAL.
+    pub fn context(&mut self, context: ListContext) -> &mut Self {
+        self.context = context;
+        self
+    }
+
+    /// Whether to show the authenticated paths in the output.
+    ///
+    /// By default only bindings are shown.  When enabled, for each
+    /// binding that is shown, some paths are also displayed.  Note:
+    /// because there may be many paths, not all paths are shown, but
+    /// a sufficient number are shown to justify the judgment.
+    ///
+    /// TRANSITIONAL.
+    pub fn show_paths(&mut self, show_paths: bool) -> &mut Self {
+        self.show_paths = show_paths;
+        self
+    }
+
+    /// Execute authenticate with the configured parameters.
+    pub fn execute(&self, o: &mut dyn std::io::Write) -> Result<()> {
+        let &Builder {
+            sequoia,
+            ref context,
+            ref queries,
+            gossip,
+            unusable,
+            certification_network,
+            trust_amount,
+            show_paths,
+        } = self;
+
+        tracer!(TRACE, "authenticate");
+
+        make_qprintln!(sequoia.config().quiet());
+
+        let queries_;
+        let queries = if queries.is_empty() {
+            queries_ = vec![ Query::all() ];
+            &queries_
+        } else {
+            queries
         };
 
         let return_all = queries.iter().any(|q| matches!(q.kind, QueryKind::All));
 
         // Build the network.
-        let cert_store = self.cert_store_or_else()?;
+        let cert_store = sequoia.cert_store_or_else()?;
         if return_all {
             cert_store.precompute();
         }
 
-        let mut n = wot::NetworkBuilder::rooted(cert_store, &*self.trust_roots());
+        let mut n = wot::NetworkBuilder::rooted(cert_store, &*sequoia.trust_roots());
         if certification_network {
             n = n.certification_network();
         }
@@ -361,7 +516,7 @@ impl Sequoia {
         let mut bindings_unusable = 0;
 
         let mut output = ConciseHumanReadableOutputNetwork::new(
-            o, self, required_amount, show_paths);
+            o, sequoia, required_amount, show_paths);
 
         // Look up the certificate, and return it if it is valid.
         let check_cert = |fpr: &Fingerprint| -> Result<Cert> {
@@ -397,7 +552,7 @@ impl Sequoia {
 
             // Check if the certificate is valid according to the current
             // policy.
-            let vc = cert.with_policy(self.policy(), self.time())
+            let vc = cert.with_policy(sequoia.policy(), sequoia.time())
                 .with_context(|| format!("{} is unusable", fpr))?;
 
             // Check if the certificate is live.
@@ -406,7 +561,7 @@ impl Sequoia {
 
             // Check that it is not revoked.
             if let RevocationStatus::Revoked(sigs)
-                = cert.revocation_status(self.policy(), self.time())
+                = cert.revocation_status(sequoia.policy(), sequoia.time())
             {
                 if let Some((reason, message))
                     = sigs[0].reason_for_revocation()
@@ -432,7 +587,7 @@ impl Sequoia {
                 = cert.userids().find(|ua| ua.userid() == userid)
             {
                 if let RevocationStatus::Revoked(sigs)
-                    = ua.revocation_status(self.policy(), self.time())
+                    = ua.revocation_status(sequoia.policy(), sequoia.time())
                 {
                     if let Some((reason, message))
                         = sigs[0].reason_for_revocation()
@@ -581,7 +736,7 @@ impl Sequoia {
             // We didn't show anything.  Try to figure out what was wrong.
             let query = &queries[i];
 
-            if context == ListContext::PKI {
+            if *context == ListContext::PKI {
                 if gossip {
                     qprintln!("No valid bindings match {}.",
                               query.argument.as_deref().unwrap_or("the query"));
@@ -616,7 +771,7 @@ impl Sequoia {
         }
 
         // See if the trust roots exist.
-        if unsatisfied > 0 && ! gossip && context == ListContext::PKI {
+        if unsatisfied > 0 && ! gossip && *context == ListContext::PKI {
             if n.roots().iter().all(|r| {
                 let fpr = r.fingerprint();
                 if let Err(err) = n.lookup_synopsis_by_fpr(&fpr) {
@@ -632,7 +787,7 @@ impl Sequoia {
             }
         }
 
-        if context == ListContext::PKI {
+        if *context == ListContext::PKI {
             if bindings.is_empty() {
                 // There are no matching bindings.
 
@@ -641,7 +796,7 @@ impl Sequoia {
                 if queries.len() == 1 {
                     if let QueryKind::Pattern(pattern) = &queries[0].kind {
                         // Tell the user about `sq network fetch`.
-                        self.hint(format_args!(
+                        sequoia.hint(format_args!(
                             "Try searching public directories:"))
                             .sq().arg("network").arg("search")
                             .arg(pattern)
@@ -652,7 +807,7 @@ impl Sequoia {
                                certificates.");
 
                     if return_all {
-                        self.hint(format_args!(
+                        sequoia.hint(format_args!(
                             "Consider creating a key for yourself:"))
                             .sq().arg("key").arg("generate")
                             .arg_value("--name", "your-name")
@@ -660,13 +815,13 @@ impl Sequoia {
                             .arg("--own-key")
                             .done();
 
-                        self.hint(format_args!(
+                        sequoia.hint(format_args!(
                             "Consider importing other peoples' certificates:"))
                             .sq().arg("cert").arg("import")
                             .arg("a-cert-file.pgp")
                             .done();
 
-                        self.hint(format_args!(
+                        sequoia.hint(format_args!(
                             "Try searching public directories for other peoples' \
                              certificates:"))
                             .sq().arg("network").arg("search")

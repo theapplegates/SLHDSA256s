@@ -29,16 +29,15 @@ pub fn dispatch(sq: Sq, cli: cli::pki::Command, matches: &ArgMatches)
             assert_eq!(cert.len(), 1);
             assert_eq!(userid.len(), 1);
 
-            sq.sequoia.list(
-                &mut std::io::stdout(),
-                ListContext::PKI,
-                cert.binding_query(userid),
-                *gossip,
-                *unusable,
-                *certification_network,
-                *trust_amount,
-                *show_paths,
-            )?
+            sq.sequoia.list_builder(
+                cert.binding_query(userid))
+                .context(ListContext::PKI)
+                .gossip(*gossip)
+                .unusable(*unusable)
+                .certification_network(*certification_network)
+                .trust_amount(*trust_amount)
+                .show_paths(*show_paths)
+                .execute(&mut std::io::stdout())?
         }
 
         // Find all authenticated bindings for a given User ID, list
@@ -49,15 +48,14 @@ pub fn dispatch(sq: Sq, cli: cli::pki::Command, matches: &ArgMatches)
         }) => {
             assert_eq!(userid.len(), 1);
 
-            sq.sequoia.list(
-                &mut std::io::stdout(),
-                ListContext::PKI,
-                userid.into(),
-                *gossip,
-                *unusable,
-                *certification_network,
-                *trust_amount,
-                *show_paths)?;
+            sq.sequoia.list_builder(userid.into())
+                .context(ListContext::PKI)
+                .gossip(*gossip)
+                .unusable(*unusable)
+                .certification_network(*certification_network)
+                .trust_amount(*trust_amount)
+                .show_paths(*show_paths)
+                .execute(&mut std::io::stdout())?;
         }
 
         // Find and list all authenticated bindings for a given
@@ -68,15 +66,14 @@ pub fn dispatch(sq: Sq, cli: cli::pki::Command, matches: &ArgMatches)
         }) => {
             assert_eq!(cert.len(), 1);
 
-            sq.sequoia.list(
-                &mut std::io::stdout(),
-                ListContext::PKI,
-                cert.into(),
-                *gossip,
-                *unusable,
-                *certification_network,
-                *trust_amount,
-                *show_paths)?;
+            sq.sequoia.list_builder(cert.into())
+                .context(ListContext::PKI)
+                .gossip(*gossip)
+                .unusable(*unusable)
+                .certification_network(*certification_network)
+                .trust_amount(*trust_amount)
+                .show_paths(*show_paths)
+                .execute(&mut std::io::stdout())?;
         }
 
         // Authenticates a given path.

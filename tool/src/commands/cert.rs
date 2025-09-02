@@ -65,15 +65,14 @@ pub fn dispatch(sq: Sq, command: Command) -> Result<()>
                 });
             }
 
-            sq.sequoia.list(
-                &mut std::io::stdout(),
-                ListContext::PKI,
-                certs,
-                *gossip,
-                *unusable,
-                *certification_network,
-                *trust_amount,
-                *show_paths)
+            sq.sequoia.list_builder(certs)
+                .context(ListContext::PKI)
+                .gossip(*gossip)
+                .unusable(*unusable)
+                .certification_network(*certification_network)
+                .trust_amount(*trust_amount)
+                .show_paths(*show_paths)
+                .execute(&mut std::io::stdout())
         },
 
         Subcommands::Lint(command) =>

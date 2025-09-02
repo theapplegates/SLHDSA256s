@@ -401,19 +401,18 @@ pub fn dispatch(sq: Sq, c: download::Command)
                                 }
 
                                 let mut auth = || {
-                                    let result = sq.sequoia.list(
-                                        &mut std::io::stderr(),
-                                        ListContext::Download,
+                                    let result = sq.sequoia.list_builder(
                                         vec![
                                             Query::for_key_handle(
                                                 None, cert.key_handle())
-                                        ],
-                                        false, // gossip
-                                        false, // show unusable
-                                        false, // certification network
-                                        Some(TrustAmount::Full), // trust amount
-                                        true, // show paths
-                                    );
+                                        ])
+                                        .context(ListContext::Download)
+                                        .gossip(false)
+                                        .unusable(false)
+                                        .certification_network(false)
+                                        .trust_amount(TrustAmount::Full)
+                                        .show_paths(true)
+                                        .execute(&mut std::io::stderr());
 
                                     if let Err(err) = result {
                                         weprintln!("Can't authenticate the \
