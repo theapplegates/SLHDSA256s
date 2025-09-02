@@ -3545,6 +3545,8 @@ dependencies = [
  "sequoia-policy-config",
  "sequoia-wot",
  "tempfile",
+ "terminal_size",
+ "textwrap",
  "thiserror 1.0.69",
  "toml_edit",
 ]

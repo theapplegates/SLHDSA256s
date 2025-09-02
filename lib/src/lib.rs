@@ -37,6 +37,8 @@ use cert_store::{
     StoreUpdate,
 };
 
+#[macro_use] pub mod transitional;
+
 pub mod consts;
 pub mod types;
 use types::StateDirectory;
