@@ -25,9 +25,8 @@ pub fn add(sq: Sq, mut c: add::Command)
     let userids = c.userids.resolve(&vc)?;
 
     let notations = c.signature_notations.parse()?;
-    let expiration =
-        sq.config.resolve_pki_vouch_expiration(
-            &c.expiration, c.expiration_source);
+    let expiration = sq.config()
+        .resolve_pki_vouch_expiration(&c.expiration, c.expiration_source);
 
     crate::common::pki::certify::certify(
         &mut std::io::stderr(),

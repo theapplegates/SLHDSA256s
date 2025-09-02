@@ -14,6 +14,7 @@ use anyhow::anyhow;
 use anyhow::Context as _;
 
 use sequoia::config::Config;
+use sequoia::config::ConfigFile;
 
 use sequoia::openpgp;
 use openpgp::Cert;
@@ -124,16 +125,11 @@ type WotStore
 pub struct Sq {
     pub sequoia: Sequoia,
 
-    pub config_file: crate::config::ConfigFile,
-    pub config: crate::config::Config,
-
     /// Overwrite existing files.
     pub overwrite: bool,
 
     /// Prevent any kind of interactive prompting.
     pub batch: bool,
-
-    pub policy_as_of: SystemTime,
 
     /// A password cache.  When encountering a locked key, we first
     /// consult the password cache.  The passwords are only tried if
@@ -161,14 +157,24 @@ impl Sq {
         self.sequoia.time_is_now()
     }
 
+    /// Returns the configuration.
+    pub fn config(&self) -> &Config {
+        self.sequoia.config()
+    }
+
+    /// Returns the configuration file.
+    pub fn config_file(&self) -> &ConfigFile {
+        self.sequoia.config_file()
+    }
+
     /// Be verbose.
     pub fn verbose(&self) -> bool {
-        self.config.verbose()
+        self.config().verbose()
     }
 
     /// Be quiet.
     pub fn quiet(&self) -> bool {
-        self.config.quiet()
+        self.config().quiet()
     }
 
     /// Returns the cert store's base directory, if it is enabled.
@@ -1487,7 +1493,7 @@ impl Sq {
 
     /// Prints a hint for the user.
     pub fn hint(&self, msg: fmt::Arguments) -> Hint {
-        Hint::new(! self.config.hints())
+        Hint::new(! self.config().hints())
             .hint(msg)
     }
 
@@ -1888,15 +1894,15 @@ impl Sq {
                         = match prefix
                     {
                         "for-" => (
-                            Box::new(self.config.encrypt_for_self().iter()),
+                            Box::new(self.config().encrypt_for_self().iter()),
                             Config::encrypt_for_self_config_key(),
                         ),
                         "signer-" => (
-                            Box::new(self.config.sign_signer_self().iter()),
+                            Box::new(self.config().sign_signer_self().iter()),
                             Config::sign_signer_self_config_key(),
                         ),
                         "certifier-" => (
-                            Box::new(self.config.pki_vouch_certifier_self().iter()),
+                            Box::new(self.config().pki_vouch_certifier_self().iter()),
                             Config::pki_vouch_certifier_self_config_key(),
                         ),
                         _ => return Err(anyhow::anyhow!(

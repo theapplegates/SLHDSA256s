@@ -45,6 +45,8 @@ mod builder;
 pub use builder::SequoiaBuilder;
 mod compat;
 pub mod config;
+use config::Config;
+use config::ConfigFile;
 mod errors;
 pub use errors::Error;
 mod time;
@@ -57,8 +59,9 @@ pub struct Sequoia {
     /// stateless mode.
     home: Option<Cow<'static, sequoia_directories::Home>>,
 
-    /// The OpenPGP policy.
-    policy: openpgp::policy::StandardPolicy<'static>,
+    /// The configuration.
+    config_file: ConfigFile,
+    config: Config,
 
     /// The current time.
     time: Clock,
@@ -117,9 +120,24 @@ impl Sequoia {
         self.home.is_none()
     }
 
+    /// Returns a reference to the configuration.
+    pub fn config(&self) -> &Config {
+        &self.config
+    }
+
+    /// Returns a mutable reference to the configuration.
+    pub fn config_mut(&mut self) -> &mut Config {
+        &mut self.config
+    }
+
+    /// Returns a reference to the configuration file.
+    pub fn config_file(&self) -> &ConfigFile {
+        &self.config_file
+    }
+
     /// Returns the OpenPGP policy.
     pub fn policy(&self) -> &openpgp::policy::StandardPolicy<'static> {
-        &self.policy
+        self.config.policy()
     }
 
     /// Returns the configured time.

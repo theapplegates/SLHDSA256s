@@ -260,7 +260,7 @@ fn explain_configuration(sink: &mut dyn io::Write, sq: &Sq)
     }
 
     // The referenced policy, if any.
-    if let Some(path) = sq.config.policy_path() {
+    if let Some(path) = sq.config().policy_path() {
         wwriteln!(stream = sink, initial_indent = "   - ",
                   "referenced cryptographic policy");
         wwriteln!(stream = sink, initial_indent = "     - ",
@@ -282,7 +282,7 @@ fn explain_configuration(sink: &mut dyn io::Write, sq: &Sq)
             "policy.aead_algorithms",
             "policy.packets",
         ].iter().any(|p| {
-            sq.config_file.as_item().traverse(&p.parse().unwrap())
+            sq.config_file().as_item().traverse(&p.parse().unwrap())
                 .ok()
                 .and_then(|n| n.iter().next())
                 .map(|_| true)

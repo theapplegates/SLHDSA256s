@@ -2,10 +2,11 @@ use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
+use crate::Clock;
 use crate::Result;
 use crate::Sequoia;
 use crate::StateDirectory;
-use crate::Clock;
+use crate::config::ConfigFile;
 use crate::openpgp;
 
 enum Home {
@@ -37,8 +38,12 @@ pub struct SequoiaBuilder {
     /// The home directory.
     home: Home,
 
-    /// The OpenPGP policy.
-    policy: openpgp::policy::StandardPolicy<'static>,
+    /// The OpenPGP policy's reference time.
+    ///
+    /// See [`StandardPolicy::at`] for details.
+    ///
+    /// [`StandardPolicy::at`]: https://docs.rs/sequoia-openpgp/latest/sequoia_openpgp/policy/struct.StandardPolicy.html#method.at
+    policy_as_of: Option<SystemTime>,
 
     /// The current time.
     time: Clock,
@@ -64,7 +69,7 @@ impl SequoiaBuilder {
     pub fn new() -> Self {
         SequoiaBuilder {
             home: Home::Default,
-            policy: openpgp::policy::StandardPolicy::new(),
+            policy_as_of: None,
             time: Default::default(),
             cert_store_path: Default::default(),
             keyrings: Default::default(),
@@ -182,12 +187,20 @@ impl SequoiaBuilder {
         self
     }
 
-
-    /// Sets the OpenPGP policy.
-    pub fn policy(&mut self, p: openpgp::policy::StandardPolicy<'static>)
-                  -> &mut Self
+    /// Sets the policy's reference time accordingly.
+    ///
+    /// `at` is a meta-parameter that selects a security profile that
+    /// is appropriate for the given point in time.
+    ///
+    /// See [`StandardPolicy::at`] for more details.
+    ///
+    ///   [`StandardPolicy::at`]: https://docs.rs/sequoia-openpgp/latest/sequoia_openpgp/policy/struct.StandardPolicy.html#method.at
+    pub fn policy_as_of<T>(&mut self, at: T) -> &mut Self
+    where
+        T: Into<SystemTime>
     {
-        self.policy = p;
+        self.policy_as_of = Some(at.into());
+
         self
     }
 
@@ -228,9 +241,21 @@ impl SequoiaBuilder {
             Home::Stateless => None,
         };
 
+        let config_file = if let Some(home) = home.as_deref() {
+            ConfigFile::parse_home(home)?
+        } else {
+            ConfigFile::default()
+        };
+        let config = if let Some(at) = self.policy_as_of {
+            config_file.config_policy_as_of(at)?
+        } else {
+            config_file.config()?
+        };
+
         Ok(Sequoia {
             home,
-            policy: self.policy.clone(),
+            config_file,
+            config,
             time: self.time.clone(),
             cert_store_path: self.cert_store_path.clone(),
             cert_store: Default::default(),

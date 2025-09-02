@@ -232,6 +232,8 @@ impl Default for ParsedConfig {
 pub struct Config {
     p: ParsedConfig,
 
+    policy: StandardPolicy<'static>,
+
     // WARNING: If you add anything to this struct, be sure to update
     // Config::cmp_some!
 }
@@ -245,7 +247,7 @@ impl Config {
     //
     // The following fields are not checked for equality:
     //
-    // - Nothing.
+    // - policy
     #[cfg(test)]
     fn mostly_eq(&self, other: &Self) -> bool {
         self.p.verbosity == other.p.verbosity
@@ -283,11 +285,26 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             p: Default::default(),
+            policy: StandardPolicy::new(),
         }
     }
 }
 
 impl Config {
+    /// Returns a default configuration with the policy's reference
+    /// time set accordingly.
+    ///
+    /// See [`StandardPolicy::at`] for the meaning of the time
+    /// parameter.
+    ///
+    /// [`StandardPolicy::at`]: https://docs.rs/sequoia-openpgp/latest/sequoia_openpgp/policy/struct.StandardPolicy.html#method.at
+    pub fn default_with_policy_as_of(at: SystemTime) -> Self {
+        Config {
+            p: Default::default(),
+            policy: StandardPolicy::at(at),
+        }
+    }
+
     /// Returns the verbosity setting.
     pub fn verbosity(&self) -> Verbosity {
         self.p.verbosity.clone()
@@ -575,28 +592,13 @@ impl Config {
     }
 
     /// Returns the cryptographic policy.
-    ///
-    /// We read in the default policy configuration, the configuration
-    /// referenced in the configuration file, and the inline policy.
-    pub fn policy(&self, at: SystemTime)
-                  -> Result<StandardPolicy<'static>>
-    {
-        let mut policy = ConfiguredStandardPolicy::at(at);
+    pub fn policy(&self) -> &StandardPolicy<'static> {
+        &self.policy
+    }
 
-        policy.parse_default_config()?;
-
-        if let Some(p) = &self.p.policy_path {
-            if ! policy.parse_config_file(p)? {
-                return Err(anyhow::anyhow!(
-                    "referenced policy file {:?} does not exist", p));
-            }
-        }
-
-        if let Some(p) = &self.p.policy_inline {
-            policy.parse_bytes(p)?;
-        }
-
-        Ok(policy.build())
+    /// Returns a mutable reference to the cryptographic policy.
+    pub fn policy_mut(&mut self) -> &mut StandardPolicy<'static> {
+        &mut self.policy
     }
 
     /// Returns the cipher suite setting.
@@ -1139,18 +1141,98 @@ example#certifier-self = \"fingerprint of your key\"
         })
     }
 
-    /// Returns the parsed `Config`.
-    pub fn config(&self) -> Config {
-        Config {
-            p: self.config.clone(),
+    /// Returns the cryptographic policy.
+    ///
+    /// We read in the default policy configuration, the configuration
+    /// referenced in the configuration file, and the inline policy.
+    fn read_policy(config: &ParsedConfig, at: Option<SystemTime>)
+        -> Result<StandardPolicy<'static>>
+    {
+        let mut policy = if let Some(at) = at {
+            ConfiguredStandardPolicy::at(at)
+        } else {
+            ConfiguredStandardPolicy::new()
+        };
+
+        policy.parse_default_config()?;
+
+        if let Some(p) = &config.policy_path {
+            if ! policy.parse_config_file(p)? {
+                return Err(anyhow::anyhow!(
+                    "referenced policy file {:?} does not exist", p));
+            }
         }
+
+        if let Some(p) = &config.policy_inline {
+            policy.parse_bytes(p)?;
+        }
+
+        Ok(policy.build())
     }
 
-    /// Returns the parsed `Config`.
-    pub fn into_config(self) -> Config {
-        Config {
-            p: self.config,
-        }
+    fn config_internal(config: ParsedConfig, at: Option<SystemTime>)
+        -> Result<Config>
+    {
+        let policy = Self::read_policy(&config, at)?;
+
+        Ok(Config {
+            p: config,
+            policy,
+        })
+    }
+
+    /// Returns a `Config` based on the parsed configuration file.
+    ///
+    /// A `Config` includes a [cryptographic policy].  This function
+    /// initializes the policy using
+    /// [`ConfiguredStandardPolicy::new`], which reads the policy from
+    /// the file designated by the environment variable
+    /// `SEQUOIA_CRYPTO_POLICY`, if that is set, or the system's
+    /// cryptographic policy (which is usually
+    /// `/etc/crypto-policies/back-ends/sequoia.config`), if it
+    /// exists.  If the `policy.path` key is set, then that file is
+    /// also read (an error is returned if the file is malformed or
+    /// does not exist) and is used to update the policy.  Finally,
+    /// the inline policy is applied to the policy.
+    ///
+    ///   [cryptographic policy]: https://docs.rs/sequoia-openpgp/latest/sequoia_openpgp/policy/struct.StandardPolicy.html
+    ///   [`ConfiguredStandardPolicy::new`]: https://docs.rs/sequoia-policy-config/latest/sequoia_policy_config/struct.ConfiguredStandardPolicy.html#method.at
+    pub fn config(&self) -> Result<Config> {
+        Self::config_internal(self.config.clone(), None)
+    }
+
+    /// Returns a `Config` based on the parsed configuration file.
+    ///
+    /// See [`ConfigFile::config`] for most details.
+    ///
+    /// `policy_as_of` is a meta-parameter that selects a security
+    /// profile that is appropriate for the given point in time.
+    /// Normally, the current time is most appropriate.  See
+    /// [`StandardPolicy::at`] for more details.
+    ///
+    /// [`StandardPolicy::at`]: https://docs.rs/sequoia-openpgp/latest/sequoia_openpgp/policy/struct.StandardPolicy.html#method.at
+    pub fn config_policy_as_of(&self, policy_as_of: SystemTime)
+        -> Result<Config>
+    {
+        Self::config_internal(self.config.clone(), Some(policy_as_of))
+    }
+
+    /// Returns a `Config` based on the parsed configuration file.
+    ///
+    /// This is like [`ConfigFile::config`], but consumes `self`
+    /// thereby avoiding cloning some data.
+    pub fn into_config(self) -> Result<Config> {
+        Self::config_internal(self.config, None)
+    }
+
+    /// Returns a `Config` based on the parsed configuration file.
+    ///
+    /// This is like [`ConfigFile::config_policy_as_of`], but consumes
+    /// `self` thereby avoiding cloning some data.
+    pub fn into_config_policy_as_of(self, policy_as_of: SystemTime)
+        -> Result<Config>
+    {
+        Self::config_internal(self.config, Some(policy_as_of))
     }
 
     /// Writes the configuration to the disk.
@@ -1947,7 +2029,9 @@ mod tests {
         let config_file = ConfigFile::parse(&template)
             .expect("can parse the default configuration template");
 
-        assert!(config_file.into_config().mostly_eq(&Config::default()));
+        let config = config_file.into_config().expect("valid config");
+
+        assert!(config.mostly_eq(&Config::default()));
     }
 
     #[test]
@@ -1966,14 +2050,16 @@ mod tests {
                  // config file, and make sure we get the same value
                  // back.
                  let doc = format!("{} = {}", Config::$key(), value_str);
-                 let config = ConfigFile::parse(&doc).unwrap().into_config();
+                 let config = ConfigFile::parse(&doc).unwrap()
+                     .into_config().expect("valid config");
                  assert_eq!(config.p.$value_getter, $value);
                  assert_eq!(config.p.$source, Source::ConfigFile);
 
                  // Get the value from the configuration file, and
                  // make sure we can round trip it.
                  let doc = format!("{} = {}", Config::$key(), config.$conf_getter());
-                 let config = ConfigFile::parse(&doc).unwrap().into_config();
+                 let config = ConfigFile::parse(&doc).unwrap()
+                     .into_config().expect("valid config");
                  assert_eq!(config.p.$value_getter, $value);
                  assert_eq!(config.p.$source, Source::ConfigFile);
             }};

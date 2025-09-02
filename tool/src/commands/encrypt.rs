@@ -69,7 +69,7 @@ pub fn dispatch(sq: Sq, command: cli::encrypt::Command) -> Result<()> {
     }
 
     // Profile.  XXX: Currently, this is not actionable.
-    let _profile = sq.config.resolve_encrypt_profile(
+    let _profile = sq.config().resolve_encrypt_profile(
         &command.profile, command.profile_source);
 
     encrypt(
@@ -317,7 +317,7 @@ pub fn encrypt<'a, 'b: 'a>(
     }
 
     if ! have_one_secret && passwords.is_empty() && ! recipients.iter()
-        .any(|c| sq.config.encrypt_for_self().contains(&c.fingerprint()))
+        .any(|c| sq.config().encrypt_for_self().contains(&c.fingerprint()))
     {
         if let Some(home) = sq.sequoia.home() {
             sq.hint(format_args!(

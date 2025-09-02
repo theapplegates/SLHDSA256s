@@ -25,8 +25,8 @@ pub fn authorize(sq: Sq, mut c: authorize::Command)
     let userids = c.userids.resolve(&vc)?;
 
     let notations = c.signature_notations.parse()?;
-    let expiration =
-        sq.config.resolve_pki_vouch_expiration(&c.expiration, c.expiration_source);
+    let expiration = sq.config()
+        .resolve_pki_vouch_expiration(&c.expiration, c.expiration_source);
 
 
     crate::common::pki::certify::certify(

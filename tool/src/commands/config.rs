@@ -48,8 +48,8 @@ fn get(sq: Sq, cmd: config::get::Command) -> Result<()> {
     let mut acc = Default::default();
 
     // First, look in the configuration.
-    let config = sq.config_file.effective_configuration(
-        &sq.policy(), sq.config.hints())?;
+    let config = sq.config_file().effective_configuration(
+        &sq.policy(), sq.config().hints())?;
     let r0 = Node::traverse(&*config.as_item() as _, &path)
         .map_err(Into::into)
         .and_then(
@@ -120,7 +120,7 @@ where
 /// Manipulating the document tree may delete or otherwise disturb the
 /// comments in a way that badly distorts the semantics.
 #[allow(dead_code)]
-fn set(mut sq: Sq, cmd: config::set::Command) -> Result<()> {
+fn set(sq: Sq, cmd: config::set::Command) -> Result<()> {
     let mut path: Path = cmd.name.parse()?;
     if path.is_empty() {
         return Err(anyhow::anyhow!("NAME must not be empty"));
@@ -132,7 +132,7 @@ fn set(mut sq: Sq, cmd: config::set::Command) -> Result<()> {
         return Err(anyhow::anyhow!("Either VALUE or --delete must be given"));
     }
 
-    let mut doc = std::mem::take(&mut sq.config_file).into_doc();
+    let mut doc = sq.config_file().clone().into_doc();
     let top = doc.as_item_mut();
     if let Some(value) = &cmd.value {
         let value: Value = value.parse().unwrap_or_else(|_| value.into());

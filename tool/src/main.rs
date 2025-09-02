@@ -182,8 +182,9 @@ fn real_main() -> Result<()> {
                 cli::config::find_home().and_then(|home| {
                     config::ConfigFile::parse_home(&home).ok()
                 }).map(|config_file: config::ConfigFile| {
-                    let config = config_file.into_config();
-                    cli::config::set_augmentations(&config);
+                    if let Ok(config) = config_file.into_config() {
+                        cli::config::set_augmentations(&config);
+                    }
                 });
 
                 let output = err.render();
@@ -238,24 +239,12 @@ fn real_main() -> Result<()> {
         Some(StateDirectory::None) => None,
     };
 
-    // Parse the configuration file.
-    let (config_file, mut config) = if let Some(home) = &home {
-        // Sanity check `cli::config::find_home`.
-        debug_assert_eq!(home.location(),
-                         cli::config::find_home().unwrap().location());
-
-        let config_file = config::ConfigFile::parse_home(home)
-            .with_context(|| format!(
-                "while reading configuration file {}",
-                config::ConfigFile::file_name(home).display()))?;
-        (config_file.clone(), config_file.into_config())
+    let mut sequoia = Sequoia::builder();
+    if let Some(home) = home {
+        sequoia.home(home);
     } else {
-        (config::ConfigFile::default_config(home.as_ref())?,
-         Default::default())
-    };
-
-    config.init_verbose(c.verbose, matches.value_source("verbose"));
-    config.init_quiet(c.quiet, matches.value_source("quiet"));
+        sequoia.stateless();
+    }
 
     let time: SystemTime = if let Some(t) = c.time.as_ref() {
         t.to_system_time(std::time::SystemTime::now())?
@@ -268,35 +257,7 @@ fn real_main() -> Result<()> {
     } else {
         time.clone()
     };
-
-    let mut policy = config.policy(policy_as_of)?;
-
-    let known_notations_store =
-        Box::leak(c.known_notation.clone().into_boxed_slice());
-    let known_notations =
-        Box::leak(known_notations_store
-                  .iter()
-                  .map(|n| n.as_str())
-                  .collect::<Vec<&str>>()
-                  .into_boxed_slice());
-    policy.good_critical_notations(known_notations);
-
-    let mut password_cache = Vec::new();
-    for password_file in &c.password_file {
-        let password = std::fs::read(&password_file)
-            .with_context(|| {
-                format!("Reading {}", password_file.display())
-            })?;
-        password_cache.push(password.into());
-    };
-
-    let mut sequoia = Sequoia::builder();
-    if let Some(home) = home {
-        sequoia.home(home);
-    } else {
-        sequoia.stateless();
-    }
-    sequoia.policy(policy);
+    sequoia.policy_as_of(policy_as_of);
 
     if let Some(t) = c.time.as_ref() {
         sequoia.fix_time_at(
@@ -321,15 +282,38 @@ fn real_main() -> Result<()> {
         sequoia.add_trust_root(root);
     }
 
-    let sequoia = sequoia.build()?;
+    let mut sequoia = sequoia.build()?;
+
+    sequoia.config_mut()
+        .init_verbose(c.verbose, matches.value_source("verbose"));
+    sequoia.config_mut()
+        .init_quiet(c.quiet, matches.value_source("quiet"));
+
+    let policy = sequoia.config_mut().policy_mut();
+
+    let known_notations_store =
+        Box::leak(c.known_notation.clone().into_boxed_slice());
+    let known_notations =
+        Box::leak(known_notations_store
+                  .iter()
+                  .map(|n| n.as_str())
+                  .collect::<Vec<&str>>()
+                  .into_boxed_slice());
+    policy.good_critical_notations(known_notations);
+
+    let mut password_cache = Vec::new();
+    for password_file in &c.password_file {
+        let password = std::fs::read(&password_file)
+            .with_context(|| {
+                format!("Reading {}", password_file.display())
+            })?;
+        password_cache.push(password.into());
+    };
 
     let sq = Sq {
         sequoia,
-        config_file,
-        config,
         overwrite: c.overwrite,
         batch: c.batch,
-        policy_as_of,
         password_cache: password_cache.into(),
     };
 
