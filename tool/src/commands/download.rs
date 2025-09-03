@@ -35,7 +35,6 @@ use openpgp::parse::Parse;
 use openpgp::parse::buffered_reader::{self, BufferedReader};
 use openpgp::types::KeyFlags;
 
-use sequoia::list::ListContext;
 use sequoia::types::Query;
 use sequoia::types::TrustAmount;
 
@@ -46,6 +45,7 @@ use crate::commands::network::CONNECT_TIMEOUT;
 use crate::commands::network::USER_AGENT;
 use crate::commands::verify::verify;
 use crate::common::key_handle_dealias;
+use crate::common::pki::output::list::ListContext;
 use crate::common::ui;
 use crate::sq::TrustThreshold;
 
@@ -401,20 +401,28 @@ pub fn dispatch(sq: Sq, c: download::Command)
                                 }
 
                                 let mut auth = || {
-                                    let result = sq.sequoia.list_builder(
+                                    let mut authenticate = sq.sequoia.list_builder(
                                         vec![
                                             Query::for_key_handle(
                                                 None, cert.key_handle())
-                                        ])
-                                        .context(ListContext::Download)
+                                        ]);
+                                    let authenticate = authenticate
                                         .gossip(false)
                                         .unusable(false)
                                         .certification_network(false)
                                         .trust_amount(TrustAmount::Full)
-                                        .show_paths(true)
-                                        .execute(&mut std::io::stderr());
+                                        .report(true);
 
-                                    if let Err(err) = result {
+                                    let stderr = &mut std::io::stderr();
+
+                                    let stream = crate::common::pki::output::list::Stream::new(
+                                        &sq, authenticate.params(),
+                                        ListContext::Download,
+                                        true, stderr);
+
+                                    if let Err(err) = authenticate
+                                        .execute_stream(stream)
+                                    {
                                         weprintln!("Can't authenticate the \
                                                     alleged signer:");
                                         let _ = ui::emit_cert(

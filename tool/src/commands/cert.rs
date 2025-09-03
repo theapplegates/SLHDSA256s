@@ -6,7 +6,6 @@ use openpgp::{
     KeyHandle,
 };
 
-use sequoia::list::ListContext;
 use sequoia::types::Query;
 use sequoia::types::QueryKind;
 
@@ -14,6 +13,7 @@ use crate::{
     Result,
     Sq,
     cli::cert::{Command, list, Subcommands},
+    common::pki::output::list::ListContext,
 };
 
 pub mod import;
@@ -34,7 +34,7 @@ pub fn dispatch(sq: Sq, command: Command) -> Result<()>
             certs, pattern, gossip, unusable, certification_network,
             trust_amount, show_paths,
         }) => {
-            let mut certs: Vec<Query> = certs.cert_query(true);
+            let mut queries: Vec<Query> = certs.cert_query(true);
 
             if let Some(pattern) = pattern.as_ref() {
                 let mut query_kind = None;
@@ -59,20 +59,26 @@ pub fn dispatch(sq: Sq, command: Command) -> Result<()>
                 let query_kind = query_kind.unwrap_or_else(|| {
                     QueryKind::Pattern(pattern.clone())
                 });
-                certs.push(Query {
+                queries.push(Query {
                     argument: Some(format!("{:?}", pattern)),
                     kind: query_kind,
                 });
             }
 
-            sq.sequoia.list_builder(certs)
-                .context(ListContext::PKI)
-                .gossip(*gossip)
+            let mut list = sq.sequoia.list_builder(queries);
+            let list = list.gossip(*gossip)
                 .unusable(*unusable)
                 .certification_network(*certification_network)
                 .trust_amount(*trust_amount)
-                .show_paths(*show_paths)
-                .execute(&mut std::io::stdout())
+                .report(true);
+
+            let stdout = &mut std::io::stdout();
+
+            let stream = crate::common::pki::output::list::Stream::new(
+                &sq, list.params(), ListContext::PKI,
+                *show_paths, stdout);
+
+            list.execute_stream(stream)
         },
 
         Subcommands::Lint(command) =>

@@ -2,6 +2,7 @@ use sequoia_openpgp as openpgp;
 use openpgp::KeyHandle;
 
 /// The different kinds of queries that we support.
+#[derive(Debug, Clone)]
 pub enum QueryKind {
     AuthenticatedCert(KeyHandle),
     Cert(KeyHandle),
@@ -14,6 +15,7 @@ pub enum QueryKind {
     All,
 }
 
+#[derive(Debug, Clone)]
 pub struct Query {
     /// The user-supplied command-line argument, e.g., `--cert
     /// FINGERPRINT`.

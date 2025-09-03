@@ -3,8 +3,6 @@ use clap::ArgMatches;
 use sequoia::openpgp;
 use openpgp::Result;
 
-use sequoia::list::ListContext;
-
 pub mod link;
 pub mod path;
 pub mod vouch;
@@ -12,6 +10,7 @@ pub mod vouch;
 use crate::cli;
 
 use crate::Sq;
+use crate::common::pki::output::list::ListContext;
 
 pub fn dispatch(sq: Sq, cli: cli::pki::Command, matches: &ArgMatches)
                 -> Result<()>
@@ -29,15 +28,22 @@ pub fn dispatch(sq: Sq, cli: cli::pki::Command, matches: &ArgMatches)
             assert_eq!(cert.len(), 1);
             assert_eq!(userid.len(), 1);
 
-            sq.sequoia.list_builder(
-                cert.binding_query(userid))
-                .context(ListContext::PKI)
+            let mut list = sq.sequoia.list_builder(
+                cert.binding_query(userid));
+            let list = list
                 .gossip(*gossip)
                 .unusable(*unusable)
                 .certification_network(*certification_network)
                 .trust_amount(*trust_amount)
-                .show_paths(*show_paths)
-                .execute(&mut std::io::stdout())?
+                .report(true);
+
+            let stdout = &mut std::io::stdout();
+
+            let stream = crate::common::pki::output::list::Stream::new(
+                &sq, list.params(), ListContext::PKI,
+                *show_paths, stdout);
+
+            list.execute_stream(stream)?
         }
 
         // Find all authenticated bindings for a given User ID, list
@@ -48,14 +54,22 @@ pub fn dispatch(sq: Sq, cli: cli::pki::Command, matches: &ArgMatches)
         }) => {
             assert_eq!(userid.len(), 1);
 
-            sq.sequoia.list_builder(userid.into())
-                .context(ListContext::PKI)
+            let mut list
+                = sq.sequoia.list_builder(userid.into());
+            let list = list
                 .gossip(*gossip)
                 .unusable(*unusable)
                 .certification_network(*certification_network)
                 .trust_amount(*trust_amount)
-                .show_paths(*show_paths)
-                .execute(&mut std::io::stdout())?;
+                .report(true);
+
+            let stdout = &mut std::io::stdout();
+
+            let stream = crate::common::pki::output::list::Stream::new(
+                &sq, list.params(), ListContext::PKI,
+                *show_paths, stdout);
+
+            list.execute_stream(stream)?
         }
 
         // Find and list all authenticated bindings for a given
@@ -66,14 +80,21 @@ pub fn dispatch(sq: Sq, cli: cli::pki::Command, matches: &ArgMatches)
         }) => {
             assert_eq!(cert.len(), 1);
 
-            sq.sequoia.list_builder(cert.into())
-                .context(ListContext::PKI)
+            let mut list = sq.sequoia.list_builder(cert.into());
+            let list = list
                 .gossip(*gossip)
                 .unusable(*unusable)
                 .certification_network(*certification_network)
                 .trust_amount(*trust_amount)
-                .show_paths(*show_paths)
-                .execute(&mut std::io::stdout())?;
+                .report(true);
+
+            let stdout = &mut std::io::stdout();
+
+            let stream = crate::common::pki::output::list::Stream::new(
+                &sq, list.params(), ListContext::PKI,
+                *show_paths, stdout);
+
+            list.execute_stream(stream)?
         }
 
         // Authenticates a given path.

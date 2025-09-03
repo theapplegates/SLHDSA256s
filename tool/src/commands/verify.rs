@@ -27,6 +27,7 @@ use crate::Result;
 use crate::cli;
 use crate::commands::inspect::Kind;
 use crate::common::{PreferredUserID, ui};
+use crate::common::pki::output::print_path;
 use crate::sq::TrustThreshold;
 
 pub fn dispatch(sq: Sq, command: cli::verify::Command)
@@ -183,7 +184,6 @@ impl<'c> VHelper<'c> {
 
     fn print_sigs(&mut self, results: &[VerificationResult]) -> Result<()> {
         make_qprintln!(self.quiet);
-        use sequoia::list::print_path;
         use crate::print_error_chain;
 
         let reference_time = self.sq.time();
