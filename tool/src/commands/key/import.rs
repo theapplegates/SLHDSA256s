@@ -4,10 +4,11 @@ use sequoia::openpgp;
 use openpgp::cert::CertParser;
 use openpgp::parse::Parse;
 
+use sequoia::types::FileOrStdin;
+
 use crate::output::import::ImportStats;
 
 use crate::cli;
-use crate::cli::types::FileOrStdin;
 use crate::Sq;
 use crate::Result;
 

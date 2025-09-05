@@ -4,8 +4,9 @@ use std::path::PathBuf;
 
 use clap::{ArgGroup, Parser};
 
+use sequoia::types::FileOrStdin;
+
 use super::types::ClapData;
-use super::types::FileOrStdin;
 use super::types::FileOrStdout;
 use super::types::cert_designator::*;
 

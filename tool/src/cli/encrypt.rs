@@ -5,9 +5,10 @@ use clap::{ValueEnum, Parser};
 use sequoia::config::Config;
 use sequoia::config::Profile;
 
+use sequoia::types::FileOrStdin;
+
 use super::types::ClapData;
 use super::types::EncryptPurpose;
-use super::types::FileOrStdin;
 use super::types::FileOrStdout;
 
 use crate::cli::config;

@@ -19,10 +19,10 @@ use openpgp::types::SignatureType;
 use sequoia::cert_store;
 use cert_store::LazyCert;
 use cert_store::StoreUpdate;
+use sequoia::types::FileOrStdin;
 
 use crate::Sq;
 use crate::cli::cert::import;
-use crate::cli::types::FileOrStdin;
 use crate::common::ui;
 use crate::commands::autocrypt;
 use crate::output::import::ImportStats;

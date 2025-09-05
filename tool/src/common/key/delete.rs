@@ -12,9 +12,10 @@ use openpgp::serialize::Serialize;
 
 use sequoia::key_store as keystore;
 
+use sequoia::types::FileStdinOrKeyHandle;
+
 use crate::Sq;
 use crate::cli::types::FileOrStdout;
-use crate::cli::types::FileStdinOrKeyHandle;
 
 pub fn delete<'a, P>(
     sq: Sq,

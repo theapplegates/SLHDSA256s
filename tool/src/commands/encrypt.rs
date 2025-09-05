@@ -25,11 +25,11 @@ use openpgp::types::RevocationStatus;
 use openpgp::types::SignatureType;
 
 use sequoia::types::Convert;
+use sequoia::types::FileOrStdin;
 
 use crate::Result;
 use crate::Sq;
 use crate::cli::types::EncryptPurpose;
-use crate::cli::types::FileOrStdin;
 use crate::cli;
 use crate::common::password;
 use crate::output::pluralize::Pluralize;

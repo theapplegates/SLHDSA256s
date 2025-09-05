@@ -8,8 +8,9 @@ use sequoia::openpgp::{
     types::SignatureType,
 };
 
+use sequoia::types::FileOrStdin;
+
 use super::types::ClapData;
-use super::types::FileOrStdin;
 use super::types::FileOrStdout;
 
 use crate::cli::examples;

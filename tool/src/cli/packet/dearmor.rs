@@ -1,8 +1,9 @@
 use clap::Parser;
 
+use sequoia::types::FileOrStdin;
+
 use crate::cli::examples::*;
 use crate::cli::types::ClapData;
-use crate::cli::types::FileOrStdin;
 use crate::cli::types::FileOrStdout;
 
 #[derive(Parser, Debug)]

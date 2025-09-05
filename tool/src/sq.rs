@@ -49,10 +49,10 @@ use sequoia::key_store as keystore;
 use keystore::Protection;
 
 use sequoia::Sequoia;
+use sequoia::types::FileStdinOrKeyHandle;
 use sequoia::types::PreferredUserID;
 
 use crate::cli::types::CertDesignators;
-use crate::cli::types::FileStdinOrKeyHandle;
 use crate::cli::types::KeyDesignators;
 use crate::cli::types::SpecialName;
 use crate::cli::types::StdinWarning;

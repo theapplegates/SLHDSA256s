@@ -6,9 +6,9 @@ use openpgp::packet::key::KeyParts;
 
 use sequoia::key_store as keystore;
 
-use crate::Sq;
-use crate::cli::types::FileStdinOrKeyHandle;
+use sequoia::types::FileStdinOrKeyHandle;
 
+use crate::Sq;
 
 mod expire;
 pub use expire::expire;
