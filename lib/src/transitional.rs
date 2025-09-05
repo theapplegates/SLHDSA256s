@@ -7,7 +7,9 @@ use std::borrow::Borrow;
 
 #[allow(unused_macros)]
 #[macro_use] mod macros;
+
 pub mod output;
+pub mod stdin;
 
 use output::hint::Hint;
 use crate::Sequoia;
