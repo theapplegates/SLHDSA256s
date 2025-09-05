@@ -52,6 +52,7 @@ use config::Config;
 use config::ConfigFile;
 mod errors;
 pub use errors::Error;
+mod lookup;
 mod time;
 pub use time::Time;
 
