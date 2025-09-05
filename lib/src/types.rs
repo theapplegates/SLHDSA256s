@@ -18,6 +18,8 @@ pub use query::Query;
 pub use query::QueryKind;
 mod safe;
 pub use safe::Safe;
+mod session_key;
+pub use session_key::SessionKey;
 mod trust_amount;
 pub use trust_amount::TrustAmount;
 

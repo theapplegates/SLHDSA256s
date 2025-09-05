@@ -92,7 +92,7 @@ pub struct Helper<'c> {
     vhelper: VHelper<'c>,
     secret_keys: HashMap<KeyID, (Cert, Key<key::SecretParts, key::UnspecifiedRole>)>,
     key_identities: HashMap<KeyID, Arc<Cert>>,
-    session_keys: Vec<cli::types::SessionKey>,
+    session_keys: Vec<sequoia::types::SessionKey>,
     dump_session_key: bool,
 
     /// The fingerprint of the public key that we used to the decrypt
@@ -118,7 +118,7 @@ impl<'c> std::ops::DerefMut for Helper<'c> {
 impl<'c> Helper<'c> {
     pub fn new(sq: &'c Sq,
                signatures: usize, certs: Vec<Cert>, secrets: Vec<Cert>,
-               session_keys: Vec<cli::types::SessionKey>,
+               session_keys: Vec<sequoia::types::SessionKey>,
                dump_session_key: bool)
                -> Self
     {
@@ -599,7 +599,7 @@ pub fn decrypt(sq: Sq,
                output: &mut dyn io::Write,
                signatures: usize, certs: Vec<Cert>, secrets: Vec<Cert>,
                dump_session_key: bool,
-               sk: Vec<cli::types::SessionKey>)
+               sk: Vec<sequoia::types::SessionKey>)
                -> Result<()> {
     let helper = Helper::new(&sq, signatures, certs,
                              secrets, sk, dump_session_key);
@@ -619,7 +619,7 @@ pub fn decrypt_unwrap(sq: Sq,
                       input: &mut (dyn io::Read + Sync + Send),
                       output: &mut dyn io::Write,
                       secrets: Vec<Cert>,
-                      session_keys: Vec<cli::types::SessionKey>,
+                      session_keys: Vec<sequoia::types::SessionKey>,
                       dump_session_key: bool)
                       -> Result<()>
 {

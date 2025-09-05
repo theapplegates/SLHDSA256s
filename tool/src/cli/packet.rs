@@ -8,12 +8,12 @@ use std::{
 use clap::{Args, Parser, Subcommand};
 
 use sequoia::types::FileOrStdin;
+use sequoia::types::SessionKey;
 
 use crate::cli::examples::*;
 use crate::cli::types::ArmorKind;
 use crate::cli::types::ClapData;
 use crate::cli::types::FileOrStdout;
-use crate::cli::types::SessionKey;
 use crate::cli::types::cert_designator::*;
 
 pub mod armor;

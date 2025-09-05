@@ -22,8 +22,8 @@ use self::openpgp::parse::{
 };
 
 use sequoia::types::Convert;
+use sequoia::types::SessionKey;
 
-use crate::cli::types::SessionKey;
 use crate::common::ui;
 use crate::Sq;
 

@@ -5,10 +5,10 @@ use std::path::PathBuf;
 use clap::Parser;
 
 use sequoia::types::FileOrStdin;
+use sequoia::types::SessionKey;
 
 use super::types::ClapData;
 use super::types::FileOrStdout;
-use super::types::SessionKey;
 use super::types::cert_designator::*;
 
 use crate::cli::examples;
