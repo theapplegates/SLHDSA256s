@@ -55,6 +55,7 @@ use config::ConfigFile;
 mod errors;
 pub use errors::Error;
 mod lookup;
+pub mod packet;
 mod time;
 pub use time::Time;
 
