@@ -98,15 +98,6 @@ pub struct Sq {
 
     /// Prevent any kind of interactive prompting.
     pub batch: bool,
-
-    /// A password cache.  When encountering a locked key, we first
-    /// consult the password cache.  The passwords are only tried if
-    /// it is safe.  That is, the passwords are only tried if we are
-    /// sure that the key is not protected by a retry counter.  If the
-    /// password cache doesn't contain the correct password, or the
-    /// key is protected by a retry counter, the user is prompted to
-    /// unlock the key.  The correct password is added to the cache.
-    pub password_cache: Mutex<Vec<Password>>,
 }
 
 impl Sq {
@@ -417,16 +408,12 @@ impl Sq {
 
     /// Caches a password.
     pub fn cache_password(&self, password: Password) {
-        let mut cache = self.password_cache.lock().unwrap();
-
-        if ! cache.contains(&password) {
-            cache.push(password);
-        }
+        self.sequoia.cache_password(password)
     }
 
     /// Returns the cached passwords.
     pub fn cached_passwords(&self) -> impl Iterator<Item=Password> {
-        self.password_cache.lock().unwrap().clone().into_iter()
+        self.sequoia.cached_passwords()
     }
 
     /// Decrypts a key, if possible.
@@ -470,7 +457,7 @@ impl Sq {
                         "Unsupported key protection mechanism"));
                 }
 
-                let password_cache = self.password_cache.lock().unwrap();
+                let password_cache = self.cached_passwords().collect::<Vec<_>>();
                 t!("Trying password cache ({} entries)", password_cache.len());
                 for p in password_cache.iter() {
                     if let Ok(unencrypted) = e.decrypt(&key, &p) {
@@ -507,7 +494,7 @@ impl Sq {
                         Ok(Some(p)) => {
                             if let Ok(unencrypted) = e.decrypt(&key, &p) {
                                 let (key, _) = key.add_secret(unencrypted.into());
-                                self.password_cache.lock().unwrap().push(p);
+                                self.cache_password(p);
                                 return Ok(key);
                             }
 

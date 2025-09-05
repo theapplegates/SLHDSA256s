@@ -397,8 +397,8 @@ impl<'c> DecryptionHelper for Helper<'c> {
                                     // expose that yet information yet
                                     // so we use this heuristic for
                                     // now.
-                                    let password_cache
-                                        = self.sq.password_cache.lock().unwrap();
+                                    let password_cache = self.sq.cached_passwords()
+                                        .collect::<Vec<_>>();
                                     if ! password_cache.is_empty() {
                                         // There's currently no way to
                                         // go from a key handle to the
@@ -548,7 +548,7 @@ impl<'c> DecryptionHelper for Helper<'c> {
 
         // Finally, try to decrypt using the SKESKs.  Before
         // prompting, try all passwords supplied on the cli.
-        for password in self.sq.password_cache.lock().unwrap().iter() {
+        for password in self.sq.cached_passwords() {
             for skesk in skesks {
                 if let Some(sk) = skesk.decrypt(&password).ok()
                     .and_then(|(algo, sk)| { if decrypt(algo, &sk) { Some(sk) } else { None }})

@@ -25,14 +25,14 @@ pub use sequoia_openpgp as openpgp;
 pub use sequoia_policy_config as policy_config;
 pub use sequoia_wot as wot;
 
-use openpgp::{
-    Fingerprint,
-    cert::raw::RawCertParser,
-    parse::Parse,
-    packet::{Key, key},
-    policy::NullPolicy,
-    policy::Policy,
-};
+use openpgp::Fingerprint;
+use openpgp::cert::raw::RawCertParser;
+use openpgp::crypto::Password;
+use openpgp::packet::Key;
+use openpgp::packet::key;
+use openpgp::parse::Parse;
+use openpgp::policy::NullPolicy;
+use openpgp::policy::Policy;
 
 use cert_store::{
     LazyCert,
@@ -58,6 +58,7 @@ mod errors;
 pub use errors::Error;
 mod lookup;
 pub mod packet;
+mod password_cache;
 mod time;
 pub use time::Time;
 
@@ -104,6 +105,15 @@ pub struct Sequoia {
 
     /// Path to our IPC servers.
     ipc_server_path: PathBuf,
+
+    /// A password cache.  When encountering a locked key, we first
+    /// consult the password cache.  The passwords are only tried if
+    /// it is safe.  That is, the passwords are only tried if we are
+    /// sure that the key is not protected by a retry counter.  If the
+    /// password cache doesn't contain the correct password, or the
+    /// key is protected by a retry counter, the user is prompted to
+    /// unlock the key.  The correct password is added to the cache.
+    pub password_cache: Mutex<Vec<Password>>,
 }
 
 impl Sequoia {

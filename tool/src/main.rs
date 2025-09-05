@@ -309,11 +309,12 @@ fn real_main() -> Result<()> {
         password_cache.push(password.into());
     };
 
+    sequoia.cache_passwords(password_cache.into_iter());
+
     let sq = Sq {
         sequoia,
         overwrite: c.overwrite,
         batch: c.batch,
-        password_cache: password_cache.into(),
     };
 
     match commands::dispatch(sq, c, &matches) {
