@@ -265,7 +265,7 @@ impl<'a> Params<'a> {
 
     /// Returns whether a report will be generated.
     ///
-    /// See [`Output::report`] for more information.
+    /// See [`Output::Report`] for more information.
     pub fn report(&self) -> bool {
         self.report
     }
@@ -366,7 +366,7 @@ impl<'a> Builder<'a> {
 
     /// Sets whether a report will be generated.
     ///
-    /// See [`Output::report`] for more information.
+    /// See [`Output::Report`] for more information.
     pub fn report(&mut self, report: bool) -> &mut Self {
         self.params.report = report;
         self
