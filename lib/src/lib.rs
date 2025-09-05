@@ -30,6 +30,7 @@ use openpgp::{
     cert::raw::RawCertParser,
     parse::Parse,
     packet::{Key, key},
+    policy::NullPolicy,
     policy::Policy,
 };
 use cert_store::{
@@ -44,6 +45,7 @@ pub mod list;
 pub mod types;
 use types::StateDirectory;
 
+mod best_userid;
 mod builder;
 pub use builder::SequoiaBuilder;
 mod compat;
@@ -55,6 +57,8 @@ pub use errors::Error;
 mod lookup;
 mod time;
 pub use time::Time;
+
+static NULL_POLICY: &NullPolicy = unsafe { &NullPolicy::new() };
 
 pub struct Sequoia {
     /// The home directory.
