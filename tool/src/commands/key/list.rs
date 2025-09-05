@@ -19,8 +19,8 @@ use sequoia::key_store as keystore;
 use keystore::Protection;
 
 use sequoia::types::Convert;
+use sequoia::types::PreferredUserID;
 
-use crate::PreferredUserID;
 use crate::Result;
 use crate::Sq;
 use crate::Time;

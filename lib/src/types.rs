@@ -8,6 +8,8 @@ use crate::errors::Result;
 
 mod convert;
 pub use convert::Convert;
+mod preferred_userid;
+pub use preferred_userid::PreferredUserID;
 mod query;
 pub use query::Query;
 pub use query::QueryKind;

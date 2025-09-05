@@ -33,7 +33,6 @@ mod sq;
 use sq::Sq;
 
 mod common;
-use common::PreferredUserID;
 pub mod utils;
 
 mod cli;

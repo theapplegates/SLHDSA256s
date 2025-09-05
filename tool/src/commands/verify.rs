@@ -22,11 +22,13 @@ use sequoia::openpgp::{
 use sequoia::cert_store::Store;
 use sequoia::wot::store::Store as _;
 
+use sequoia::types::PreferredUserID;
+
 use crate::Sq;
 use crate::Result;
 use crate::cli;
 use crate::commands::inspect::Kind;
-use crate::common::{PreferredUserID, ui};
+use crate::common::ui;
 use crate::common::pki::output::print_path;
 use crate::sq::TrustThreshold;
 

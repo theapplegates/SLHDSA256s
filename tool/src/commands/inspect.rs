@@ -35,6 +35,7 @@ use openpgp::serialize::Serialize;
 use sequoia::consts::SECONDS_IN_DAY;
 use sequoia::consts::SECONDS_IN_YEAR;
 use sequoia::types::Convert;
+use sequoia::types::PreferredUserID;
 
 use crate::Sq;
 use crate::one_line_error_chain;
@@ -43,7 +44,6 @@ use crate::cli::inspect;
 use crate::cli::types::FileOrStdout;
 use crate::commands::packet::dump::PacketDumper;
 use crate::common::NULL_POLICY;
-use crate::common::PreferredUserID;
 use crate::common::ui;
 use crate::sq::TrustThreshold;
 

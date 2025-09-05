@@ -49,6 +49,7 @@ use sequoia::key_store as keystore;
 use keystore::Protection;
 
 use sequoia::Sequoia;
+use sequoia::types::PreferredUserID;
 
 use crate::cli::types::CertDesignators;
 use crate::cli::types::FileStdinOrKeyHandle;
@@ -61,7 +62,6 @@ use crate::common::password;
 use crate::common::ui;
 use crate::output::hint::Hint;
 use crate::output::import::{ImportStats, ImportStatus};
-use crate::PreferredUserID;
 use crate::print_error_chain;
 
 const TRACE: bool = false;
