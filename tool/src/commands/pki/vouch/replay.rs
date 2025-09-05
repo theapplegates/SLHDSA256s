@@ -11,10 +11,10 @@ use sequoia::cert_store;
 use cert_store::StoreUpdate;
 
 use sequoia::types::Safe;
+use sequoia::types::TrustThreshold;
 
 use crate::Sq;
 use crate::cli::pki::vouch::replay;
-use crate::sq::TrustThreshold;
 
 const TRACE: bool = false;
 

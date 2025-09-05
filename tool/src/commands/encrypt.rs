@@ -26,6 +26,7 @@ use openpgp::types::SignatureType;
 
 use sequoia::types::Convert;
 use sequoia::types::FileOrStdin;
+use sequoia::types::TrustThreshold;
 
 use crate::Result;
 use crate::Sq;
@@ -34,7 +35,6 @@ use crate::cli;
 use crate::common::password;
 use crate::output::pluralize::Pluralize;
 use crate::print_error_chain;
-use crate::sq::TrustThreshold;
 
 use crate::commands::CompressionMode;
 

@@ -9,11 +9,12 @@ use openpgp::cert::KeyBuilder;
 use openpgp::serialize::Serialize;
 use openpgp::types::KeyFlags;
 
+use sequoia::types::TrustThreshold;
+
 use crate::Sq;
 use crate::cli::key::subkey::add::Command;
 use crate::cli::types::EncryptPurpose;
 use crate::common;
-use crate::sq::TrustThreshold;
 
 /// Add a new Subkey for an existing primary key
 ///

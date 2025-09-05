@@ -31,6 +31,7 @@ use cert_store::StoreUpdate;
 
 use sequoia::inspect::inspect;
 use sequoia::types::TrustAmount;
+use sequoia::types::TrustThreshold;
 
 use crate::Sq;
 use crate::cli::types::Expiration;
@@ -42,7 +43,6 @@ use crate::common::pki::list::summarize_certification;
 use crate::common::pki::replay::replay;
 use crate::common::ui;
 use crate::output::import::ImportStatus;
-use crate::sq::TrustThreshold;
 
 pub fn dispatch(
     sq: Sq,

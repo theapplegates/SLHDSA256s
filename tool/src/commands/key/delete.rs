@@ -7,13 +7,14 @@ use openpgp::Cert;
 use openpgp::cert::amalgamation::ValidateAmalgamation;
 use openpgp::cert::amalgamation::key::PrimaryKey;
 
+use sequoia::types::TrustThreshold;
+
 use crate::Result;
 use crate::Sq;
 use crate::cli;
 use crate::common::NULL_POLICY;
 use crate::common::key::delete;
 use crate::common::key::get_keys;
-use crate::sq::TrustThreshold;
 
 pub fn dispatch(sq: Sq, command: cli::key::delete::Command)
                 -> Result<()>

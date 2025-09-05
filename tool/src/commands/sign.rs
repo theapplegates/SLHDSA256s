@@ -24,13 +24,13 @@ use openpgp::serialize::stream::{
 use openpgp::types::SignatureType;
 
 use sequoia::types::FileOrStdin;
+use sequoia::types::TrustThreshold;
 
 use crate::Sq;
 
 use crate::cli;
 use crate::cli::sign::Mode;
 use crate::cli::types::FileOrStdout;
-use crate::sq::TrustThreshold;
 
 mod merge_signatures;
 use merge_signatures::merge_signatures;

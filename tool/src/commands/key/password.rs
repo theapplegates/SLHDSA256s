@@ -5,13 +5,14 @@ use anyhow::Context;
 use sequoia::openpgp;
 use openpgp::Cert;
 
+use sequoia::types::TrustThreshold;
+
 use crate::Result;
 use crate::Sq;
 use crate::cli;
 use crate::common::NULL_POLICY;
 use crate::common::key::get_keys;
 use crate::common::key::password;
-use crate::sq::TrustThreshold;
 
 pub fn dispatch(sq: Sq, command: cli::key::password::Command)
                 -> Result<()>

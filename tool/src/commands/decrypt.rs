@@ -27,6 +27,8 @@ use cert_store::store::StoreError;
 
 use sequoia::key_store as keystore;
 
+use sequoia::types::TrustThreshold;
+
 use crate::{
     cli,
     commands::{
@@ -36,7 +38,6 @@ use crate::{
     common::ui,
     Sq,
     load_keys,
-    sq::TrustThreshold,
 };
 
 const TRACE: bool = false;

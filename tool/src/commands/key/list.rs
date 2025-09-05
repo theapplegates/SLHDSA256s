@@ -20,6 +20,7 @@ use keystore::Protection;
 
 use sequoia::types::Convert;
 use sequoia::types::PreferredUserID;
+use sequoia::types::TrustThreshold;
 
 use crate::Result;
 use crate::Sq;
@@ -28,7 +29,6 @@ use crate::cli::types::cert_designator;
 use crate::cli;
 use crate::common::NULL_POLICY;
 use crate::common::ui;
-use crate::sq::TrustThreshold;
 
 /// Keys may either be grouped into a certificate or be bare.
 ///

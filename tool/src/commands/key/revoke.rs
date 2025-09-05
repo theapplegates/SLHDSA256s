@@ -6,11 +6,12 @@ use openpgp::Cert;
 use openpgp::Packet;
 use openpgp::Result;
 
+use sequoia::types::TrustThreshold;
+
 use crate::Sq;
 use crate::cli::key::revoke::Command;
 use crate::common::get_secret_signer;
 use crate::common::RevocationOutput;
-use crate::sq::TrustThreshold;
 
 /// Handle the revocation of a certificate
 struct CertificateRevocation {

@@ -5,12 +5,13 @@ use anyhow::Context;
 use sequoia::openpgp;
 use openpgp::Cert;
 
+use sequoia::types::TrustThreshold;
+
 use crate::Result;
 use crate::Sq;
 use crate::common::key::delete;
 use crate::common::NULL_POLICY;
 use crate::common::key::get_keys;
-use crate::sq::TrustThreshold;
 
 pub fn dispatch(sq: Sq, command: crate::cli::key::subkey::delete::Command)
     -> Result<()>

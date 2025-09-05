@@ -22,6 +22,8 @@ mod session_key;
 pub use session_key::SessionKey;
 mod trust_amount;
 pub use trust_amount::TrustAmount;
+mod trust_threshold;
+pub use trust_threshold::TrustThreshold;
 
 /// Either an absolute path, or a default path.
 ///

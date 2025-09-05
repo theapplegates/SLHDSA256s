@@ -7,10 +7,11 @@ use openpgp::Result;
 use openpgp::policy::HashAlgoSecurity;
 use openpgp::policy::Policy;
 
+use sequoia::types::TrustThreshold;
+
 use crate::Sq;
 use crate::cli::pki::vouch::list;
 use crate::common::ui;
-use crate::sq::TrustThreshold;
 
 const TRACE: bool = false;
 

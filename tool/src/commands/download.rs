@@ -37,6 +37,7 @@ use openpgp::types::KeyFlags;
 
 use sequoia::types::Query;
 use sequoia::types::TrustAmount;
+use sequoia::types::TrustThreshold;
 
 use crate::Result;
 use crate::Sq;
@@ -47,7 +48,6 @@ use crate::commands::verify::verify;
 use crate::common::key_handle_dealias;
 use crate::common::pki::output::list::ListContext;
 use crate::common::ui;
-use crate::sq::TrustThreshold;
 
 // So we can deal with either named temp files or files.
 enum SomeFile {

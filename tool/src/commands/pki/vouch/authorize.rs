@@ -1,10 +1,11 @@
 use sequoia::openpgp;
 use openpgp::Result;
 
+use sequoia::types::TrustThreshold;
+
 use crate::Sq;
 use crate::cli::pki::vouch::authorize;
 use crate::commands::FileOrStdout;
-use crate::sq::TrustThreshold;
 
 pub fn authorize(sq: Sq, mut c: authorize::Command)
     -> Result<()>

@@ -10,6 +10,8 @@ use openpgp::{
 use sequoia::cert_store;
 use cert_store::Store;
 
+use sequoia::types::TrustThreshold;
+
 use crate::{
     Sq,
     print_error_chain,
@@ -17,7 +19,6 @@ use crate::{
 };
 
 use crate::cli::cert::export;
-use crate::sq::TrustThreshold;
 
 pub fn dispatch(sq: Sq, cmd: export::Command) -> Result<()> {
     let cert_store = sq.cert_store_or_else()?;

@@ -51,6 +51,7 @@ use cert_store::StoreUpdate;
 use cert_store::store::UserIDQueryParams;
 
 use sequoia::types::Convert;
+use sequoia::types::TrustThreshold;
 
 use crate::{
     commands::{
@@ -68,7 +69,6 @@ use crate::{
 };
 
 use crate::cli;
-use crate::sq::TrustThreshold;
 
 /// User agent for http communications.
 pub const USER_AGENT: &'static str = concat!("sq/", env!("CARGO_PKG_VERSION"));

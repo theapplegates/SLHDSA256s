@@ -16,6 +16,8 @@ use openpgp::types::SignatureType;
 
 use sequoia::cert_store::StoreUpdate;
 
+use sequoia::types::TrustThreshold;
+
 use crate::Sq;
 use crate::cli::types::CertDesignators;
 use crate::cli::types::Expiration;
@@ -23,7 +25,6 @@ use crate::cli::types::FileOrStdout;
 use crate::cli::types::KeyDesignators;
 use crate::cli::types::cert_designator;
 use crate::sq::GetKeysOptions;
-use crate::sq::TrustThreshold;
 
 /// cert must resolve to a single certificate.
 ///

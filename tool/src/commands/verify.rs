@@ -24,13 +24,13 @@ use sequoia::wot::store::Store as _;
 
 use sequoia::inspect::Kind;
 use sequoia::types::PreferredUserID;
+use sequoia::types::TrustThreshold;
 
 use crate::Sq;
 use crate::Result;
 use crate::cli;
 use crate::common::ui;
 use crate::common::pki::output::print_path;
-use crate::sq::TrustThreshold;
 
 pub fn dispatch(sq: Sq, command: cli::verify::Command)
     -> Result<()>

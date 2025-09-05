@@ -11,12 +11,13 @@ use openpgp::packet::signature::subpacket::NotationData;
 use openpgp::packet::{Key, Signature, key};
 use openpgp::types::ReasonForRevocation;
 
+use sequoia::types::TrustThreshold;
+
 use crate::Result;
 use crate::Sq;
 use crate::common::NULL_POLICY;
 use crate::common::RevocationOutput;
 use crate::common::get_secret_signer;
-use crate::sq::TrustThreshold;
 
 /// Handle the revocation of a subkey
 struct SubkeyRevocation {

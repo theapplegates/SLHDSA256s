@@ -6,10 +6,11 @@ use openpgp::Packet;
 use openpgp::cert::amalgamation::key::PrimaryKey;
 use openpgp::serialize::Serialize;
 
+use sequoia::types::TrustThreshold;
+
 use crate::Result;
 use crate::Sq;
 use crate::cli;
-use crate::sq::TrustThreshold;
 
 pub fn dispatch(sq: Sq, command: cli::key::export::Command)
                 -> Result<()>

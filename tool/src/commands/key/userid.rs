@@ -21,6 +21,8 @@ use openpgp::Result;
 use sequoia::cert_store;
 use cert_store::StoreUpdate;
 
+use sequoia::types::TrustThreshold;
+
 use crate::Sq;
 use crate::cli::key::userid::RevokeCommand;
 use crate::cli::types::userid_designator::ResolvedUserID;
@@ -33,7 +35,6 @@ use crate::common::userid::{
     lint_names,
     lint_userids,
 };
-use crate::sq::TrustThreshold;
 
 /// Handle the revocation of a User ID
 struct UserIDRevocation {

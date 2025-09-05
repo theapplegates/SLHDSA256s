@@ -15,11 +15,12 @@ use openpgp::Packet;
 use openpgp::Result;
 use sequoia::openpgp;
 
+use sequoia::types::TrustThreshold;
+
 use crate::Sq;
 use crate::cli;
 use cli::types::EncryptPurpose;
 use crate::common::password;
-use crate::sq::TrustThreshold;
 
 pub fn bind(sq: Sq, command: cli::key::subkey::bind::Command) -> Result<()>
 {

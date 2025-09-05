@@ -1,10 +1,11 @@
 use sequoia::openpgp;
 use openpgp::Result;
 
+use sequoia::types::TrustThreshold;
+
 use crate::Sq;
 use crate::cli::pki::vouch::add;
 use crate::commands::FileOrStdout;
-use crate::sq::TrustThreshold;
 
 pub fn add(sq: Sq, mut c: add::Command)
     -> Result<()>

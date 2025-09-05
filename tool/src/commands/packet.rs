@@ -26,6 +26,7 @@ use openpgp::{
 use openpgp::serialize::stream::Message;
 
 use sequoia::types::Convert;
+use sequoia::types::TrustThreshold;
 
 use crate::Sq;
 use crate::Result;
@@ -40,7 +41,6 @@ use crate::cli::types::StdinWarning;
 use crate::commands;
 use crate::common::ui;
 use crate::load_keys;
-use crate::sq::TrustThreshold;
 
 pub mod armor;
 pub mod dearmor;

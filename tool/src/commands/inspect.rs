@@ -5,12 +5,12 @@ use openpgp::{KeyHandle, Result};
 use openpgp::serialize::Serialize;
 
 use sequoia::inspect::inspect;
+use sequoia::types::TrustThreshold;
 
 use crate::Sq;
 
 use crate::cli::inspect;
 use crate::cli::types::FileOrStdout;
-use crate::sq::TrustThreshold;
 
 pub fn dispatch(sq: Sq, c: inspect::Command)
     -> Result<()>

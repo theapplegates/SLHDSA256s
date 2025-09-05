@@ -11,12 +11,12 @@ use sequoia::cert_store::Store;
 use sequoia::wot;
 
 use sequoia::ca_creation_time;
+use sequoia::types::TrustThreshold;
 
 use crate::Sq;
 use crate::cli::key::approvals;
 use crate::cli;
 use crate::common::ui;
-use crate::sq::TrustThreshold;
 
 pub fn dispatch(sq: Sq, command: approvals::Command)
                 -> Result<()>

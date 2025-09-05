@@ -9,6 +9,8 @@ use sequoia::cert_store;
 use cert_store::LazyCert;
 use cert_store::Store;
 
+use sequoia::types::TrustThreshold;
+
 use crate::Result;
 use crate::Sq;
 use crate::cli::pki::link;
@@ -16,7 +18,6 @@ use crate::cli::types::cert_designator;
 use crate::commands::active_certification;
 use crate::common::pki::list::summarize_certification;
 use crate::common::ui;
-use crate::sq::TrustThreshold;
 
 pub fn list(sq: Sq, c: link::ListCommand)
     -> Result<()>

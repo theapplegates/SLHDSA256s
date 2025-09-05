@@ -27,13 +27,14 @@ use sequoia::cert_store;
 use cert_store::LazyCert;
 use cert_store::StoreUpdate;
 
+use sequoia::types::TrustThreshold;
+
 use crate::{
     Sq,
     cli::cert::lint::Command,
     cli::types::cert_designator::CertDesignator,
     commands::FileOrStdout,
     common::ui,
-    sq::TrustThreshold,
 };
 
 fn update_cert_revocation(sq: &Sq,
