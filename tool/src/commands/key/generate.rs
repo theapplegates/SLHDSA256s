@@ -14,6 +14,7 @@ use openpgp::packet::UserID;
 use openpgp::Result;
 
 use sequoia::types::TrustAmount;
+use sequoia::inspect::inspect;
 
 use crate::common::password;
 use crate::common::userid::{lint_userids, lint_names, lint_emails};
@@ -25,7 +26,6 @@ use crate::cli::{
         FileOrStdout,
     },
 };
-use crate::commands::inspect::inspect;
 use crate::common::key::certify_generated;
 use crate::output::import::ImportStatus;
 
@@ -341,7 +341,7 @@ pub fn generate(
             .expect("serializing to a vector is infallible");
 
         if let Err(err) = inspect(
-            &sq,
+            &sq.sequoia,
             sequoia::openpgp::parse::buffered_reader::Memory::with_cookie(&bytes, Default::default()),
             command.output
                 .as_ref()

@@ -29,13 +29,13 @@ use openpgp::types::SignatureType;
 use sequoia::cert_store;
 use cert_store::StoreUpdate;
 
+use sequoia::inspect::inspect;
 use sequoia::types::TrustAmount;
 
 use crate::Sq;
 use crate::cli::types::Expiration;
 use crate::cli::types::FileOrStdout;
 use crate::cli;
-use crate::commands::inspect::inspect;
 use crate::common::key::certify_generated;
 use crate::common::password;
 use crate::common::pki::list::summarize_certification;
@@ -599,7 +599,7 @@ pub fn dispatch(
 
         wwriteln!(stream = o);
         if let Err(err) = inspect(
-            &sq,
+            &sq.sequoia,
             sequoia::openpgp::parse::buffered_reader::Memory::with_cookie(&bytes, Default::default()),
             command.output
                 .as_ref()

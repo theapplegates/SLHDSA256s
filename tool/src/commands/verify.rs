@@ -22,12 +22,12 @@ use sequoia::openpgp::{
 use sequoia::cert_store::Store;
 use sequoia::wot::store::Store as _;
 
+use sequoia::inspect::Kind;
 use sequoia::types::PreferredUserID;
 
 use crate::Sq;
 use crate::Result;
 use crate::cli;
-use crate::commands::inspect::Kind;
 use crate::common::ui;
 use crate::common::pki::output::print_path;
 use crate::sq::TrustThreshold;
@@ -76,8 +76,8 @@ pub fn verify(sq: Sq,
     let detached = if let Some(sig_path) = detached {
         let sig = File::with_cookie(&sig_path, Default::default())?;
 
-        let (kind, sig) = Kind::identify(&sq, sig)?;
-        kind.expect_or_else(&sq, "verify", Kind::DetachedSig,
+        let (kind, sig) = Kind::identify(&sq.sequoia, sig)?;
+        kind.expect_or_else(&sq.sequoia, "verify", Kind::DetachedSig,
                             detached_sig_arg,
                             detached_sig_value.as_deref())?;
 
