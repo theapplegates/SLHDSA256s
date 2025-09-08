@@ -956,6 +956,15 @@ mod tests {
                 Key6::generate_ecc(true, cv).ok()
             }).chain(vec![1024, 2048, 3072, 4096].into_iter().filter_map(|b| {
                 Key6::generate_rsa(b).ok()
+            })).chain([
+                (PublicKeyAlgorithm::MLDSA65_Ed25519, Key6::generate_mldsa65_ed25519 as fn() -> Result<_>),
+                (PublicKeyAlgorithm::MLDSA87_Ed448, Key6::generate_mldsa87_ed448),
+            ].into_iter().filter_map(|(algo, gen)| {
+                if algo.is_supported() {
+                    Some(gen().expect(&format!("{} is supported", algo)))
+                } else {
+                    None
+                }
             }));
 
         for key in keys.into_iter() {
