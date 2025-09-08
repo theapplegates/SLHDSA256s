@@ -281,88 +281,93 @@ impl OutputType for ConciseHumanReadableOutputNetwork<'_> {
         });
 
         if show_cert {
-            let cert = self.current_cert.as_ref()
-                .expect("show_cert is true, there is a current cert");
+            if let Some(cert) = self.current_cert.as_ref() {
+                let mut extra_info = Vec::new();
 
-            let mut extra_info = Vec::new();
-
-            // To derive a valid cert, we need a valid binding
-            // signature.  But even if we don't have that we may still
-            // have a valid revocation certificate.  So be a bit more
-            // careful.
-            let rs = if let Some(Ok(ref vc)) = vc {
-                vc.revocation_status()
-            } else {
-                cert.revocation_status(self.sq.policy(), self.sq.time())
-            };
-
-            if let RevocationStatus::Revoked(sigs) = rs {
-                let sig = sigs[0];
-                let mut reason_;
-                let reason = if let Some((reason, message))
-                    = sig.reason_for_revocation()
-                {
-                    // Be careful to quote the message it is
-                    // controlled by the certificate holder.
-                    reason_ = reason.to_string();
-                    if ! message.is_empty() {
-                        reason_.push_str(": ");
-                        reason_.push_str(&ui::Safe(message).to_string());
-                    }
-                    &reason_
+                // To derive a valid cert, we need a valid binding
+                // signature.  But even if we don't have that we may still
+                // have a valid revocation certificate.  So be a bit more
+                // careful.
+                let rs = if let Some(Ok(ref vc)) = vc {
+                    vc.revocation_status()
                 } else {
-                    "no reason specified"
+                    cert.revocation_status(self.sq.policy(), self.sq.time())
                 };
 
-                extra_info.push(format!(
-                    "revoked {}, {}",
-                    sig.signature_creation_time()
-                        .unwrap_or(std::time::UNIX_EPOCH)
-                        .convert(),
-                    reason))
-            }
+                if let RevocationStatus::Revoked(sigs) = rs {
+                    let sig = sigs[0];
+                    let mut reason_;
+                    let reason = if let Some((reason, message))
+                        = sig.reason_for_revocation()
+                    {
+                        // Be careful to quote the message it is
+                        // controlled by the certificate holder.
+                        reason_ = reason.to_string();
+                        if ! message.is_empty() {
+                            reason_.push_str(": ");
+                            reason_.push_str(&ui::Safe(message).to_string());
+                        }
+                        &reason_
+                    } else {
+                        "no reason specified"
+                    };
 
-            match &vc {
-                Some(Ok(vc)) => {
-                    if let Some(t) = vc.primary_key().key_expiration_time() {
-                        if t < SystemTime::now() {
-                            extra_info.push(
-                                format!("expired {}",
-                                        Time::try_from(t)
-                                        .expect("is an OpenPGP timestamp")))
-                        } else {
-                            extra_info.push(
-                                format!("will expire {}",
-                                        Time::try_from(t)
-                                        .expect("is an OpenPGP timestamp")))
+                    extra_info.push(format!(
+                        "revoked {}, {}",
+                        sig.signature_creation_time()
+                            .unwrap_or(std::time::UNIX_EPOCH)
+                            .convert(),
+                        reason))
+                }
+
+                match &vc {
+                    Some(Ok(vc)) => {
+                        if let Some(t) = vc.primary_key().key_expiration_time() {
+                            if t < SystemTime::now() {
+                                extra_info.push(
+                                    format!("expired {}",
+                                            Time::try_from(t)
+                                            .expect("is an OpenPGP timestamp")))
+                            } else {
+                                extra_info.push(
+                                    format!("will expire {}",
+                                            Time::try_from(t)
+                                            .expect("is an OpenPGP timestamp")))
+                            }
                         }
                     }
+                    Some(Err(err)) => {
+                        extra_info.push(
+                            format!("not valid: {}",
+                                    crate::one_line_error_chain(err)));
+                    }
+                    None => (),
                 }
-                Some(Err(err)) => {
-                    extra_info.push(
-                        format!("not valid: {}",
-                                crate::one_line_error_chain(err)));
+
+                if ! first_shown {
+                    wwriteln!(stream=self.output);
                 }
-                None => (),
-            }
 
-            if ! first_shown {
-                wwriteln!(stream=self.output);
-            }
+                wwriteln!(stream=self.output, initial_indent = " - ",
+                        "{}", fingerprint);
 
-            wwriteln!(stream=self.output, initial_indent = " - ",
-                      "{}", fingerprint);
+                if cert.primary_key().key().creation_time() != ca_creation_time() {
+                    wwriteln!(stream=self.output, initial_indent = "   - ",
+                            "created {}",
+                            cert.primary_key().key().creation_time().convert());
+                }
 
-            if cert.primary_key().key().creation_time() != ca_creation_time() {
+                for info in extra_info.into_iter() {
+                    wwriteln!(stream=self.output, initial_indent = "   - ",
+                            "{}", info);
+                }
+            } else {
+                wwriteln!(stream=self.output, initial_indent = " - ",
+                        "{}", fingerprint);
                 wwriteln!(stream=self.output, initial_indent = "   - ",
-                          "created {}",
-                          cert.primary_key().key().creation_time().convert());
+                        "Fingerprint doesn't match any certificate in the cert store");
             }
 
-            for info in extra_info.into_iter() {
-                wwriteln!(stream=self.output, initial_indent = "   - ",
-                          "{}", info);
-            }
             wwriteln!(stream=self.output);
         }
 
