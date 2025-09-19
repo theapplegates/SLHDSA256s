@@ -69,7 +69,7 @@ impl Sequoia {
 }
 
 pub struct VHelper<'c> {
-    pub sequoia: &'c Sequoia,
+    sequoia: &'c Sequoia,
     signatures: usize,
 
     /// Require signatures to be made by this set of certs.
@@ -114,6 +114,11 @@ impl<'c> VHelper<'c> {
             broken_signatures: 0,
             quiet: sequoia.config().quiet(),
         }
+    }
+
+    /// Returns the Sequoia instance.
+    pub fn sequoia(&self) -> &Sequoia {
+        self.sequoia
     }
 
     /// Enables or disables quiet operation.
