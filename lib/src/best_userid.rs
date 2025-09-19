@@ -1,8 +1,11 @@
+use std::time::SystemTime;
+
 use sequoia_openpgp as openpgp;
 use openpgp::Cert;
 use openpgp::KeyHandle;
 use openpgp::Result;
 use openpgp::packet::prelude::*;
+use openpgp::policy::Policy;
 use openpgp::types::KeyFlags;
 
 use sequoia_cert_store as cert_store;
@@ -15,22 +18,20 @@ use crate::Sequoia;
 use crate::types::PreferredUserID;
 
 impl Sequoia {
-    /// Best-effort heuristic to compute the primary User ID of a given cert.
-    ///
-    /// The returned string is already sanitized, and safe for displaying.
-    ///
-    /// If `use_wot` is set, then we use the best authenticated user
-    /// ID.  If `use_wot` is not set, then we use the primary user ID.
-    pub fn best_userid<'u>(&self, cert: &'u Cert, use_wot: bool)
-        -> PreferredUserID
+    fn primary_userid<T>(policy: &dyn Policy, time: T, cert: &Cert)
+        -> Option<UserID>
+    where
+        T: Into<Option<SystemTime>>
     {
+        let time = time.into();
+
         // Try to be more helpful by including a User ID in the
         // listing.  We'd like it to be the primary one.  Use
         // decreasingly strict policies.
         let mut primary_uid = None;
 
         // First, apply our policy.
-        if let Ok(vcert) = cert.with_policy(self.policy(), self.time()) {
+        if let Ok(vcert) = cert.with_policy(policy, time) {
             if let Ok(primary) = vcert.primary_userid() {
                 primary_uid = Some(primary.userid());
             }
@@ -38,7 +39,7 @@ impl Sequoia {
 
         // Second, apply the null policy.
         if primary_uid.is_none() {
-            if let Ok(vcert) = cert.with_policy(NULL_POLICY, self.time()) {
+            if let Ok(vcert) = cert.with_policy(NULL_POLICY, time) {
                 if let Ok(primary) = vcert.primary_userid() {
                     primary_uid = Some(primary.userid());
                 }
@@ -52,10 +53,45 @@ impl Sequoia {
             }
         }
 
+        primary_uid.map(Clone::clone)
+    }
+
+    /// Returns a representative user ID.
+    ///
+    /// This prefers the primary user ID under the specified policy.
+    /// If the certificate is not valid under the specified policy, it
+    /// falls back to the NULL policy.  As a last resort, it picks the
+    /// first user ID.
+    pub(crate) fn self_userid<T>(policy: &dyn Policy, time: T, cert: &Cert)
+        -> PreferredUserID
+    where
+        T: Into<Option<SystemTime>>
+    {
+        let time = time.into();
+
+        if let Some(userid) = Sequoia::primary_userid(policy, time, cert) {
+            PreferredUserID::from_userid(userid, 0)
+        } else {
+            PreferredUserID::unknown()
+        }
+    }
+
+    /// Best-effort heuristic to compute the primary User ID of a given cert.
+    ///
+    /// The returned string is already sanitized, and safe for displaying.
+    ///
+    /// If `use_wot` is set, then we use the best authenticated user
+    /// ID.  If `use_wot` is not set, then we use the primary user ID.
+    pub fn best_userid<'u>(&self, cert: &'u Cert, use_wot: bool)
+        -> PreferredUserID
+    {
+        let primary_uid = Sequoia::primary_userid(
+            self.policy(), self.time(), cert);
+
         if let Some(primary_uid) = primary_uid {
             let fpr = cert.fingerprint();
 
-            let mut candidate: (&UserID, usize) = (primary_uid, 0);
+            let mut candidate: (&UserID, usize) = (&primary_uid, 0);
 
             #[allow(clippy::never_loop)]
             loop {
@@ -71,7 +107,7 @@ impl Sequoia {
                 // We're careful to *not* use a ValidCert so that we see all
                 // user IDs, even those that are not self signed.
 
-                candidate = (primary_uid, authenticate(primary_uid));
+                candidate = (&primary_uid, authenticate(&primary_uid));
 
                 for userid in cert.userids() {
                     let userid = userid.component();
@@ -81,7 +117,7 @@ impl Sequoia {
                         break;
                     }
 
-                    if userid == primary_uid {
+                    if userid == &primary_uid {
                         // We already considered this one.
                         continue;
                     }
