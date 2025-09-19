@@ -679,6 +679,45 @@ pub trait Prompt<T=()> {
     }
 }
 
+impl<'b, T> Prompt<T> for Box<dyn Prompt<T> + 'b> {
+    fn prompt(&self, context: &mut Context<T>)
+        -> std::result::Result<Response, Error>
+    {
+        self.as_ref().prompt(context)
+    }
+
+    fn multiprompt<'a, 'c>(&self, contexts: &'c mut [Context<'a, T>])
+        -> std::result::Result<(&'c Context<'a, T>, Response), Error>
+    {
+        self.as_ref().multiprompt(contexts)
+    }
+
+    fn close(&self) {
+        self.as_ref().close()
+    }
+}
+
+impl<'b, T, P> Prompt<T> for &P
+where
+    P: Prompt<T> + 'b
+{
+    fn prompt(&self, context: &mut Context<T>)
+        -> std::result::Result<Response, Error>
+    {
+        (*self).prompt(context)
+    }
+
+    fn multiprompt<'a, 'c>(&self, contexts: &'c mut [Context<'a, T>])
+        -> std::result::Result<(&'c Context<'a, T>, Response), Error>
+    {
+        (*self).multiprompt(contexts)
+    }
+
+    fn close(&self) {
+        (*self).close()
+    }
+}
+
 /// An implementation of `Prompt` that always cancels.
 ///
 /// This is useful when the program is operating in batch mode.
