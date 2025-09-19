@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
@@ -46,6 +47,8 @@ use sequoia::key_store as keystore;
 use keystore::Protection;
 
 use sequoia::Sequoia;
+use sequoia::prompt;
+use sequoia::prompt::Prompt as _;
 use sequoia::types::FileStdinOrKeyHandle;
 use sequoia::types::PreferredUserID;
 use sequoia::types::TrustThreshold;
@@ -467,44 +470,60 @@ impl Sq {
                 }
                 drop(password_cache);
 
-                let prompt = if let Some(cert) = cert {
-                    format!("{}/{} {}",
-                            cert.keyid(), key.keyid(),
-                            self.best_userid(cert, true).display())
-                } else {
-                    format!("{}", key.keyid())
-                };
-
                 if ! may_prompt {
+                    let thing = if let Some(cert) = cert {
+                        format!("{}/{} {}",
+                                cert.fingerprint(), key.keyid(),
+                                self.best_userid(cert, true).display())
+                    } else {
+                        format!("{}", key.keyid())
+                    };
+
                     t!("Didn't decrypt the key, and prompting is disabled.  \
                         Giving up");
                     return Err(anyhow::anyhow!(
-                        "Unable to decrypt secret key material for {}", prompt))
+                        "Unable to decrypt secret key material for {}", thing))
                 }
 
                 loop {
-                    // Prompt the user.
-                    let result = if allow_skipping {
-                        password::prompt_to_unlock_or_cancel(self, &prompt)
-                    } else {
-                        password::prompt_to_unlock(self, &prompt).map(Some)
-                    };
-                    match result {
-                        Ok(None) => break, // Give up.
-                        Ok(Some(p)) => {
-                            if let Ok(unencrypted) = e.decrypt(&key, &p) {
-                                let (key, _) = key.add_secret(unencrypted.into());
-                                self.cache_password(p);
-                                return Ok(key);
-                            }
+                    let prompt = password::Prompt::new(self, allow_skipping);
 
-                            weprintln!("Incorrect password.");
+                    let mut context = prompt::ContextBuilder::password(
+                        prompt::Reason::UnlockKey)
+                        .sequoia(&self.sequoia)
+                        .build();
+
+                    let password = match prompt.prompt(&mut context) {
+                        Ok(prompt::Response::Password(p)) => p,
+                        Ok(prompt::Response::NoPassword)
+                            | Err(prompt::Error::Cancelled(_)) =>
+                        {
+                            if allow_skipping {
+                                break;
+                            } else {
+                                weprintln!("You must enter a password \
+                                            to continue.");
+                                continue;
+                            }
+                        },
+                        Ok(unknown) => {
+                            unreachable!("Internal error: UnlockKey should \
+                                          return a password, but got: {:?}",
+                                         unknown);
                         }
                         Err(err) => {
-                            weprintln!("While reading password: {}", err);
-                            break;
+                            return Err(err).context(
+                                "Prompting for password").into();
                         }
+                    };
+
+                    if let Ok(unencrypted) = e.decrypt(&key, &password) {
+                        let (key, _) = key.add_secret(unencrypted.into());
+                        self.cache_password(password);
+                        return Ok(key);
                     }
+
+                    weprintln!("Incorrect password.");
                 }
 
                 t!("Didn't decrypt the key, and user gave up.");
@@ -610,8 +629,6 @@ impl Sq {
 
             let remote_keys = ks.find_key(ka.key().key_handle())?;
 
-            let uid = self.best_userid(ka.cert(), true);
-
             // XXX: Be a bit smarter.  If there are multiple
             // keys, sort them so that we try the easiest one
             // first (available, no password).
@@ -629,15 +646,34 @@ impl Sq {
                         }
 
                         loop {
-                            let p = password::prompt_to_unlock(self, &format!(
-                                "{}/{}, {}",
-                                ka.cert().keyid(), ka.key().keyid(),
-                                uid.display()))?;
+                            let prompt = password::Prompt::new(self, true);
 
-                            if p == "".into() {
-                                weprintln!("Giving up.");
-                                continue 'key;
-                            }
+                            let mut context
+                                = prompt::ContextBuilder::password(
+                                    prompt::Reason::UnlockKey)
+                                .sequoia(&self.sequoia)
+                                .cert(Cow::Borrowed(ka.cert()))
+                                .key(key.fingerprint())
+                                .build();
+
+                            let p = match prompt.prompt(&mut context) {
+                                Ok(prompt::Response::Password(p)) => p,
+                                Ok(prompt::Response::NoPassword)
+                                    | Err(prompt::Error::Cancelled(_)) =>
+                                {
+                                    continue 'key;
+                                }
+                                Ok(unknown) => {
+                                    unreachable!("Internal error: UnlockKey \
+                                                  should return a password, \
+                                                  but got: {:?}",
+                                                 unknown);
+                                }
+                                Err(err) => {
+                                    return Err(err)
+                                        .context("Prompting password");
+                                }
+                            };
 
                             match key.unlock(p.clone()) {
                                 Ok(()) => {

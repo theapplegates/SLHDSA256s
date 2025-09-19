@@ -1,4 +1,6 @@
 use anyhow::Context as _;
+
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io;
@@ -27,6 +29,8 @@ use cert_store::store::StoreError;
 
 use sequoia::key_store as keystore;
 
+use sequoia::prompt;
+use sequoia::prompt::Prompt as _;
 use sequoia::types::TrustThreshold;
 
 use crate::{
@@ -375,7 +379,7 @@ impl<'c> DecryptionHelper for Helper<'c> {
                                     let pkesk = key_status.pkesk().clone();
                                     let mut key = key_status.into_key();
                                     let keyid = key.keyid();
-                                    let (userid, _) = self.sq.best_userid_for(
+                                    let (userid, cert) = self.sq.best_userid_for(
                                         &KeyHandle::from(&keyid),
                                         KeyFlags::empty()
                                             .set_storage_encryption()
@@ -455,29 +459,48 @@ impl<'c> DecryptionHelper for Helper<'c> {
                                             break;
                                         }
 
-                                        match password::prompt_to_unlock_or_cancel(
-                                            self.sq,
-                                            &format!("{}, {}", keyid,
-                                                     userid.display()))
-                                        {
-                                            Err(err) => {
-                                                return Err(err).context(
-                                                    "Prompting for password");
-                                            }
-                                            Ok(Some(password)) => {
-                                                if let Err(_err) = key.unlock(password) {
+                                        let prompt = password::Prompt::new(
+                                            &self.vhelper.sq, true);
+
+                                        let mut context = prompt::ContextBuilder::password(
+                                            prompt::Reason::UnlockKey)
+                                            .sequoia(&self.vhelper.sq.sequoia)
+                                            .key(key.fingerprint());
+
+                                        if let Ok(cert) = cert.as_ref() {
+                                            context = context.cert(Cow::Borrowed(cert));
+                                        }
+                                        let mut context = context.build();
+
+                                        match prompt.prompt(&mut context) {
+                                            Ok(prompt::Response::Password(p)) => {
+                                                if let Err(_err) = key.unlock(p) {
                                                     weprintln!("Bad password.");
                                                     continue;
                                                 }
                                             }
-                                            Ok(None) => {
-                                                // Cancelled.
+                                            Ok(prompt::Response::NoPassword) => {
                                                 weprintln!("Skipping {}, {}",
                                                            keyid,
                                                            userid.display());
                                                 break;
                                             }
-                                        }
+                                            Err(prompt::Error::Cancelled(_)) => {
+                                                // Skip.
+                                                break;
+                                            }
+                                            Ok(unknown) => {
+                                                unreachable!(
+                                                    "Internal error: UnlockKey \
+                                                     should return a password, \
+                                                     but got: {:?}",
+                                                    unknown);
+                                            }
+                                            Err(err) => {
+                                                return Err(err).context(
+                                                    "Password prompt");
+                                            }
+                                        };
 
                                         if let Some(fp) = self.try_decrypt(
                                             &pkesk, sym_algo, &mut key, decrypt)
@@ -562,10 +585,29 @@ impl<'c> DecryptionHelper for Helper<'c> {
         }
 
         // Now prompt for passwords.
-        let mut first = true;
         loop {
-            let password = password::prompt_to_unlock(
-                self.vhelper.sq, "the message")?;
+            let prompt = password::Prompt::new(&self.vhelper.sq, true);
+
+            let mut context
+                = prompt::ContextBuilder::password(
+                    prompt::Reason::DecryptMessage)
+                .sequoia(&self.vhelper.sq.sequoia)
+                .build();
+            let password = match prompt.prompt(&mut context) {
+                Ok(prompt::Response::Password(p)) => p,
+                Ok(prompt::Response::NoPassword)
+                    | Err(prompt::Error::Cancelled(_)) =>
+                {
+                    break Err(anyhow::anyhow!("Decryption failed."));
+                }
+                Err(err) => {
+                    break Err(err).context("Password prompt");
+                }
+                unknown =>
+                    unreachable!("Internal error: DecryptMessage should \
+                                  return a password, but got: {:?}",
+                                 unknown),
+            };
 
             for skesk in skesks {
                 if let Some(sk) = skesk.decrypt(&password).ok()
@@ -578,17 +620,7 @@ impl<'c> DecryptionHelper for Helper<'c> {
                 }
             }
 
-            if password.map(|p| p.is_empty()) {
-                break Err(anyhow::anyhow!("Decryption failed."));
-            }
-
-            if first {
-                weprintln!("Incorrect password.  \
-                            Hint: enter empty password to cancel.");
-                first = false;
-            } else {
-                weprintln!("Incorrect password.");
-            }
+            weprintln!("Incorrect password.");
         }
     }
 }

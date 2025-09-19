@@ -9,12 +9,14 @@ use openpgp::cert::KeyBuilder;
 use openpgp::serialize::Serialize;
 use openpgp::types::KeyFlags;
 
+use sequoia::prompt::Prompt as _;
+use sequoia::prompt;
 use sequoia::types::TrustThreshold;
 
 use crate::Sq;
 use crate::cli::key::subkey::add::Command;
 use crate::cli::types::EncryptPurpose;
-use crate::common;
+use crate::common::password;
 
 /// Add a new Subkey for an existing primary key
 ///
@@ -58,8 +60,23 @@ pub fn dispatch(sq: Sq, command: Command) -> Result<()>
                 } else if command.without_password {
                     (key, None)
                 } else {
-                    (key, common::password::prompt_for_new_or_none(
-                        &sq, "subkey")?)
+                    let prompt = password::Prompt::new(&sq, false);
+
+                    let mut context = prompt::ContextBuilder::password(
+                        prompt::Reason::LockNewKey)
+                        .sequoia(&sq.sequoia)
+                        .build();
+
+                    let password = match prompt.prompt(&mut context)? {
+                        prompt::Response::Password(password) => Some(password),
+                        prompt::Response::NoPassword => None,
+                        unknown => {
+                            unreachable!("Internal error: LockNewKey should \
+                                          return a password, but got: {:?}",
+                                         unknown);
+                        }
+                    };
+                    (key, password)
                 }
             }
             Err(error) => {

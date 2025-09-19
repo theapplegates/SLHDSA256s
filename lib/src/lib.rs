@@ -33,6 +33,7 @@ use openpgp::packet::key;
 use openpgp::parse::Parse;
 use openpgp::policy::NullPolicy;
 use openpgp::policy::Policy;
+use openpgp::policy::StandardPolicy;
 
 use cert_store::{
     LazyCert,
@@ -58,11 +59,14 @@ mod errors;
 pub use errors::Error;
 mod lookup;
 pub mod packet;
+pub mod prompt;
 mod password_cache;
 mod time;
 pub use time::Time;
 
+static STANDARD_POLICY: &StandardPolicy = &StandardPolicy::new();
 static NULL_POLICY: &NullPolicy = unsafe { &NullPolicy::new() };
+const TRACE: bool = false;
 
 pub struct Sequoia {
     /// The home directory.

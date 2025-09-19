@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::path::Path;
 
 use anyhow::Context;
@@ -15,13 +16,13 @@ use openpgp::serialize::Serialize;
 use sequoia::key_store as keystore;
 use keystore::Protection;
 
-use sequoia::types::Convert;
+use sequoia::prompt;
+use sequoia::prompt::Prompt as _;
 use sequoia::types::FileStdinOrKeyHandle;
 
 use crate::Sq;
 use crate::cli::types::FileOrStdout;
 use crate::common::password;
-use crate::common;
 
 pub fn password<'a, P>(
     sq: Sq,
@@ -41,6 +42,8 @@ where
 {
     make_qprintln!(sq.quiet());
 
+    let changing_cert = to_change.is_empty();
+
     let mut new_password_ = None;
     // Some(password) => new password
     // None => clear password
@@ -51,7 +54,31 @@ where
             } else if let Some(path) = new_password_file.as_ref() {
                 Some(Some(std::fs::read(path)?.into()))
             } else {
-                Some(common::password::prompt_for_new_or_none(&sq, "key")?)
+                let prompt = password::Prompt::new(&sq, false);
+
+                // We explicitly don't add the certificate to the
+                // prompt context as we will have already printed out
+                // information about the certificate before showing
+                // the prompt.
+                let mut context = prompt::ContextBuilder::password(
+                    if changing_cert {
+                        prompt::Reason::LockCert
+                    } else {
+                        prompt::Reason::LockKey
+                    })
+                    .sequoia(&sq.sequoia)
+                    .build();
+
+                let password = match prompt.prompt(&mut context)? {
+                    prompt::Response::Password(password) => Some(password),
+                    prompt::Response::NoPassword => None,
+                    unknown => {
+                        unreachable!("Internal error: LockKey should return \
+                                      a password, but got: {:?}",
+                                     unknown);
+                    }
+                };
+                Some(password)
             };
         }
 
@@ -87,39 +114,31 @@ where
                             weprintln!("{}", hint);
                         }
 
-                        let time =
-                            key.key().creation_time().convert().to_string();
+                        let prompt = password::Prompt::new(&sq, false);
 
-                        let flags = if let Some(flags) = key.key_flags() {
-                            let mut s = Vec::new();
-                            if flags.for_certification() {
-                                s.push("certifying");
-                            }
-                            if flags.for_signing() {
-                                s.push("signing");
-                            }
-                            if flags.for_storage_encryption()
-                                && flags.for_transport_encryption()
-                            {
-                                s.push("encryption");
-                            } else if flags.for_storage_encryption() {
-                                s.push("storage encryption");
-                            } else if flags.for_transport_encryption() {
-                                s.push("transport encryption");
-                            }
-                            if ! s.is_empty() {
-                                format!(" for {}", s.join(", "))
-                            } else {
-                                "".into()
-                            }
-                        } else {
-                            "".into()
-                        };
+                        let mut context
+                            = prompt::ContextBuilder::password(
+                                prompt::Reason::UnlockKey)
+                            .sequoia(&sq.sequoia)
+                            .cert(Cow::Borrowed(key.cert()))
+                            .key(key.key().fingerprint())
+                            .build();
 
                         loop {
-                            let p = password::prompt_to_unlock(&sq, &format!(
-                                "{}, created {}{}",
-                                key.key().fingerprint(), time, flags))?;
+                            let p = match prompt.prompt(&mut context)? {
+                                prompt::Response::Password(p) => p,
+                                prompt::Response::NoPassword => {
+                                    weprintln!("You must enter a password \
+                                                to continue.");
+                                    continue;
+                                }
+                                unknown => {
+                                    unreachable!("Internal error: UnlockKey \
+                                                  should return a password, \
+                                                  but got: {:?}",
+                                                 unknown);
+                                }
+                            };
 
                             match remote_key.unlock(p.clone()) {
                                 Ok(()) => {

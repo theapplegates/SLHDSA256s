@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use anyhow::Context;
 
 use openpgp::packet::key;
@@ -15,6 +17,8 @@ use openpgp::Packet;
 use openpgp::Result;
 use sequoia::openpgp;
 
+use sequoia::prompt::Prompt as _;
+use sequoia::prompt;
 use sequoia::types::TrustThreshold;
 
 use crate::Sq;
@@ -247,16 +251,30 @@ pub fn bind(sq: Sq, command: cli::key::subkey::bind::Command) -> Result<()>
                     // a bit annoying, but on the plus side we don't
                     // need to ask the user again to create the
                     // primary key binding signature.
-                    let uid = sq.best_userid(&cert, true);
-
                     'password_loop: loop {
-                        let p = password::prompt_to_unlock(&sq, &format!(
-                            "{}/{}, {}",
-                            cert.keyid(), key.keyid(), uid.display()))?;
+                        let prompt = password::Prompt::new(&sq, false);
+
+                        let mut context = prompt::ContextBuilder::password(
+                            prompt::Reason::UnlockKey)
+                            .sequoia(&sq.sequoia)
+                            .cert(Cow::Borrowed(&cert))
+                            .key(key.fingerprint())
+                            .build();
+
+                        let p = match prompt.prompt(&mut context)? {
+                            prompt::Response::Password(p) => Some(p),
+                            prompt::Response::NoPassword => None,
+                            unknown => {
+                                unreachable!("Internal error: UnlockKey \
+                                              should return a password, \
+                                              but got: {:?}",
+                                             unknown);
+                            }
+                        };
 
                         // Empty password given and a key without
                         // encryption?  Pick it.
-                        if p.map(|p| p.is_empty()) {
+                        if p.is_none() {
                             if let Some(k) = secrets.iter()
                                 .find(|k| ! k.secret().is_encrypted())
                             {
@@ -268,24 +286,26 @@ pub fn bind(sq: Sq, command: cli::key::subkey::bind::Command) -> Result<()>
                         }
 
                         let mut err = None;
-                        for k in &secrets {
-                            match k.secret().clone().decrypt(&key, &p) {
-                                Ok(decrypted) => {
-                                    // Keep the decrypted keypair.
-                                    keypair = Some({
-                                        let k = key.add_secret(decrypted).0;
-                                        k.clone().into_keypair()?
-                                    });
-                                    // Bind the encrypted key.
-                                    key = k.clone().into();
-                                    break 'password_loop;
-                                },
+                        if let Some(p) = p.as_ref() {
+                            for k in &secrets {
+                                match k.secret().clone().decrypt(&key, &p) {
+                                    Ok(decrypted) => {
+                                        // Keep the decrypted keypair.
+                                        keypair = Some({
+                                            let k = key.add_secret(decrypted).0;
+                                            k.clone().into_keypair()?
+                                        });
+                                        // Bind the encrypted key.
+                                        key = k.clone().into();
+                                        break 'password_loop;
+                                    },
 
-                                Err(e) => err = Some(e),
+                                    Err(e) => err = Some(e),
+                                }
                             }
                         }
 
-                        if p == "".into() {
+                        if p.is_none() {
                             weprintln!("Giving up.");
                             return Err(anyhow::anyhow!(
                                 "Failed to unlock key: {}",

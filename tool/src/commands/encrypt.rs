@@ -24,6 +24,8 @@ use openpgp::types::KeyFlags;
 use openpgp::types::RevocationStatus;
 use openpgp::types::SignatureType;
 
+use sequoia::prompt;
+use sequoia::prompt::Prompt as _;
 use sequoia::types::Convert;
 use sequoia::types::FileOrStdin;
 use sequoia::types::TrustThreshold;
@@ -114,17 +116,30 @@ pub fn encrypt<'a, 'b: 'a>(
 
     let mut passwords: Vec<crypto::Password> = Vec::with_capacity(npasswords);
     for n in 0..npasswords {
-        let nprompt;
-        let password = password::prompt_for_new(
-            sq,
-            if npasswords > 1 {
-                nprompt = format!("message (password {})", n + 1);
-                &nprompt
-            } else {
-                "message"
-            },
-        )?;
-        passwords.push(password);
+        loop {
+            let prompt = password::Prompt::npasswords(sq, n + 1, npasswords);
+
+            let mut context = prompt::ContextBuilder::password(
+                prompt::Reason::EncryptMessage)
+                .sequoia(&sq.sequoia)
+                .build();
+
+            match prompt.prompt(&mut context)? {
+                prompt::Response::Password(password) => {
+                    passwords.push(password);
+                    break;
+                }
+                prompt::Response::NoPassword => {
+                    weprintln!("You must enter a password.");
+                    continue;
+                }
+                unknown => {
+                    unreachable!("Internal error: LockCert should return \
+                                  a password, but got: {:?}",
+                                 unknown);
+                }
+            };
+        }
     }
 
     for password_file in password_files {

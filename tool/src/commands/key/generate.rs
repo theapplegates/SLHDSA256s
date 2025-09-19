@@ -13,8 +13,10 @@ use openpgp::Packet;
 use openpgp::packet::UserID;
 use openpgp::Result;
 
-use sequoia::types::TrustAmount;
 use sequoia::inspect::inspect;
+use sequoia::prompt::Prompt as _;
+use sequoia::prompt;
+use sequoia::types::TrustAmount;
 
 use crate::common::password;
 use crate::common::userid::{lint_userids, lint_names, lint_emails};
@@ -174,8 +176,23 @@ pub fn generate(
             })?;
         builder = builder.set_password(Some(password.into()));
     } else if ! command.without_password {
-        builder = builder.set_password(
-            password::prompt_for_new_or_none(&sq, "key")?);
+        let prompt = password::Prompt::new(&sq, false);
+
+        let mut context = prompt::ContextBuilder::password(
+            prompt::Reason::LockNewCert)
+            .sequoia(&sq.sequoia)
+            .build();
+
+        let password = match prompt.prompt(&mut context)? {
+            prompt::Response::Password(password) => Some(password),
+            prompt::Response::NoPassword => None,
+            unknown => {
+                unreachable!("Internal error: LockCert should return \
+                              a password, but got: {:?}",
+                             unknown);
+            }
+        };
+        builder = builder.set_password(password);
     }
 
     let on_keystore = command.output.is_none();

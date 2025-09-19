@@ -30,6 +30,8 @@ use sequoia::cert_store;
 use cert_store::StoreUpdate;
 
 use sequoia::inspect::inspect;
+use sequoia::prompt::Prompt as _;
+use sequoia::prompt;
 use sequoia::types::TrustAmount;
 use sequoia::types::TrustThreshold;
 
@@ -243,8 +245,22 @@ pub fn dispatch(
         sq.cache_password(password.clone());
         builder = builder.set_password(Some(password));
     } else if ! command.without_password {
-        let password
-            = password::prompt_for_new_or_none(&sq, "the new key")?;
+        let prompt = password::Prompt::new(&sq, false);
+
+        let mut context = prompt::ContextBuilder::password(
+            prompt::Reason::LockCert)
+            .sequoia(&sq.sequoia)
+            .build();
+
+        let password = match prompt.prompt(&mut context)? {
+            prompt::Response::Password(password) => Some(password),
+            prompt::Response::NoPassword => None,
+            unknown => {
+                unreachable!("Internal error: LockCert should return \
+                              a password, but got: {:?}",
+                             unknown);
+            }
+        };
         if let Some(password) = password.as_ref() {
             sq.cache_password(password.clone());
         }
