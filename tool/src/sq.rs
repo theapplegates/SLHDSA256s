@@ -435,101 +435,14 @@ impl Sq {
                           may_prompt: bool,
                           allow_skipping: bool)
         -> Result<Key<key::SecretParts, R>>
-    where R: key::KeyRole + Clone
+    where R: key::KeyRole + Clone,
     {
-        tracer!(TRACE, "decrypt_key");
-        t!("Decrypting {}/{}, may prompt: {}, allow skipping: {}",
-           if let Some(cert) = cert {
-               cert.fingerprint().to_string()
-           } else {
-               "unknown cert".into()
-           },
-           key.fingerprint(),
-           may_prompt,
-           allow_skipping);
-        match key.secret() {
-            SecretKeyMaterial::Unencrypted(_) => {
-                t!("secret key material is unencrypted");
-                Ok(key)
-            }
-            SecretKeyMaterial::Encrypted(e) => {
-                t!("secret key material is encrypted");
-                if ! e.s2k().is_supported() {
-                    t!("s2k algorithm is not supported");
-                    return Err(anyhow::anyhow!(
-                        "Unsupported key protection mechanism"));
-                }
-
-                let password_cache = self.cached_passwords().collect::<Vec<_>>();
-                t!("Trying password cache ({} entries)", password_cache.len());
-                for p in password_cache.iter() {
-                    if let Ok(unencrypted) = e.decrypt(&key, &p) {
-                        let (key, _) = key.add_secret(unencrypted.into());
-                        return Ok(key);
-                    }
-                }
-                drop(password_cache);
-
-                if ! may_prompt {
-                    let thing = if let Some(cert) = cert {
-                        format!("{}/{} {}",
-                                cert.fingerprint(), key.keyid(),
-                                self.best_userid(cert, true).display())
-                    } else {
-                        format!("{}", key.keyid())
-                    };
-
-                    t!("Didn't decrypt the key, and prompting is disabled.  \
-                        Giving up");
-                    return Err(anyhow::anyhow!(
-                        "Unable to decrypt secret key material for {}", thing))
-                }
-
-                loop {
-                    let prompt = password::Prompt::new(self, allow_skipping);
-
-                    let mut context = prompt::ContextBuilder::password(
-                        prompt::Reason::UnlockKey)
-                        .sequoia(&self.sequoia)
-                        .build();
-
-                    let password = match prompt.prompt(&mut context) {
-                        Ok(prompt::Response::Password(p)) => p,
-                        Ok(prompt::Response::NoPassword)
-                            | Err(prompt::Error::Cancelled(_)) =>
-                        {
-                            if allow_skipping {
-                                break;
-                            } else {
-                                weprintln!("You must enter a password \
-                                            to continue.");
-                                continue;
-                            }
-                        },
-                        Ok(unknown) => {
-                            unreachable!("Internal error: UnlockKey should \
-                                          return a password, but got: {:?}",
-                                         unknown);
-                        }
-                        Err(err) => {
-                            return Err(err).context(
-                                "Prompting for password").into();
-                        }
-                    };
-
-                    if let Ok(unencrypted) = e.decrypt(&key, &password) {
-                        let (key, _) = key.add_secret(unencrypted.into());
-                        self.cache_password(password);
-                        return Ok(key);
-                    }
-
-                    weprintln!("Incorrect password.");
-                }
-
-                t!("Didn't decrypt the key, and user gave up.");
-                Err(anyhow::anyhow!("Key {}: Unable to decrypt secret key material",
-                                    key.keyid().to_hex()))
-            }
+        if may_prompt {
+            let prompt = password::Prompt::new(self, allow_skipping);
+            self.sequoia.decrypt_key(cert, key, allow_skipping, prompt)
+        } else {
+            let prompt = prompt::Cancel::new();
+            self.sequoia.decrypt_key(cert, key, allow_skipping, prompt)
         }
     }
 
