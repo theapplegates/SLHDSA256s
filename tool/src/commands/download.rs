@@ -32,7 +32,6 @@ use openpgp::Packet;
 use openpgp::parse::PacketParser;
 use openpgp::parse::PacketParserResult;
 use openpgp::parse::Parse;
-use openpgp::parse::buffered_reader::{self, BufferedReader};
 use openpgp::types::KeyFlags;
 
 use sequoia::types::Query;
@@ -47,6 +46,8 @@ use crate::commands::network::USER_AGENT;
 use crate::common::key_handle_dealias;
 use crate::common::pki::output::list::ListContext;
 use crate::common::ui;
+use crate::output::verify::Stream;
+use crate::output::verify::VerifyContext;
 
 // So we can deal with either named temp files or files.
 enum SomeFile {
@@ -201,7 +202,7 @@ pub fn dispatch(sq: Sq, c: download::Command)
     // of data and then fail to copy it.
     let mut output_file_;
     let mut stdout_;
-    let mut output_file: &mut dyn Write = if let Some(file) = output.path() {
+    let mut output_file: &mut (dyn Write + Send + Sync) = if let Some(file) = output.path() {
         output_file_ = if sq.overwrite {
             File::create(file)
                 .with_context(|| format!("Opening {}", file.display()))?
@@ -292,7 +293,7 @@ pub fn dispatch(sq: Sq, c: download::Command)
     // use variables with lifetimes less than static, and then do the
     // processing there.
     let signature_url_ = signature_url.clone();
-    let (mut data_file, signature_file) = std::thread::scope(|scope| {
+    let (mut data_file, mut signature_file) = std::thread::scope(|scope| {
         // Schedule the download of the signature.
         if let Some(ref url) = signature_url_ {
             let sig_file = tempfile::NamedTempFile::new()?;
@@ -595,16 +596,32 @@ pub fn dispatch(sq: Sq, c: download::Command)
 
     data_file.as_mut().rewind()?;
 
-    let result = sq.sequoia.verify(
-        buffered_reader::File::new_with_cookie(
-            data_file.as_ref().try_clone()?, data_file.path(),
-            Default::default())?.into_boxed(),
-        signature_file.as_ref().map(|f| f.path().to_path_buf()),
-        "--signature-url",
-        signature_url.map(PathBuf::from),
-        &mut output_file,
-        signatures,
-        signers);
+    let mut verifier = sq.sequoia.verify();
+    verifier.detached_args(None, data_file.path());
+
+    verifier.signatures(signatures);
+    if ! signers.is_empty() {
+        verifier.designated_signers(signers);
+    }
+
+    let stream = Stream::new(&sq, VerifyContext::Download);
+
+    let result = if let Some(signature_file) = signature_file.as_mut() {
+        signature_file.as_mut().rewind()?;
+
+        verifier.detached_args(
+            Some("--signature-url"),
+            &signature_url.map(PathBuf::from).unwrap_or_else(|| "URL".into()));
+
+        verifier.detached_signature(
+            data_file.as_ref().try_clone()?,
+            signature_file.as_ref().try_clone()?,
+            &mut output_file,
+            stream)
+    } else {
+        verifier.inline_signature(
+            data_file.as_ref().try_clone()?, &mut output_file, stream)
+    };
 
     if let Err(err) = result {
         if let Some(path) = output.path() {
@@ -626,7 +643,7 @@ pub fn dispatch(sq: Sq, c: download::Command)
         } else {
             // Copy the data to stdout.
             data_file.as_mut().rewind()?;
-            std::io::copy(&mut data_file.as_ref(), output_file)?;
+            std::io::copy(&mut data_file.as_ref(), &mut output_file)?;
         }
     }
 

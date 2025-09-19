@@ -10,6 +10,7 @@ use anyhow::{anyhow, Result};
 pub mod hint;
 pub mod import;
 pub mod pluralize;
+pub mod verify;
 pub mod wrapping;
 
 pub use keyring::ListItem as KeyringListItem;

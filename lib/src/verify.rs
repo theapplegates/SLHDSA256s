@@ -1,25 +1,179 @@
-use std::collections::{HashMap, HashSet, btree_map::{BTreeMap, Entry}};
+//! Signature verification.
+//!
+//! # Examples
+//!
+//! Verify a message and just get the verified message or a succinct
+//! error message; the structured output that includes information
+//! about the signatures is discarded:
+//!
+//! ```
+//! use sequoia::Sequoia;
+//! use sequoia::verify;
+//!
+//! # fn main() -> anyhow::Result<()> {
+//! let message = b"-----BEGIN PGP MESSAGE-----
+//!
+//! xA0DAAoW0fHeyI2faiIAxA0DAAoWXBlCBA8F6L4BywpiAAAAAABmb28Kwr0EABYK
+//! # AG8FgmjVMzYJEFwZQgQPBei+RxQAAAAAAB4AIHNhbHRAbm90YXRpb25zLnNlcXVv
+//! # aWEtcGdwLm9yZ+1bBHsT0PK4Q2lkuDHQ5CTbOWeHYnKAw9RbOdsin32FFiEE6eay
+//! # LiUrXUk+zRphXBlCBA8F6L4AAG4nAQDNliWncs/fB8lVnkjxFDmFCs9FZGgNwbyQ
+//! # RtE0xafNdQD/a7Yy7OIV23HNmVAuNJfnKIqxkeASat/r9gdc5byB1wnCvQQAFgoA
+//! # bwWCaNUzNgkQ0fHeyI2faiJHFAAAAAAAHgAgc2FsdEBub3RhdGlvbnMuc2VxdW9p
+//! # YS1wZ3Aub3JnbYs5xov77H9AAHQzFUoyI5qWFWUM0LHPXKQElGAUD1IWIQQiEsNi
+//! # c1VLB0KxSYrR8d7IjZ9qIgAAJisBAPttuQBJJOVcqd0zV1bDX8I9LNgXt4mIXRM7
+//! # ewZfwAjvAQC/LZc4j2tBqAxV5ORGXtArETa3r+ekLOD+hGLpo8j+Ag==
+//! # =yiKW
+//! # -----END PGP MESSAGE-----";
+//! // ...";
+//!
+//! // Initialize Sequoia.
+//! let sequoia = Sequoia::builder().stateless().build()?;
+//!
+//! // Verify the message and store the verified data in output.
+//! let mut output = Vec::new();
+//! if let Err(err) = sequoia
+//!     .verify()
+//!     .inline_signature(
+//!         std::io::Cursor::new(message),
+//!         &mut output,
+//!         // Discards the structured output.
+//!         ())
+//! {
+//!     eprintln!("Failed to verify message: {}.", err);
+//! } else {
+//!     // The signed data is in `output`.
+//!     eprintln!("Verified message.");
+//! }
+//! # Ok(()) }
+//! ```
+//!
+//! Verify a message and examine the structured output.  This example
+//! shows how to implement [`Stream`], and how to pick apart the
+//! [`Output`] and [`output::MessageStructure`] structs to determine
+//! the status of any [`output::Signature`]s.
+//!
+//! ```
+//! use sequoia::Sequoia;
+//! use sequoia::verify;
+//!
+//! # fn main() -> anyhow::Result<()> {
+//! struct VerifyOutputHandler<'a> {
+//!     sequoia: &'a sequoia::Sequoia,
+//! }
+//!
+//! impl verify::Stream for &mut VerifyOutputHandler<'_> {
+//!     fn output(&mut self, _params: &verify::Params, output: verify::Output)
+//!         -> sequoia::Result<()>
+//!     {
+//!         match output {
+//!             verify::Output::MessageStructure(structure) => {
+//!                 // Iterate over the message's layers.
+//!                 for layer in structure.layers {
+//!                     match layer {
+//!                         // Examine the signatures.
+//!                         verify::output::MessageLayer::Signature(
+//!                             verify::output::message_layer::SignatureLayer {
+//!                                 sigs,
+//!                                 ..
+//!                              }) =>
+//!                         {
+//!                             for sig in sigs {
+//!                                 match sig.status {
+//!                                     verify::output::SignatureStatus::Verified(
+//!                                         verify::output::signature_status::Verified {
+//!                                             cert,
+//!                                             ..
+//!                                         }) =>
+//!                                      {
+//!                                          eprintln!("Verified signature from {}, {}.",
+//!                                                    cert.fingerprint(),
+//!                                                    self.sequoia.best_userid(
+//!                                                        &cert, true).display());
+//!                                      }
+//!                                      // Handle other signature statuses if you want.
+//!                                      _ => (),
+//!                                 }
+//!                             }
+//!                         }
+//!                         // Ignore the non-signature layers.
+//!                         _ => (),
+//!                     }
+//!                 }
+//!            }
+//!            verify::Output::Report(report) => {
+//!                if report.authenticated {
+//!                    eprintln!("Verified message");
+//!                }
+//!            }
+//!            // Ignore other output.
+//!            _ => (),
+//!         }
+//!
+//!         // If we return an error, processing is aborted and the
+//!         // error is immediately returned to the caller.
+//!         Ok(())
+//!     }
+//! }
+//!
+//! let message = b"-----BEGIN PGP MESSAGE-----
+//!
+//! xA0DAAoW0fHeyI2faiIAxA0DAAoWXBlCBA8F6L4BywpiAAAAAABmb28Kwr0EABYK
+//! # AG8FgmjVMzYJEFwZQgQPBei+RxQAAAAAAB4AIHNhbHRAbm90YXRpb25zLnNlcXVv
+//! # aWEtcGdwLm9yZ+1bBHsT0PK4Q2lkuDHQ5CTbOWeHYnKAw9RbOdsin32FFiEE6eay
+//! # LiUrXUk+zRphXBlCBA8F6L4AAG4nAQDNliWncs/fB8lVnkjxFDmFCs9FZGgNwbyQ
+//! # RtE0xafNdQD/a7Yy7OIV23HNmVAuNJfnKIqxkeASat/r9gdc5byB1wnCvQQAFgoA
+//! # bwWCaNUzNgkQ0fHeyI2faiJHFAAAAAAAHgAgc2FsdEBub3RhdGlvbnMuc2VxdW9p
+//! # YS1wZ3Aub3JnbYs5xov77H9AAHQzFUoyI5qWFWUM0LHPXKQElGAUD1IWIQQiEsNi
+//! # c1VLB0KxSYrR8d7IjZ9qIgAAJisBAPttuQBJJOVcqd0zV1bDX8I9LNgXt4mIXRM7
+//! # ewZfwAjvAQC/LZc4j2tBqAxV5ORGXtArETa3r+ekLOD+hGLpo8j+Ag==
+//! # =yiKW
+//! # -----END PGP MESSAGE-----";
+//! // ...";
+//!
+//! // Initialize Sequoia.
+//! let sequoia = Sequoia::builder().stateless().build()?;
+//!
+//! // Verify the message and store the verified data in output.
+//! let mut output = Vec::new();
+//! let mut output_handler = VerifyOutputHandler {
+//!     sequoia: &sequoia,
+//! };
+//! if let Err(err) = sequoia.verify()
+//!     .inline_signature(
+//!         std::io::Cursor::new(message),
+//!         &mut output,
+//!         &mut output_handler)
+//! {
+//!     eprintln!("Failed to verify message: {}.", err);
+//! } else {
+//!     // The signed data is in `output`.
+//!     eprintln!("Verified message.");
+//! }
+//! # Ok(()) }
+//! ```
+
+use std::borrow::Cow;
+use std::collections::{HashSet, btree_map::{BTreeMap, Entry}};
 use std::io;
+use std::path::Path;
 use std::path::PathBuf;
 
-use sequoia_openpgp::parse::buffered_reader::File;
+use sequoia_openpgp::parse::buffered_reader;
 
 use sequoia_openpgp as openpgp;
 use openpgp::Cert;
+use openpgp::Fingerprint;
 use openpgp::KeyID;
 use openpgp::packet::UserID;
-use openpgp::parse::Cookie;
+use openpgp::packet;
 use openpgp::parse::Parse;
-use openpgp::parse::buffered_reader::BufferedReader;
 use openpgp::parse::stream::DetachedVerifierBuilder;
-use openpgp::parse::stream::GoodChecksum;
-use openpgp::parse::stream::MessageLayer;
-use openpgp::parse::stream::MessageStructure;
 use openpgp::parse::stream::VerificationError;
 use openpgp::parse::stream::VerificationResult;
 use openpgp::parse::stream::VerifierBuilder;
 use openpgp::parse::stream;
 use openpgp::types::AEADAlgorithm;
+use openpgp::types::CompressionAlgorithm;
 use openpgp::types::SymmetricAlgorithm;
 
 use sequoia_cert_store::Store;
@@ -28,28 +182,756 @@ use sequoia_wot::store::Store as _;
 use crate::Result;
 use crate::Sequoia;
 use crate::inspect::Kind;
-use crate::types::PreferredUserID;
-use crate::types::Safe;
-use crate::types::TrustThreshold;
 
-use crate::transitional::output::print_path::print_path;
+const TRACE: bool = false;
+
+/// The trait for collecting output.
+pub trait Stream {
+    /// Output from [`inline_signature`](Builder::inline_signature)
+    /// and [`detached_signature`](Builder::detached_signature).
+    fn output(&mut self, params: &Params, output: Output) -> Result<()>;
+}
+
+impl<T> Stream for Box<T>
+where
+    T: Stream + ?Sized
+{
+    fn output(&mut self, params: &Params, output: Output) -> Result<()> {
+        self.as_mut().output(params, output)
+    }
+}
+
+/// Collects the output in the specified vector.
+impl Stream for &mut Vec<Output> {
+    fn output(&mut self, _params: &Params, output: Output) -> Result<()> {
+        self.push(output);
+        Ok(())
+    }
+}
+
+/// Discards the output.
+impl Stream for () {
+    fn output(&mut self, _params: &Params, _output: Output) -> Result<()> {
+        Ok(())
+    }
+}
+
+/// Data structures related to [`Output`].
+pub mod output {
+    use super::*;
+
+    /// Web of Trust-specific authentication information.
+    #[non_exhaustive]
+    #[derive(Debug, Clone)]
+    pub struct WebOfTrust {
+        /// The maximum authentication level of any user ID.
+        ///
+        /// 120 means fully authenticated.
+        pub authentication_level: usize,
+
+        /// The authentication paths in the web of trust for each user
+        /// ID.
+        ///
+        /// Self-signed user IDs that could not be authenticated
+        /// (i.e., those for which there is no path from a trust root)
+        /// are still included.
+        pub authentication_paths: Vec<(UserID, sequoia_wot::Paths)>,
+    }
+
+    /// Direct authentication-specific authentication information.
+    #[non_exhaustive]
+    #[derive(Debug, Clone)]
+    pub struct Direct {
+    }
+
+    /// Data structures related to [`SignatureStatus`].
+    pub mod signature_status {
+        use super::*;
+
+        /// A verified signature.
+        ///
+        /// A signature is considered verified if the signature is
+        /// mathematically correct, and either at least one user ID
+        /// (not necessarily a self-signed user ID) could be
+        /// authenticated for the signer's certificate using the web
+        /// of trust, or the certificate is considered authenticated
+        /// (see [`Builder::designated_signers`]).
+        #[non_exhaustive]
+        #[derive(Debug)]
+        pub struct Verified {
+            /// The signature.
+            pub sig: packet::Signature,
+
+            /// A certificate that includes the signing key.
+            pub cert: Cert,
+
+            /// The key that made the signature.
+            pub key: Fingerprint,
+
+            /// Web of trust authentication information.
+            pub wot: Option<WebOfTrust>,
+
+            /// Direct authentication information.
+            ///
+            /// See [`Builder::designated_signers`].
+            pub direct: Option<Direct>,
+        }
+
+        /// A signature that could be mathemtically verified, but the
+        /// signer's certificate could not be authenticated.
+        ///
+        /// This is called `GoodChecksum`, because a signature whose
+        /// signer cannot be authenticated is no better than a
+        /// checksum.
+        #[non_exhaustive]
+        #[derive(Debug)]
+        pub struct GoodChecksum {
+            /// The signature.
+            pub sig: packet::Signature,
+
+            /// A certificate that includes the signing key.
+            pub cert: Cert,
+
+            /// The key that made the signature.
+            pub key: Fingerprint,
+
+            /// Web of trust authentication information.
+            pub wot: Option<WebOfTrust>,
+
+            /// Direct authentication information.
+            ///
+            /// See [`Builder::designated_signers`].
+            pub direct: Option<Direct>,
+        }
+
+        /// Missing key.
+        ///
+        /// A certificate that includes the alleged issuer's key is
+        /// not available.
+        #[non_exhaustive]
+        #[derive(Debug)]
+        pub struct MissingKey {
+            /// The signature.
+            pub sig: packet::Signature,
+        }
+
+        /// Unbound key.
+        ///
+        /// There is no valid binding signature at the time the
+        /// signature was created under the given policy.
+        #[non_exhaustive]
+        #[derive(Debug)]
+        pub struct UnboundKey {
+            /// The signature.
+            pub sig: packet::Signature,
+
+            /// A certificate that includes the signing key.
+            pub cert: Cert,
+
+            /// The reason why the key is not bound.
+            pub error: anyhow::Error,
+        }
+
+        /// Bad key.
+        ///
+        /// We have a key, but it is not alive, etc.
+        #[non_exhaustive]
+        #[derive(Debug)]
+        pub struct BadKey {
+            /// The signature.
+            pub sig: packet::Signature,
+
+            /// A certificate that includes the signing key.
+            pub cert: Cert,
+
+            /// The key that made the signature.
+            pub key: Fingerprint,
+
+            /// The reason why the key is bad.
+            pub error: anyhow::Error,
+        }
+
+        /// Bad signature.
+        ///
+        /// We have a valid key, but the signature isn't valid.
+        #[non_exhaustive]
+        #[derive(Debug)]
+        pub struct BadSignature {
+            /// The signature.
+            pub sig: packet::Signature,
+
+            /// A certificate that includes the signing key.
+            pub cert: Cert,
+
+            /// The key that made the signature.
+            pub key: Fingerprint,
+
+            /// The reason why the signature isn't valid.
+            pub error: anyhow::Error,
+        }
+
+        /// Malformed signature.
+        ///
+        /// The signature is malformed.  This could be because it does
+        /// not include a signature creation subpacket.
+        #[non_exhaustive]
+        #[derive(Debug)]
+        pub struct MalformedSignature {
+            /// The signature.
+            pub sig: packet::Signature,
+
+            /// The reason why the signature is malformed.
+            pub error: anyhow::Error,
+        }
+
+        /// A signature that we failed to parse.
+        #[non_exhaustive]
+        #[derive(Debug)]
+        pub struct UnknownSignature {
+            /// The signature parsed into an [`Unknown`] packet.
+            ///
+            /// You can get the parse error using [`Unknown::error`].
+            ///
+            /// [`Unknown`]: sequoia_openpgp::packet::Unknown
+            /// [`Unknown::error`]: sequoia_openpgp::packet::Unknown::error
+            pub sig: packet::Unknown,
+        }
+
+        /// An unknown error occurred.
+        ///
+        /// This may happen if your application is using a newer
+        /// version of `sequoia_openpgp` than your code is prepared
+        /// for.
+        #[non_exhaustive]
+        #[derive(Debug)]
+        pub struct Unknown {
+            /// The unknown `VerificationResult` as an error.
+            pub error: anyhow::Error,
+        }
+    }
+
+    /// A signature's verification status.
+    #[non_exhaustive]
+    #[derive(Debug)]
+    pub enum SignatureStatus {
+        Verified(signature_status::Verified),
+        GoodChecksum(signature_status::GoodChecksum),
+        MissingKey(signature_status::MissingKey),
+        UnboundKey(signature_status::UnboundKey),
+        BadKey(signature_status::BadKey),
+        BadSignature(signature_status::BadSignature),
+        MalformedSignature(signature_status::MalformedSignature),
+        UnknownSignature(signature_status::UnknownSignature),
+        Unknown(signature_status::Unknown),
+    }
+
+    impl SignatureStatus {
+        /// Returns whether the signature could be verified.
+        ///
+        /// A signature is considered verified if the signature is
+        /// mathematically correct, and either at least one user ID
+        /// (not necessarily a self-signed user ID) could be
+        /// authenticated for the signer's certificate using the web
+        /// of trust, or the certificate is considered authenticated
+        /// (see [`Builder::designated_signers`]).
+        pub fn verified(&self) -> bool {
+            matches!(self, SignatureStatus::Verified(_))
+        }
+
+        /// Returns the signature.
+        ///
+        /// Returns `None` for
+        /// [`UnknownSignature`](SignatureStatus::UnknownSignature).
+        /// It is still possible to get the raw signature data from an
+        /// `UnknownSignature` by matching on the field.
+        pub fn signature(&self) -> Option<&packet::Signature> {
+            use signature_status::*;
+
+            match self {
+                SignatureStatus::Verified(Verified { sig, .. }) => Some(sig),
+                SignatureStatus::GoodChecksum(GoodChecksum { sig, .. }) => Some(sig),
+                SignatureStatus::MissingKey(MissingKey { sig, .. }) => Some(sig),
+                SignatureStatus::UnboundKey(UnboundKey { sig, .. }) => Some(sig),
+                SignatureStatus::BadKey(BadKey { sig, .. }) => Some(sig),
+                SignatureStatus::BadSignature(BadSignature { sig, .. }) => Some(sig),
+                SignatureStatus::MalformedSignature(MalformedSignature { sig, .. }) => Some(sig),
+                SignatureStatus::UnknownSignature(UnknownSignature { .. }) => None,
+                SignatureStatus::Unknown(Unknown { .. }) => None,
+            }
+        }
+
+        /// Returns a certificate with the signing key that made the
+        /// signature.
+        ///
+        /// Returns `None` if the certificate is not available.
+        pub fn cert(&self) -> Option<&Cert> {
+            use signature_status::*;
+
+            match self {
+                SignatureStatus::Verified(Verified { cert, .. }) => Some(cert),
+                SignatureStatus::GoodChecksum(GoodChecksum { cert, .. }) => Some(cert),
+                SignatureStatus::MissingKey(MissingKey { .. }) => None,
+                SignatureStatus::UnboundKey(UnboundKey { cert, .. }) => Some(cert),
+                SignatureStatus::BadKey(BadKey { cert, .. }) => Some(cert),
+                SignatureStatus::BadSignature(BadSignature { cert, .. }) => Some(cert),
+                SignatureStatus::MalformedSignature(MalformedSignature { .. }) => None,
+                SignatureStatus::UnknownSignature(UnknownSignature { .. }) => None,
+                SignatureStatus::Unknown(Unknown { .. }) => None,
+            }
+        }
+
+        /// Returns the key that made the signature.
+        ///
+        /// Returns `None` if the key is not known.
+        pub fn key(&self) -> Option<&Fingerprint> {
+            use signature_status::*;
+
+            match self {
+                SignatureStatus::Verified(Verified { key, .. }) => Some(key),
+                SignatureStatus::GoodChecksum(GoodChecksum { key, .. }) => Some(key),
+                SignatureStatus::MissingKey(MissingKey { .. }) => None,
+                SignatureStatus::UnboundKey(UnboundKey { .. }) => None,
+                SignatureStatus::BadKey(BadKey { key, .. }) => Some(key),
+                SignatureStatus::BadSignature(BadSignature { key, .. }) => Some(key),
+                SignatureStatus::MalformedSignature(MalformedSignature { .. }) => None,
+                SignatureStatus::UnknownSignature(UnknownSignature { .. }) => None,
+                SignatureStatus::Unknown(Unknown { .. }) => None,
+            }
+        }
+
+        /// Returns the related error.
+        ///
+        /// Returns `None` if no related error is available.  Note:
+        /// even if there is no related error, that does not mean that
+        /// the signature was verified.
+        pub fn error(&self) -> Option<&anyhow::Error> {
+            use signature_status::*;
+
+            match self {
+                SignatureStatus::Verified(Verified { .. }) => None,
+                SignatureStatus::GoodChecksum(GoodChecksum { .. }) => None,
+                SignatureStatus::MissingKey(MissingKey { .. }) => None,
+                SignatureStatus::UnboundKey(UnboundKey { error, .. }) => Some(error),
+                SignatureStatus::BadKey(BadKey { error, .. }) => Some(error),
+                SignatureStatus::BadSignature(BadSignature { error, .. }) => Some(error),
+                SignatureStatus::MalformedSignature(MalformedSignature { error, .. }) => Some(error),
+                SignatureStatus::UnknownSignature(UnknownSignature { .. }) => None,
+                SignatureStatus::Unknown(Unknown { error, .. }) => Some(error),
+            }
+        }
+    }
+
+    /// Miscellaneous information about a signature.
+    ///
+    /// The variants contain miscellaneous information about a
+    /// signature.  This could be displayed under more information or
+    /// as warnings.
+    #[non_exhaustive]
+    #[derive(Debug)]
+    pub enum SignatureInfo {
+        /// The signer's certificate can't be authenticated, because
+        /// it has no user IDs.
+        NoUserIDs,
+    }
+
+    /// A signature.
+    #[non_exhaustive]
+    #[derive(Debug)]
+    pub struct Signature {
+        /// The signature's status.
+        pub status: SignatureStatus,
+
+        /// Miscellaneous information about the signature.
+        pub info: Vec<SignatureInfo>,
+    }
+
+    impl Signature {
+        /// Returns whether the signature could be verified.
+        ///
+        /// A signature is considered verified if the signature is
+        /// mathematically correct, and either at least one user ID
+        /// (not necessarily a self-signed user ID) could be
+        /// authenticated for the signer's certificate using the web
+        /// of trust, or the certificate is considered authenticated
+        /// (see [`Builder::designated_signers`]).
+        pub fn verified(&self) -> bool {
+            self.status.verified()
+        }
+
+        /// Returns the signature.
+        ///
+        /// Returns `None` for
+        /// [`UnknownSignature`](SignatureStatus::UnknownSignature).
+        /// It is still possible to get the raw signature data from an
+        /// `UnknownSignature` by matching on the field.
+        pub fn signature(&self) -> Option<&packet::Signature> {
+            self.status.signature()
+        }
+
+        /// Returns a certificate with the signing key that made the
+        /// signature.
+        ///
+        /// Returns `None` if the certificate is not available.
+        pub fn cert(&self) -> Option<&Cert> {
+            self.status.cert()
+        }
+
+        /// Returns the key that made the signature.
+        ///
+        /// Returns `None` if the key is not known.
+        pub fn key(&self) -> Option<&Fingerprint> {
+            self.status.key()
+        }
+
+        /// Returns the related error.
+        ///
+        /// Returns `None` if no related error is available.  Note:
+        /// even if there is no related error, that does not mean that
+        /// the signature was verified.
+        pub fn error(&self) -> Option<&anyhow::Error> {
+            self.status.error()
+        }
+    }
+
+    /// Data structures related to [`MessageLayer`].
+    pub mod message_layer {
+        use super::*;
+
+        /// Information about a message's signature layer.
+        ///
+        /// See [`MessageLayer`].
+        #[non_exhaustive]
+        #[derive(Debug)]
+        pub struct SignatureLayer {
+            pub sigs: Vec<Signature>,
+        }
+
+        /// Information about a message's compression layer.
+        ///
+        /// See [`MessageLayer`].
+        #[non_exhaustive]
+        #[derive(Debug)]
+        pub struct CompressionLayer {
+            pub algo: CompressionAlgorithm,
+        }
+
+        /// Information about a message's encryption layer.
+        ///
+        /// See [`MessageLayer`].
+        #[non_exhaustive]
+        #[derive(Debug)]
+        pub struct EncryptionLayer {
+            pub sym_algo: SymmetricAlgorithm,
+            pub aead_algo: Option<AEADAlgorithm>,
+        }
+    }
+
+    /// The layers of an OpenPGP message.
+    ///
+    /// A valid OpenPGP message contains one literal data packet with
+    /// optional encryption, signing, and compression layers freely
+    /// combined on top.
+    #[non_exhaustive]
+    #[derive(Debug)]
+    pub enum MessageLayer {
+        Signature(message_layer::SignatureLayer),
+        Compression(message_layer::CompressionLayer),
+        Encryption(message_layer::EncryptionLayer),
+    }
+
+    /// Information about an OpenPGP message's structure.
+    ///
+    /// This data structure contains information about an OpenPGP
+    /// message's structure; it does not include the message's
+    /// content.
+    #[non_exhaustive]
+    #[derive(Debug)]
+    pub struct MessageStructure {
+        pub layers: Vec<MessageLayer>,
+    }
+
+    /// Information about the operation.
+    ///
+    /// This includes summary statistics.
+    #[non_exhaustive]
+    #[derive(Debug)]
+    pub struct Report {
+        /// Whether enough signatures could be verified.
+        ///
+        /// A signature is considered verified if the signature is
+        /// mathematically correct, and either at least one user ID
+        /// (not necessarily a self-signed user ID) could be
+        /// authenticated for the signer's certificate using the web
+        /// of trust, or the certificate is considered authenticated
+        /// (see [`Builder::designated_signers`]).
+        pub authenticated: bool,
+
+        /// The number of authenticated signatures.
+        ///
+        /// See [`SignatureStatus::Verified`].
+        pub authenticated_signatures: usize,
+
+        /// The number of mathematically correct signatures whose
+        /// signer could not be authenticated.
+        ///
+        /// See [`SignatureStatus::GoodChecksum`].
+        pub unauthenticated_signatures: usize,
+
+        /// Signatures that could not be checked, because the key is
+        /// missing.
+        ///
+        /// See [`SignatureStatus::MissingKey`].
+        pub uncheckable_signatures: usize,
+
+        /// The number of signatures that could not be checked,
+        /// because the signature was bad.
+        ///
+        /// See [`SignatureStatus::UnknownSignature`] and
+        /// [`SignatureStatus::BadSignature`].
+        pub bad_signatures: usize,
+
+        /// The number of signatures that could not be checked,
+        /// because the key or certificate was bad.
+        ///
+        /// See [`SignatureStatus::UnboundKey`] and
+        /// [`SignatureStatus::BadKey`].
+        pub broken_keys: usize,
+
+        /// The number of signatures that are broken.
+        ///
+        /// See [`SignatureStatus::MalformedSignature`].
+        pub broken_signatures: usize,
+    }
+}
+
+/// The variants of this enum are the different types of output that
+/// [`inline_signature`](Builder::inline_signature) and
+/// [`detached_signature`](Builder::detached_signature) emit.
+#[non_exhaustive]
+#[derive(Debug)]
+pub enum Output {
+    MessageStructure(output::MessageStructure),
+    Report(output::Report),
+}
 
 impl Sequoia {
-    pub fn verify(&self,
-                  input: Box<dyn BufferedReader<Cookie>>,
-                  detached: Option<PathBuf>,
-                  detached_sig_arg: &str,
-                  detached_sig_value: Option<PathBuf>,
-                  output: &mut dyn io::Write,
-                  signatures: usize, certs: Vec<Cert>)
-                  -> Result<()>
+    /// Returns a builder for verifying messages.
+    ///
+    /// See [`Builder`] for details.
+    pub fn verify(&self) -> Builder<'_>
     {
-        let detached = if let Some(sig_path) = detached {
-            let sig = File::with_cookie(&sig_path, Default::default())?;
+        Builder {
+            params: Params {
+                sequoia: self,
+                detached_sig_arg: None,
+                detached_sig_value: None,
+                signatures: 1,
+                designated_signers: None,
+            }
+        }
+    }
+}
 
-            let (kind, sig) = Kind::identify(self, sig)?;
-            kind.expect_or_else(self, "verify", Kind::DetachedSig,
-                                detached_sig_arg,
+/// Parameters to the verify function.
+///
+/// The parameters passed to
+/// [`inline_signature`](Builder::inline_signature) and
+/// [`detached_signature`](Builder::detached_signature).
+#[derive(Clone)]
+pub struct Params<'sequoia> {
+    // XXX transitional: Remove pub once decrypt is ported to the
+    // library.
+    pub sequoia: &'sequoia Sequoia,
+    // XXX transitional: Remove once we fix Kind::identify.
+    pub detached_sig_arg: Option<String>,
+    pub detached_sig_value: Option<PathBuf>,
+    pub signatures: usize,
+    pub designated_signers: Option<Vec<Cert>>,
+}
+
+impl<'sequoia> Params<'sequoia> {
+    /// Returns the `Sequoia` instance.
+    pub fn sequoia(&self) -> &'sequoia Sequoia {
+        self.sequoia
+    }
+
+    /// Returns the number of signatures that have to be authenticated
+    /// for the verification to succeed.
+    pub fn signatures(&self) -> usize {
+        self.signatures
+    }
+
+    /// Returns the set of designated signers.
+    pub fn designated_signers(&self) -> Option<&[Cert]> {
+        self.designated_signers.as_deref()
+    }
+}
+
+/// Verify signatures.
+///
+/// This command builder is used to verify signatures.
+pub struct Builder<'sequoia> {
+    params: Params<'sequoia>,
+}
+
+impl<'sequoia> Builder<'sequoia> {
+    /// Returns the parameters.
+    ///
+    /// This is useful for examining the builder's configuration.
+    pub fn params(&self) -> &Params<'sequoia> {
+        &self.params
+    }
+
+    /// Sets the number of required authenticated signatures.
+    ///
+    /// By default there must be one authenticated signature.  Note: a
+    /// mathematically correct signature is not considered
+    /// authenticated; at least one of the user IDs on the signer's
+    /// certificate must also be fully authenticated.
+    pub fn signatures(&mut self, signatures: usize) -> &mut Self {
+        self.params.signatures = signatures;
+
+        self
+    }
+
+    /// Sets the designated signers.
+    ///
+    /// The specified certificates (and no other certificates) are
+    /// considered authenticated.
+    ///
+    /// By default, signer certificates are authenticated using the
+    /// web of trust using certificates from the certificate store
+    /// (unless disabled with [`SequoiaBuilder::stateless`]) and any
+    /// configured keyrings (see [`SequoiaBuiler::add_keyring`]).
+    /// This disables the use of the web of trust and only considers
+    /// signatures by the specified certificates.
+    ///
+    ///   [`SequoiaBuilder::stateless`]: crate::SequoiaBuilder::stateless
+    ///   [`SequoiaBuiler::add_keyring`]: crate::SequoiaBuilder::add_keyring
+    pub fn designated_signers(&mut self, certs: Vec<Cert>) -> &mut Self {
+        self.params.designated_signers = Some(certs);
+
+        self
+    }
+
+    /// XXX transitional: remove once presentation is moved back to
+    /// sq.
+    pub fn detached_args(&mut self, detached_sig_arg: Option<&str>,
+                         detached_sig_value: &Path)
+        -> &mut Self
+    {
+        self.params.detached_sig_arg
+            = detached_sig_arg.map(|a| a.to_string());
+        self.params.detached_sig_value = Some(detached_sig_value.to_path_buf());
+
+        self
+    }
+
+    /// Verifies an inline signing message.
+    ///
+    /// An inline-signed message is an OpenPGP message that includes
+    /// one or more signatures and the signed data.  If the signatures
+    /// and the data are stored separately, you have a detached
+    /// signature.
+    ///
+    /// Returns `Ok` if the message could be verified according to the
+    /// policy.  (You can configure the signing policy using
+    /// [`Builder::signatures`] and [`Builder::designated_signers`].)
+    ///
+    /// The verified data is written to `output`.  If you don't plan
+    /// to consume the verified data, you can pass pass an instance of
+    /// `std::io::Empty`, which is normally created by calling
+    /// `std::io::empty`.  If you do plan to consume the verified
+    /// data, you should not use the input, but save the output and
+    /// use that.  This avoids TOUTOC errors, and, accidentally using
+    /// the wrong data.
+    ///
+    /// `stream` allows you to stream the status information.  If you
+    /// don't want to stream the status information, you can pass a
+    /// mutable reference to a `Vec<Output>`.  If you don't care about
+    /// the status information, you can pass `()`.
+    pub fn inline_signature<I, O, S>(&self, input: I, output: O, stream: S)
+        -> Result<()>
+    where
+        I: std::io::Read + Send + Sync,
+        O: std::io::Write + Send + Sync,
+        S: Stream,
+
+    {
+        self.execute_stream(input, None::<std::io::Empty>, output, stream)
+    }
+
+    /// Verifies an inline signing message.
+    ///
+    /// An inline-signed message is an OpenPGP message that includes
+    /// one or more signatures and the signed data.  If the signatures
+    /// and the data are stored separately, you have a detached
+    /// signature.
+    ///
+    /// Returns `Ok` if the message could be verified according to the
+    /// policy.  (You can configure the signing policy using
+    /// [`Builder::signatures`] and [`Builder::designated_signers`].)
+    ///
+    /// The verified data is written to `output`.  If you don't plan
+    /// to consume the verified data, you can pass pass an instance of
+    /// `std::io::Empty`, which is normally created by calling
+    /// `std::io::empty`.  If you do plan to consume the verified
+    /// data, you should not use the input, but save the output and
+    /// use that.  This avoids TOUTOC errors, and, accidentally using
+    /// the wrong data.
+    ///
+    /// `stream` allows you to stream the status information.  If you
+    /// don't want to stream the status information, you can pass a
+    /// mutable reference to a `Vec<Output>`.  If you don't care about
+    /// the status information, you can pass `()`.
+    pub fn detached_signature<I, D, O, S>(&self, input: I, detached: D,
+                                          output: O, stream: S)
+        -> Result<()>
+    where
+        I: std::io::Read + Send + Sync,
+        D: std::io::Read + Send + Sync,
+        O: std::io::Write + Send + Sync,
+        S: Stream,
+
+    {
+        self.execute_stream(input, Some(detached), output, stream)
+    }
+
+    /// Execute the verifier with the configured parameters.
+    ///
+    /// Returns `Ok` if the message could be verified.
+    fn execute_stream<I, D, O, S>(&self, input: I, detached: Option<D>,
+                                  mut output: O, stream: S)
+        -> Result<()>
+    where
+        I: std::io::Read + Send + Sync,
+        D: std::io::Read + Send + Sync,
+        O: std::io::Write + Send + Sync,
+        S: Stream,
+    {
+        let &Builder {
+            params: Params {
+                sequoia,
+                ref detached_sig_arg,
+                ref detached_sig_value,
+                signatures,
+                ref designated_signers,
+            }
+        } = self;
+
+        let mut detached = if let Some(detached) = detached {
+            Some(buffered_reader::Generic::with_cookie(
+                detached, None, Default::default()))
+        } else {
+            None
+        };
+
+        let mut detached = if let Some(ref mut sig) = detached {
+            let (kind, sig) = Kind::identify(sequoia, sig)?;
+            kind.expect_or_else(sequoia, "verify", Kind::DetachedSig,
+                                detached_sig_arg
+                                .as_deref()
+                                .unwrap_or("the detached signature"),
                                 detached_sig_value.as_deref())?;
 
             Some(sig)
@@ -57,27 +939,27 @@ impl Sequoia {
             None
         };
 
-        let helper = VerificationHelper::new(
-            self, signatures,
-            if certs.is_empty() {
-                None
-            } else {
-                Some(certs.clone())
-            });
-        let helper = if let Some(dsig) = detached {
+        let mut helper = VerificationHelper::new(
+            sequoia, signatures, designated_signers.clone());
+        helper.stream = Some((Box::new(stream), Cow::Borrowed(&self.params)));
+        let helper = if let Some(ref mut dsig) = detached {
             let mut v = DetachedVerifierBuilder::from_reader(dsig)?
-                .with_policy(self.policy(), Some(self.time()), helper)?;
-            v.verify_buffered_reader(input)?;
+                .with_policy(sequoia.policy(), Some(sequoia.time()), helper)?;
+            v.verify_reader(input)?;
             v.into_helper()
         } else {
             let mut v = VerifierBuilder::from_reader(input)?
-                .with_policy(self.policy(), Some(self.time()), helper)?;
-            io::copy(&mut v, output)?;
+                .with_policy(sequoia.policy(), Some(sequoia.time()), helper)?;
+            io::copy(&mut v, &mut output)?;
             v.into_helper()
         };
 
-        helper.print_status();
-        Ok(())
+        if helper.authenticated_signatures >= signatures {
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!("Verification failed: could not \
+                                 authenticate any signatures"))
+        }
     }
 }
 
@@ -85,16 +967,17 @@ pub struct VerificationHelper<'c> {
     sequoia: &'c Sequoia,
     signatures: usize,
 
+    // XXX transitional: Remove pub once decrypt is ported to the
+    // library.
+    pub stream: Option<(Box<dyn Stream + 'c>, Cow<'c, Params<'c>>)>,
+
     /// Require signatures to be made by this set of certs.
     designated_signers: Option<Vec<Cert>>,
 
-    labels: HashMap<KeyID, String>,
     trusted: HashSet<KeyID>,
 
     /// Tracks the inner-most encryption container encountered.
     pub sym_algo: Option<SymmetricAlgorithm>,
-    /// Tracks the inner-most encryption container encountered.
-    aead_algo: Option<AEADAlgorithm>,
 
     // Tracks the signatures encountered.
     authenticated_signatures: usize,
@@ -103,22 +986,22 @@ pub struct VerificationHelper<'c> {
     bad_signatures: usize,
     broken_keys: usize,
     broken_signatures: usize,
+
     pub quiet: bool,
 }
 
 impl<'c> VerificationHelper<'c> {
     pub fn new(sequoia: &'c Sequoia, signatures: usize,
                designated_signers: Option<Vec<Cert>>)
-        -> Self
+               -> Self
     {
         VerificationHelper {
             sequoia,
             signatures,
             designated_signers,
-            labels: HashMap::new(),
             trusted: HashSet::new(),
             sym_algo: None,
-            aead_algo: None,
+            stream: None,
             authenticated_signatures: 0,
             unauthenticated_signatures: 0,
             uncheckable_signatures: 0,
@@ -137,10 +1020,14 @@ impl<'c> VerificationHelper<'c> {
     /// Enables or disables quiet operation.
     ///
     /// In quiet operation, only errors are emitted.
+    ///
+    /// XXX transitional: Remove once autocrypt doesn't use
+    /// VerificationHelper.
     pub fn quiet(&mut self, v: bool) {
         self.quiet = v;
     }
 
+    /// XXX transitional: Remove once decrypt has been ported to the library.
     pub fn print_status(&self) {
         fn p(s: &mut String, what: &str, threshold: usize, quantity: usize) {
             if quantity >= threshold {
@@ -165,273 +1052,6 @@ impl<'c> VerificationHelper<'c> {
             weprintln!("{}.", status);
         }
     }
-
-    fn print_sigs(&mut self, results: &[VerificationResult]) -> Result<()> {
-        make_qprintln!(self.quiet);
-        use crate::transitional::print_error_chain;
-
-        let reference_time = self.sequoia.time();
-
-        use self::VerificationError::*;
-        for result in results {
-            let (sig, ka) = match result {
-                Ok(GoodChecksum { sig, ka, .. }) => (sig, ka),
-                Err(MalformedSignature { error, .. }) => {
-                    weprintln!("Malformed signature:");
-                    print_error_chain(error);
-                    self.broken_signatures += 1;
-                    continue;
-                },
-                Err(MissingKey { sig, .. }) => {
-                    let issuer = sig.get_issuers().get(0)
-                        .expect("missing key checksum has an issuer")
-                        .to_string();
-                    let what = match sig.level() {
-                        0 => "signature".into(),
-                        n => format!("level {} notarization", n),
-                    };
-                    weprintln!("Can't authenticate {} allegedly made by {}: \
-                                missing certificate.",
-                               what, issuer);
-
-                    self.sequoia.hint(format_args!(
-                        "Consider searching for the certificate using:"))
-                        .sq().arg("network").arg("search")
-                        .arg(issuer)
-                        .done();
-
-                    self.uncheckable_signatures += 1;
-                    continue;
-                },
-                Err(UnboundKey { cert, error, .. }) => {
-                    weprintln!("Signing key on {} is not bound:",
-                               cert.fingerprint());
-                    print_error_chain(error);
-                    self.broken_keys += 1;
-                    continue;
-                },
-                Err(BadKey { ka, error, .. }) => {
-                    weprintln!("Signing key on {} is bad:",
-                               ka.cert().fingerprint());
-                    print_error_chain(error);
-                    self.broken_keys += 1;
-                    continue;
-                },
-                Err(BadSignature { sig, ka, error }) => {
-                    let issuer = ka.key().fingerprint().to_string();
-                    let what = match sig.level() {
-                        0 => "signature".into(),
-                        n => format!("level {} notarizing signature", n),
-                    };
-                    weprintln!("Error verifying {} made by {}:",
-                               what, issuer);
-                    print_error_chain(error);
-                    self.bad_signatures += 1;
-                    continue;
-                }
-                Err(UnknownSignature { sig, .. }) => {
-                    weprintln!("Error parsing signature: {}", sig.error());
-                    print_error_chain(sig.error());
-                    self.bad_signatures += 1;
-                    continue;
-                }
-                Err(e) => {
-                    weprintln!("Error parsing signature: {}", e);
-                    self.bad_signatures += 1;
-                    continue;
-                }
-
-            };
-
-            let cert = ka.cert();
-            let cert_fpr = cert.fingerprint();
-            let issuer = ka.key().keyid();
-            let mut signer_userid = self.sequoia.best_userid(ka.cert(), true);
-
-            // Direct trust.
-            let mut authenticated = self.trusted.contains(&issuer);
-            let mut prefix = "";
-            let trust_roots = self.sequoia.trust_roots();
-            if ! authenticated && ! trust_roots.is_empty() {
-                prefix = "  ";
-
-                // Web of trust.
-                qprintln!("Authenticating {} ({}) using the web of trust:",
-                          cert_fpr, signer_userid.userid_lossy());
-
-                if let Some(cert_store) = self.sequoia.cert_store()? {
-                    // Build the network.
-                    let cert_store = sequoia_wot::store::CertStore::from_store(
-                        cert_store, self.sequoia.policy(), reference_time);
-
-                    let userids =
-                        cert_store.certified_userids_of(&cert_fpr);
-
-                    if userids.is_empty() {
-                        weprintln!(indent=prefix,
-                                   "{} cannot be authenticated.  \
-                                    It has no User IDs",
-                                   cert_fpr);
-                    } else {
-                        let n = sequoia_wot::NetworkBuilder::rooted(
-                            &cert_store, &*trust_roots).build();
-
-                        let authenticated_userids
-                            = userids.into_iter().filter(|userid| {
-                                let paths = n.authenticate(
-                                    userid, cert.fingerprint(),
-                                    // XXX: Make this user configurable.
-                                    sequoia_wot::FULLY_TRUSTED);
-
-                                let amount = paths.amount();
-                                let authenticated = if amount >= sequoia_wot::FULLY_TRUSTED {
-                                    weprintln!(indent=prefix,
-                                               "Fully authenticated \
-                                                ({} of {}) {}, {}",
-                                               amount,
-                                               TrustThreshold::Full,
-                                               cert_fpr,
-                                               Safe(userid));
-                                    true
-                                } else if amount > 0 {
-                                    weprintln!(indent=prefix,
-                                               "Partially authenticated \
-                                                ({} of {}) {}, {} ",
-                                               amount,
-                                               TrustThreshold::Full,
-                                               cert_fpr,
-                                               Safe(userid));
-                                    false
-                                } else {
-                                    weprintln!(indent=prefix,
-                                               "{}: {} is unauthenticated \
-                                                and may be an impersonation!",
-                                               cert_fpr,
-                                               Safe(userid));
-                                    false
-                                };
-
-                                for (i, (path, amount)) in paths.iter().enumerate() {
-                                    let prefix = if paths.len() > 1 {
-                                        qprintln!("{}  Path #{} of {}, \
-                                                  trust amount {}:",
-                                                 prefix,
-                                                 i + 1, paths.len(), amount);
-                                        format!("{}    ", prefix)
-                                    } else {
-                                        format!("{}  ", prefix)
-                                    };
-
-                                    if ! self.quiet {
-                                        let _ =
-                                            print_path(&mut std::io::stderr(),
-                                                       &path.into(), userid,
-                                                       &prefix);
-                                    }
-                                }
-
-                                authenticated
-                            })
-                            .collect::<Vec<UserID>>();
-
-                        if authenticated_userids.is_empty() {
-                            authenticated = false;
-                        } else {
-                            authenticated = true;
-
-                            // If we managed to authenticate the
-                            // signers user ID, prefer that one.
-                            if let Some(u) = sig.signers_user_id()
-                                .and_then(|u| {
-                                    authenticated_userids.contains(
-                                        &UserID::from(u))
-                                        .then_some(u)
-                                })
-                            {
-                                signer_userid = PreferredUserID::from_string(
-                                    String::from_utf8_lossy(u),
-                                    TrustThreshold::Full.into());
-                            } else {
-                                // Else just pick the first one.
-                                signer_userid = PreferredUserID::from_string(
-                                    String::from_utf8_lossy(
-                                        authenticated_userids[0].value()),
-                                    TrustThreshold::Full.into());
-                            }
-                        }
-                    }
-                } else {
-                    qprintln!("Skipping, certificate store has been disabled");
-                }
-            }
-
-            let mut label_store = Default::default();
-            let label = self.labels.get(&issuer).unwrap_or_else(|| {
-                label_store = cert_fpr.to_string();
-                &label_store
-            });
-
-            let level = sig.level();
-            match (level == 0, authenticated) {
-                (true,  true)  => {
-                    weprintln!(indent=prefix,
-                               "Authenticated signature made by {} ({})",
-                               label, signer_userid.userid_lossy());
-                }
-                (false, true)  => {
-                    weprintln!(indent=prefix,
-                               "Authenticated level {} notarization \
-                                made by {} ({})",
-                               level, label, signer_userid.userid_lossy());
-                }
-                (true,  false) => {
-                    weprintln!(indent=prefix,
-                               "Can't authenticate signature made by {} ({}): \
-                                the certificate can't be authenticated.",
-                               label, signer_userid.userid_lossy());
-
-                    if let Ok(u) = signer_userid.userid() {
-                        self.sequoia.hint(format_args!(
-                            "After checking that {} belongs to {}, \
-                             you can mark it as authenticated using:",
-                            cert_fpr, u))
-                            .sq().arg("pki").arg("link").arg("add")
-                            .arg_value("--cert", cert_fpr)
-                            .arg_value("--userid", u)
-                            .done();
-                    }
-                }
-                (false, false) => {
-                    weprintln!(indent=prefix,
-                               "Can't authenticate level {} notarization \
-                                made by {} ({}): the certificate \
-                                can't be authenticated.",
-                               level, label, signer_userid.userid_lossy());
-
-                    if let Ok(u) = signer_userid.userid() {
-                        self.sequoia.hint(format_args!(
-                            "After checking that {} belongs to {}, \
-                             you can mark it as authenticated using:",
-                            cert_fpr, u))
-                            .sq().arg("pki").arg("link").arg("add")
-                            .arg_value("--cert", cert_fpr)
-                            .arg_value("--userid", u)
-                            .done();
-                    }
-                }
-            };
-
-            if authenticated {
-                self.authenticated_signatures += 1;
-            } else {
-                self.unauthenticated_signatures += 1;
-            }
-
-            qprintln!("");
-        }
-
-        Ok(())
-    }
 }
 
 impl<'c> stream::VerificationHelper for VerificationHelper<'c> {
@@ -439,9 +1059,9 @@ impl<'c> stream::VerificationHelper for VerificationHelper<'c> {
         let mut certs = BTreeMap::new();
 
         let have_designated_signers = if let Some(designated_signers)
-            = std::mem::take(&mut self.designated_signers)
+            = self.designated_signers.as_ref()
         {
-            for c in designated_signers {
+            for c in designated_signers.iter().cloned() {
                 match certs.entry(c.fingerprint()) {
                     Entry::Vacant(e) => {
                         e.insert(c);
@@ -502,37 +1122,263 @@ impl<'c> stream::VerificationHelper for VerificationHelper<'c> {
         Ok(certs.into_values().collect())
     }
 
-    fn check(&mut self, structure: MessageStructure) -> Result<()> {
-        make_qprintln!(self.quiet);
+    fn check(&mut self, structure: stream::MessageStructure)
+             -> Result<()>
+    {
+        use output::message_layer::*;
+
+        tracer!(TRACE, "VerificationHelper::check");
+
+        let mut layers = Vec::new();
+
         for layer in structure {
             match layer {
-                MessageLayer::Compression { algo } =>
-                    qprintln!("Compressed using {}", algo),
-                MessageLayer::Encryption { sym_algo, aead_algo } => {
-                    self.sym_algo = Some(sym_algo);
-                    self.aead_algo = aead_algo;
-
-                    if let Some(aead_algo) = aead_algo {
-                        qprintln!("Encrypted and protected using {}/{}",
-                                  sym_algo, aead_algo);
-                    } else {
-                        qprintln!("Encrypted using {}", sym_algo);
-                    }
+                stream::MessageLayer::Compression { algo } => {
+                    t!("Compression layer: {}", algo);
+                    layers.push(output::MessageLayer::Compression(
+                        CompressionLayer { algo }));
                 },
-                MessageLayer::SignatureGroup { ref results } => {
-                    self.print_sigs(results)?;
+                stream::MessageLayer::Encryption { sym_algo, aead_algo } => {
+                    t!("Encryption layer: sym: {}, aead: {:?}",
+                       sym_algo, aead_algo);
+                    self.sym_algo = Some(sym_algo);
+                    layers.push(output::MessageLayer::Encryption(
+                        EncryptionLayer { sym_algo, aead_algo }));
+                }
+                stream::MessageLayer::SignatureGroup { results } => {
+                    t!("Signature layer: {} signatures", results.len());
+
+                    let mut sigs = Vec::new();
+                    for result in results.into_iter() {
+                        sigs.push(self.check_sig(result));
+                    }
+                    layers.push(output::MessageLayer::Signature(
+                        SignatureLayer { sigs }));
                 },
             }
+        }
+
+        let message_structure = output::MessageStructure { layers };
+
+        let authenticated
+            = self.authenticated_signatures >= self.signatures;
+
+        if let Some((stream, params)) = self.stream.as_mut() {
+            stream.output(&params,
+                          Output::MessageStructure(message_structure))?;
+
+            stream.output(
+                params,
+                Output::Report(output::Report {
+                    authenticated,
+                    authenticated_signatures: self.authenticated_signatures,
+                    unauthenticated_signatures: self.unauthenticated_signatures,
+                    uncheckable_signatures: self.uncheckable_signatures,
+                    bad_signatures: self.bad_signatures,
+                    broken_keys: self.broken_keys,
+                    broken_signatures: self.broken_signatures,
+                }))?;
         }
 
         if self.authenticated_signatures >= self.signatures {
             Ok(())
         } else {
-            if ! self.quiet {
-                self.print_status();
-            }
             Err(anyhow::anyhow!("Verification failed: could not \
                                  authenticate any signatures"))
+        }
+    }
+}
+
+impl<'c> VerificationHelper<'c> {
+    /// Converts a `VerificationResult` into a `Signature`.
+    fn check_sig(&mut self, result: VerificationResult) -> output::Signature {
+        use output::signature_status::*;
+
+        tracer!(TRACE, "VerificationHelper::check_sig");
+
+        let (sig, ka) = match result {
+            Ok(stream::GoodChecksum { sig, ka, .. }) => (sig, ka),
+            Err(VerificationError::MissingKey { sig, .. }) => {
+                t!("missing key");
+
+                self.uncheckable_signatures += 1;
+                return output::Signature {
+                    status: output::SignatureStatus::MissingKey(MissingKey {
+                        sig: sig.clone(),
+                    }),
+                    info: Vec::new(),
+                };
+            }
+            Err(VerificationError::UnboundKey { sig, cert, error, .. }) => {
+                t!("unbound key: {}", error);
+
+                self.broken_keys += 1;
+                return output::Signature {
+                    status: output::SignatureStatus::UnboundKey(UnboundKey {
+                        sig: sig.clone(),
+                        cert: cert.clone(),
+                        error,
+                    }),
+                    info: Vec::new(),
+                };
+            }
+            Err(VerificationError::BadKey { sig, ka, error, .. }) => {
+                t!("bad key: {}", error);
+
+                self.broken_keys += 1;
+                return output::Signature {
+                    status: output::SignatureStatus::BadKey(BadKey {
+                        sig: sig.clone(),
+                        cert: ka.cert().clone(),
+                        key: ka.key().fingerprint(),
+                        error,
+                    }),
+                    info: Vec::new(),
+                };
+            }
+            Err(VerificationError::BadSignature { sig, ka, error, .. }) => {
+                t!("bad signature: {}", error);
+
+                self.bad_signatures += 1;
+                return output::Signature {
+                    status: output::SignatureStatus::BadSignature(BadSignature {
+                        sig: sig.clone(),
+                        cert: ka.cert().clone(),
+                        key: ka.key().fingerprint(),
+                        error,
+                    }),
+                    info: Vec::new(),
+                };
+            }
+            Err(VerificationError::MalformedSignature { sig, error, .. }) => {
+                t!("malformed signature: {}", error);
+
+                self.broken_signatures += 1;
+                return output::Signature {
+                    status: output::SignatureStatus::MalformedSignature(MalformedSignature {
+                        sig: sig.clone(),
+                        error
+                    }),
+                    info: Vec::new(),
+                };
+            }
+            Err(VerificationError::UnknownSignature { sig, .. }) => {
+                t!("unknown signature: {}", sig.error());
+
+                self.bad_signatures += 1;
+                return output::Signature {
+                    status: output::SignatureStatus::UnknownSignature(UnknownSignature {
+                        sig: sig.clone(),
+                    }),
+                    info: Vec::new(),
+                };
+            }
+            Err(ve) => {
+                t!("unhandled signature");
+
+                return output::Signature {
+                    status: output::SignatureStatus::Unknown(Unknown {
+                        error: openpgp::Error::from(ve).into(),
+                    }),
+                    info: Vec::new(),
+                };
+            }
+        };
+
+        t!("good signature (not yet authenticated)");
+
+        // The signature is mathematically correct, but we still need
+        // to authenticate it.
+        let cert = ka.cert();
+        let cert_fpr = cert.fingerprint();
+        let issuer = ka.key().keyid();
+
+        let mut direct = None;
+        let mut wot = None;
+        let mut authenticated = false;
+        let mut info = Vec::new();
+
+        if self.designated_signers.is_some() {
+            // Direct trust.
+            direct = Some(output::Direct {});
+            authenticated = self.trusted.contains(&issuer);
+        } else if ! self.sequoia.trust_roots().is_empty() {
+            // Web of trust.
+
+            let trust_roots = self.sequoia.trust_roots();
+            if let Ok(Some(cert_store)) = self.sequoia.cert_store() {
+                let mut authentication_paths = vec![];
+                let mut authentication_level = 0;
+
+                // Build the network.
+                let cert_store = sequoia_wot::store::CertStore::from_store(
+                    cert_store, self.sequoia.policy(), self.sequoia.time());
+
+                let userids =
+                    cert_store.certified_userids_of(&cert_fpr);
+
+                if userids.is_empty() {
+                    info.push(output::SignatureInfo::NoUserIDs);
+                } else {
+                    let n = sequoia_wot::NetworkBuilder::rooted(
+                        &cert_store, &*trust_roots).build();
+
+                    let authenticated_userids
+                        = userids.into_iter().filter(|userid| {
+                            let paths = n.authenticate(
+                                userid, cert.fingerprint(),
+                                // XXX: Make this user configurable.
+                                sequoia_wot::FULLY_TRUSTED);
+
+                            let amount = paths.amount();
+
+                            // Return if the user ID could be at least
+                            // partially authenticated.
+                            authentication_paths.push(
+                                (userid.clone(), paths));
+
+                            authentication_level
+                                = authentication_level.max(amount);
+
+                            amount >= sequoia_wot::FULLY_TRUSTED
+                        })
+                        .collect::<Vec<UserID>>();
+
+                    if ! authenticated_userids.is_empty() {
+                        authenticated = true;
+                    }
+
+                    wot = Some(output::WebOfTrust {
+                        authentication_level,
+                        authentication_paths,
+                    });
+                }
+            }
+        }
+
+        let status = if authenticated {
+            self.authenticated_signatures += 1;
+            output::SignatureStatus::Verified(Verified {
+                sig: sig.clone(),
+                cert: ka.cert().clone(),
+                key: ka.key().fingerprint(),
+                direct,
+                wot,
+            })
+        } else {
+            self.unauthenticated_signatures += 1;
+            output::SignatureStatus::GoodChecksum(GoodChecksum {
+                sig: sig.clone(),
+                cert: ka.cert().clone(),
+                key: ka.key().fingerprint(),
+                direct,
+                wot,
+            })
+        };
+
+        output::Signature {
+            status,
+            info,
         }
     }
 }

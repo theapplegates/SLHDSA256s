@@ -30,17 +30,20 @@ use cert_store::store::StoreError;
 
 use sequoia::key_store as keystore;
 
-use sequoia::prompt;
 use sequoia::prompt::Prompt as _;
+use sequoia::prompt;
 use sequoia::types::TrustThreshold;
 use sequoia::verify::VerificationHelper;
+use sequoia::verify;
 
 use crate::{
+    Sq,
     cli,
     common::password,
     common::ui,
-    Sq,
     load_keys,
+    output::verify::Stream,
+    output::verify::VerifyContext,
 };
 
 const TRACE: bool = false;
@@ -647,8 +650,26 @@ pub fn decrypt(sq: Sq,
                dump_session_key: bool,
                sk: Vec<sequoia::types::SessionKey>)
                -> Result<()> {
-    let helper = Helper::new(&sq, signatures, certs,
-                             secrets, sk, dump_session_key);
+    let mut helper = Helper::new(&sq, signatures, certs.clone(),
+                                 secrets, sk, dump_session_key);
+
+    let stream = Stream::new(&sq, VerifyContext::Decrypt);
+
+    // XXX: Transitional hack.  Remove once we move decrypt into the
+    // library.
+    let params = verify::Params {
+        sequoia: &sq.sequoia,
+        detached_sig_arg: None,
+        detached_sig_value: None,
+        signatures,
+        designated_signers: if certs.is_empty() {
+            None
+        } else {
+            Some(certs)
+        },
+    };
+    helper.vhelper.stream = Some((Box::new(stream), Cow::Owned(params)));
+
     let mut decryptor = DecryptorBuilder::from_reader(input)?
         .with_policy(sq.policy(), None, helper)
         .context("Decryption failed")?;
