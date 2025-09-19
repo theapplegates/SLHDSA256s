@@ -5,13 +5,20 @@ use std::path::PathBuf;
 use sequoia_openpgp::parse::buffered_reader::File;
 
 use sequoia_openpgp as openpgp;
-use openpgp::KeyID;
 use openpgp::Cert;
+use openpgp::KeyID;
 use openpgp::packet::UserID;
 use openpgp::parse::Cookie;
-use openpgp::parse::buffered_reader::BufferedReader;
-use openpgp::parse::stream::*;
 use openpgp::parse::Parse;
+use openpgp::parse::buffered_reader::BufferedReader;
+use openpgp::parse::stream::DetachedVerifierBuilder;
+use openpgp::parse::stream::GoodChecksum;
+use openpgp::parse::stream::MessageLayer;
+use openpgp::parse::stream::MessageStructure;
+use openpgp::parse::stream::VerificationError;
+use openpgp::parse::stream::VerificationResult;
+use openpgp::parse::stream::VerifierBuilder;
+use openpgp::parse::stream;
 use openpgp::types::AEADAlgorithm;
 use openpgp::types::SymmetricAlgorithm;
 
@@ -50,7 +57,7 @@ impl Sequoia {
             None
         };
 
-        let helper = VHelper::new(self, signatures, certs);
+        let helper = VerificationHelper::new(self, signatures, certs);
         let helper = if let Some(dsig) = detached {
             let mut v = DetachedVerifierBuilder::from_reader(dsig)?
                 .with_policy(self.policy(), Some(self.time()), helper)?;
@@ -68,7 +75,7 @@ impl Sequoia {
     }
 }
 
-pub struct VHelper<'c> {
+pub struct VerificationHelper<'c> {
     sequoia: &'c Sequoia,
     signatures: usize,
 
@@ -93,12 +100,12 @@ pub struct VHelper<'c> {
     pub quiet: bool,
 }
 
-impl<'c> VHelper<'c> {
+impl<'c> VerificationHelper<'c> {
     pub fn new(sequoia: &'c Sequoia, signatures: usize,
                designated_signers: Vec<Cert>)
                -> Self
     {
-        VHelper {
+        VerificationHelper {
             sequoia,
             signatures,
             designated_signers,
@@ -421,7 +428,7 @@ impl<'c> VHelper<'c> {
     }
 }
 
-impl<'c> VerificationHelper for VHelper<'c> {
+impl<'c> stream::VerificationHelper for VerificationHelper<'c> {
     fn get_certs(&mut self, ids: &[openpgp::KeyHandle]) -> Result<Vec<Cert>> {
         let mut certs = BTreeMap::new();
 

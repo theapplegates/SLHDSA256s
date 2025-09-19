@@ -19,9 +19,10 @@ use openpgp::parse::{
     PacketParser,
     PacketParserResult,
 };
-use openpgp::parse::stream::{
-    VerificationHelper, DecryptionHelper, DecryptorBuilder, MessageStructure,
-};
+use openpgp::parse::stream::DecryptionHelper;
+use openpgp::parse::stream::DecryptorBuilder;
+use openpgp::parse::stream::MessageStructure;
+use openpgp::parse::stream;
 use sequoia::openpgp::types::KeyFlags;
 
 use sequoia::cert_store;
@@ -32,7 +33,7 @@ use sequoia::key_store as keystore;
 use sequoia::prompt;
 use sequoia::prompt::Prompt as _;
 use sequoia::types::TrustThreshold;
-use sequoia::verify::VHelper;
+use sequoia::verify::VerificationHelper;
 
 use crate::{
     cli,
@@ -93,7 +94,7 @@ pub fn dispatch(sq: Sq, command: cli::decrypt::Command) -> Result<()> {
 
 pub struct Helper<'c> {
     sq: &'c Sq,
-    vhelper: VHelper<'c>,
+    vhelper: VerificationHelper<'c>,
     secret_keys: HashMap<KeyID, (Cert, Key<key::SecretParts, key::UnspecifiedRole>)>,
     key_identities: HashMap<KeyID, Arc<Cert>>,
     session_keys: Vec<sequoia::types::SessionKey>,
@@ -106,7 +107,7 @@ pub struct Helper<'c> {
 }
 
 impl<'c> std::ops::Deref for Helper<'c> {
-    type Target = VHelper<'c>;
+    type Target = VerificationHelper<'c>;
 
     fn deref(&self) -> &Self::Target {
         &self.vhelper
@@ -145,7 +146,7 @@ impl<'c> Helper<'c> {
 
         Helper {
             sq: &sq,
-            vhelper: VHelper::new(&sq.sequoia, signatures, certs),
+            vhelper: VerificationHelper::new(&sq.sequoia, signatures, certs),
             secret_keys: keys,
             key_identities: identities,
             session_keys,
@@ -214,7 +215,7 @@ impl<'c> Helper<'c> {
     }
 }
 
-impl<'c> VerificationHelper for Helper<'c> {
+impl<'c> stream::VerificationHelper for Helper<'c> {
     fn get_certs(&mut self, ids: &[openpgp::KeyHandle]) -> Result<Vec<Cert>> {
         self.vhelper.get_certs(ids)
     }
