@@ -69,7 +69,7 @@ impl Sequoia {
 }
 
 pub struct VHelper<'c> {
-    pub sq: &'c Sequoia,
+    pub sequoia: &'c Sequoia,
     signatures: usize,
 
     /// Require signatures to be made by this set of certs.
@@ -94,12 +94,12 @@ pub struct VHelper<'c> {
 }
 
 impl<'c> VHelper<'c> {
-    pub fn new(sq: &'c Sequoia, signatures: usize,
+    pub fn new(sequoia: &'c Sequoia, signatures: usize,
                designated_signers: Vec<Cert>)
                -> Self
     {
         VHelper {
-            sq: sq,
+            sequoia,
             signatures,
             designated_signers,
             labels: HashMap::new(),
@@ -112,7 +112,7 @@ impl<'c> VHelper<'c> {
             broken_keys: 0,
             bad_signatures: 0,
             broken_signatures: 0,
-            quiet: sq.config().quiet(),
+            quiet: sequoia.config().quiet(),
         }
     }
 
@@ -152,7 +152,7 @@ impl<'c> VHelper<'c> {
         make_qprintln!(self.quiet);
         use crate::transitional::print_error_chain;
 
-        let reference_time = self.sq.time();
+        let reference_time = self.sequoia.time();
 
         use self::VerificationError::*;
         for result in results {
@@ -176,7 +176,7 @@ impl<'c> VHelper<'c> {
                                 missing certificate.",
                                what, issuer);
 
-                    self.sq.hint(format_args!(
+                    self.sequoia.hint(format_args!(
                         "Consider searching for the certificate using:"))
                         .sq().arg("network").arg("search")
                         .arg(issuer)
@@ -228,12 +228,12 @@ impl<'c> VHelper<'c> {
             let cert = ka.cert();
             let cert_fpr = cert.fingerprint();
             let issuer = ka.key().keyid();
-            let mut signer_userid = self.sq.best_userid(ka.cert(), true);
+            let mut signer_userid = self.sequoia.best_userid(ka.cert(), true);
 
             // Direct trust.
             let mut authenticated = self.trusted.contains(&issuer);
             let mut prefix = "";
-            let trust_roots = self.sq.trust_roots();
+            let trust_roots = self.sequoia.trust_roots();
             if ! authenticated && ! trust_roots.is_empty() {
                 prefix = "  ";
 
@@ -241,10 +241,10 @@ impl<'c> VHelper<'c> {
                 qprintln!("Authenticating {} ({}) using the web of trust:",
                           cert_fpr, signer_userid.userid_lossy());
 
-                if let Some(cert_store) = self.sq.cert_store()? {
+                if let Some(cert_store) = self.sequoia.cert_store()? {
                     // Build the network.
                     let cert_store = sequoia_wot::store::CertStore::from_store(
-                        cert_store, self.sq.policy(), reference_time);
+                        cert_store, self.sequoia.policy(), reference_time);
 
                     let userids =
                         cert_store.certified_userids_of(&cert_fpr);
@@ -373,7 +373,7 @@ impl<'c> VHelper<'c> {
                                label, signer_userid.userid_lossy());
 
                     if let Ok(u) = signer_userid.userid() {
-                        self.sq.hint(format_args!(
+                        self.sequoia.hint(format_args!(
                             "After checking that {} belongs to {}, \
                              you can mark it as authenticated using:",
                             cert_fpr, u))
@@ -391,7 +391,7 @@ impl<'c> VHelper<'c> {
                                level, label, signer_userid.userid_lossy());
 
                     if let Ok(u) = signer_userid.userid() {
-                        self.sq.hint(format_args!(
+                        self.sequoia.hint(format_args!(
                             "After checking that {} belongs to {}, \
                              you can mark it as authenticated using:",
                             cert_fpr, u))
@@ -453,7 +453,7 @@ impl<'c> VerificationHelper for VHelper<'c> {
         // Avoid initializing the certificate store if we don't actually
         // need to.
         if ! ids.is_empty() {
-            if let Some(cert_store) = self.sq.cert_store()? {
+            if let Some(cert_store) = self.sequoia.cert_store()? {
                 for id in ids.iter() {
                     for c in cert_store.lookup_by_cert_or_subkey(id)
                         .unwrap_or_default()

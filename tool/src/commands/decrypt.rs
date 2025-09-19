@@ -275,7 +275,7 @@ impl<'c> DecryptionHelper for Helper<'c> {
                 Box::new(prompt::Cancel::new())
             };
 
-            slf.vhelper.sq.decrypt_key(Some(cert), key.clone(), true, prompt)
+            slf.vhelper.sequoia.decrypt_key(Some(cert), key.clone(), true, prompt)
                 .ok()
                 .and_then(|key| {
                     let mut keypair = key.into_keypair()
@@ -348,7 +348,7 @@ impl<'c> DecryptionHelper for Helper<'c> {
 
         // Try the key store.
         t!("Trying the key store");
-        match self.vhelper.sq.key_store_or_else() {
+        match self.vhelper.sequoia.key_store_or_else() {
             Ok(ks) => {
                 let mut ks = ks.lock().unwrap();
                 match ks.decrypt(&pkesks[..]) {
@@ -470,7 +470,7 @@ impl<'c> DecryptionHelper for Helper<'c> {
 
                                         let mut context = prompt::ContextBuilder::password(
                                             prompt::Reason::UnlockKey)
-                                            .sequoia(&self.vhelper.sq)
+                                            .sequoia(&self.vhelper.sequoia)
                                             .key(key.fingerprint());
 
                                         if let Ok(cert) = cert.as_ref() {
@@ -597,7 +597,7 @@ impl<'c> DecryptionHelper for Helper<'c> {
             let mut context
                 = prompt::ContextBuilder::password(
                     prompt::Reason::DecryptMessage)
-                .sequoia(&self.vhelper.sq)
+                .sequoia(&self.vhelper.sequoia)
                 .build();
             let password = match prompt.prompt(&mut context) {
                 Ok(prompt::Response::Password(p)) => p,
