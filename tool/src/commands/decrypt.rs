@@ -32,12 +32,10 @@ use sequoia::key_store as keystore;
 use sequoia::prompt;
 use sequoia::prompt::Prompt as _;
 use sequoia::types::TrustThreshold;
+use sequoia::verify::VHelper;
 
 use crate::{
     cli,
-    commands::{
-        verify::VHelper,
-    },
     common::password,
     common::ui,
     Sq,
@@ -94,6 +92,7 @@ pub fn dispatch(sq: Sq, command: cli::decrypt::Command) -> Result<()> {
 }
 
 pub struct Helper<'c> {
+    sq: &'c Sq,
     vhelper: VHelper<'c>,
     secret_keys: HashMap<KeyID, (Cert, Key<key::SecretParts, key::UnspecifiedRole>)>,
     key_identities: HashMap<KeyID, Arc<Cert>>,
@@ -145,7 +144,8 @@ impl<'c> Helper<'c> {
         }
 
         Helper {
-            vhelper: VHelper::new(sq, signatures, certs),
+            sq: &sq,
+            vhelper: VHelper::new(&sq.sequoia, signatures, certs),
             secret_keys: keys,
             key_identities: identities,
             session_keys,
@@ -269,7 +269,13 @@ impl<'c> DecryptionHelper for Helper<'c> {
         // command line.
 
         let mut decrypt_key = |slf: &Self, pkesk, cert, key: &Key<_, _>, prompt: bool| {
-            slf.vhelper.sq.decrypt_key(Some(cert), key.clone(), prompt, true)
+            let prompt: Box<dyn prompt::Prompt> = if prompt {
+                Box::new(password::Prompt::new(self.sq, true))
+            } else {
+                Box::new(prompt::Cancel::new())
+            };
+
+            slf.vhelper.sq.decrypt_key(Some(cert), key.clone(), true, prompt)
                 .ok()
                 .and_then(|key| {
                     let mut keypair = key.into_keypair()
@@ -460,11 +466,11 @@ impl<'c> DecryptionHelper for Helper<'c> {
                                         }
 
                                         let prompt = password::Prompt::new(
-                                            &self.vhelper.sq, true);
+                                            &self.sq, true);
 
                                         let mut context = prompt::ContextBuilder::password(
                                             prompt::Reason::UnlockKey)
-                                            .sequoia(&self.vhelper.sq.sequoia)
+                                            .sequoia(&self.vhelper.sq)
                                             .key(key.fingerprint());
 
                                         if let Ok(cert) = cert.as_ref() {
@@ -586,12 +592,12 @@ impl<'c> DecryptionHelper for Helper<'c> {
 
         // Now prompt for passwords.
         loop {
-            let prompt = password::Prompt::new(&self.vhelper.sq, true);
+            let prompt = password::Prompt::new(self.sq, true);
 
             let mut context
                 = prompt::ContextBuilder::password(
                     prompt::Reason::DecryptMessage)
-                .sequoia(&self.vhelper.sq.sequoia)
+                .sequoia(&self.vhelper.sq)
                 .build();
             let password = match prompt.prompt(&mut context) {
                 Ok(prompt::Response::Password(p)) => p,

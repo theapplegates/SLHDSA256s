@@ -64,6 +64,7 @@ pub mod prompt;
 mod password_cache;
 mod time;
 pub use time::Time;
+pub mod verify;
 
 static STANDARD_POLICY: &StandardPolicy = &StandardPolicy::new();
 static NULL_POLICY: &NullPolicy = unsafe { &NullPolicy::new() };

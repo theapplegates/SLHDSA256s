@@ -44,7 +44,6 @@ use crate::Sq;
 use crate::cli::download;
 use crate::commands::network::CONNECT_TIMEOUT;
 use crate::commands::network::USER_AGENT;
-use crate::commands::verify::verify;
 use crate::common::key_handle_dealias;
 use crate::common::pki::output::list::ListContext;
 use crate::common::ui;
@@ -596,8 +595,7 @@ pub fn dispatch(sq: Sq, c: download::Command)
 
     data_file.as_mut().rewind()?;
 
-    let result = verify(
-        sq,
+    let result = sq.sequoia.verify(
         buffered_reader::File::new_with_cookie(
             data_file.as_ref().try_clone()?, data_file.path(),
             Default::default())?.into_boxed(),
