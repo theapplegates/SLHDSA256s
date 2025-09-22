@@ -57,7 +57,13 @@ impl Sequoia {
             None
         };
 
-        let helper = VerificationHelper::new(self, signatures, certs);
+        let helper = VerificationHelper::new(
+            self, signatures,
+            if certs.is_empty() {
+                None
+            } else {
+                Some(certs.clone())
+            });
         let helper = if let Some(dsig) = detached {
             let mut v = DetachedVerifierBuilder::from_reader(dsig)?
                 .with_policy(self.policy(), Some(self.time()), helper)?;
@@ -80,7 +86,7 @@ pub struct VerificationHelper<'c> {
     signatures: usize,
 
     /// Require signatures to be made by this set of certs.
-    designated_signers: Vec<Cert>,
+    designated_signers: Option<Vec<Cert>>,
 
     labels: HashMap<KeyID, String>,
     trusted: HashSet<KeyID>,
@@ -102,8 +108,8 @@ pub struct VerificationHelper<'c> {
 
 impl<'c> VerificationHelper<'c> {
     pub fn new(sequoia: &'c Sequoia, signatures: usize,
-               designated_signers: Vec<Cert>)
-               -> Self
+               designated_signers: Option<Vec<Cert>>)
+        -> Self
     {
         VerificationHelper {
             sequoia,
@@ -432,31 +438,39 @@ impl<'c> stream::VerificationHelper for VerificationHelper<'c> {
     fn get_certs(&mut self, ids: &[openpgp::KeyHandle]) -> Result<Vec<Cert>> {
         let mut certs = BTreeMap::new();
 
-        for c in std::mem::take(&mut self.designated_signers) {
-            match certs.entry(c.fingerprint()) {
-                Entry::Vacant(e) => {
-                    e.insert(c);
-                },
-                Entry::Occupied(mut e) => {
-                    let merged = e.get().clone().merge_public(c)?;
-                    e.insert(merged);
-                },
+        let have_designated_signers = if let Some(designated_signers)
+            = std::mem::take(&mut self.designated_signers)
+        {
+            for c in designated_signers {
+                match certs.entry(c.fingerprint()) {
+                    Entry::Vacant(e) => {
+                        e.insert(c);
+                    },
+                    Entry::Occupied(mut e) => {
+                        let merged = e.get().clone().merge_public(c)?;
+                        e.insert(merged);
+                    },
+                }
             }
-        }
 
-        // Get all keys.
-        let seen: HashSet<_> = certs.values()
-            .flat_map(|cert| {
-                cert.keys().map(|ka| ka.key().fingerprint().into())
-            }).collect();
+            // Get all keys.
+            let seen: HashSet<_> = certs.values()
+                .flat_map(|cert| {
+                    cert.keys().map(|ka| ka.key().fingerprint().into())
+                }).collect();
 
-        // Explicitly provided keys are trusted.
-        self.trusted = seen;
+            // Explicitly provided keys are trusted.
+            self.trusted = seen;
+
+            true
+        } else {
+            false
+        };
 
         // If we have any designated signers, we do not consider
         // certificates in the cert store: we require all signatures
         // to be made by the set of designated signers.
-        if ! self.trusted.is_empty() {
+        if have_designated_signers {
             return Ok(certs.into_values().collect());
         }
 

@@ -146,7 +146,13 @@ impl<'c> Helper<'c> {
 
         Helper {
             sq: &sq,
-            vhelper: VerificationHelper::new(&sq.sequoia, signatures, certs),
+            vhelper: VerificationHelper::new(
+                &sq.sequoia, signatures,
+                if certs.is_empty() {
+                    None
+                } else {
+                    Some(certs)
+                }),
             secret_keys: keys,
             key_identities: identities,
             session_keys,
