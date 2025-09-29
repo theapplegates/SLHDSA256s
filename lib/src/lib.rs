@@ -42,6 +42,7 @@ use cert_store::{
 #[macro_use] pub mod transitional;
 
 pub mod consts;
+pub mod decrypt;
 pub mod inspect;
 pub mod list;
 pub mod types;

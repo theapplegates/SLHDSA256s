@@ -24,6 +24,7 @@ use self::openpgp::parse::{
 use sequoia::types::Convert;
 use sequoia::types::SessionKey;
 
+use crate::common::password;
 use crate::common::ui;
 use crate::Sq;
 
@@ -65,8 +66,10 @@ pub fn dump<W>(sq: &crate::Sq,
     let width = width.into().unwrap_or(80);
     let mut first_armor_block = true;
     let mut is_keyring = true;
-    let mut helper = crate::commands::decrypt::Helper::new(
-        &sq, 0, Vec::new(), secrets, session_keys.clone(), false);
+    let prompt = password::Prompt::new(sq, true);
+    let mut helper = sequoia::decrypt::Helper::new(
+        &sq.sequoia, 0, Vec::new(), secrets, session_keys.clone(), false,
+        sq.batch, prompt);
 
   loop {
     let mut dumper = PacketDumper::new(sq, width, mpis);

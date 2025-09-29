@@ -739,14 +739,12 @@ impl Sequoia {
 /// [`detached_signature`](Builder::detached_signature).
 #[derive(Clone)]
 pub struct Params<'sequoia> {
-    // XXX transitional: Remove pub once decrypt is ported to the
-    // library.
-    pub sequoia: &'sequoia Sequoia,
+    pub(crate) sequoia: &'sequoia Sequoia,
     // XXX transitional: Remove once we fix Kind::identify.
-    pub detached_sig_arg: Option<String>,
-    pub detached_sig_value: Option<PathBuf>,
-    pub signatures: usize,
-    pub designated_signers: Option<Vec<Cert>>,
+    pub(crate) detached_sig_arg: Option<String>,
+    pub(crate) detached_sig_value: Option<PathBuf>,
+    pub(crate) signatures: usize,
+    pub(crate) designated_signers: Option<Vec<Cert>>,
 }
 
 impl<'sequoia> Params<'sequoia> {
@@ -967,9 +965,7 @@ pub struct VerificationHelper<'c> {
     sequoia: &'c Sequoia,
     signatures: usize,
 
-    // XXX transitional: Remove pub once decrypt is ported to the
-    // library.
-    pub stream: Option<(Box<dyn Stream + 'c>, Cow<'c, Params<'c>>)>,
+    pub(crate) stream: Option<(Box<dyn Stream + 'c>, Cow<'c, Params<'c>>)>,
 
     /// Require signatures to be made by this set of certs.
     designated_signers: Option<Vec<Cert>>,

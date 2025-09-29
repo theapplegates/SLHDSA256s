@@ -38,7 +38,7 @@ use crate::cli::packet::{
 };
 use crate::cli::types::FileOrStdout;
 use crate::cli::types::StdinWarning;
-use crate::commands;
+use crate::common::password;
 use crate::common::ui;
 use crate::load_keys;
 
@@ -105,12 +105,16 @@ pub fn dispatch(sq: Sq, command: Command)
             let secrets =
                 load_keys(command.secret_key_file.iter())?;
             let session_keys = command.session_key;
-            commands::decrypt::decrypt_unwrap(
-                sq,
+            let prompt = password::Prompt::new(&sq, true);
+            sequoia::decrypt::decrypt_unwrap(
+                &sq.sequoia,
                 &mut input, &mut output,
                 secrets,
                 session_keys,
-                command.dump_session_key)?;
+                command.dump_session_key,
+                sq.batch,
+                prompt,
+            )?;
             output.finalize()?;
         },
 

@@ -14,6 +14,7 @@ use crate::{
         cert::import::import_and_report,
         network::certify_downloads,
     },
+    common::password,
     output::import::ImportStats,
 };
 
@@ -79,12 +80,16 @@ pub fn import_certs(sq: &Sq, source: &mut Box<dyn BufferedReader<Cookie>>,
     };
 
     // Then, try to decrypt the message, and look for gossip headers.
-    use crate::commands::decrypt::Helper;
+    let prompt = password::Prompt::new(sq, true);
+
+    use sequoia::decrypt::Helper;
     let mut helper = Helper::new(
-        &sq,
+        &sq.sequoia,
         1, // Require one trusted signature...
         vec![sender_cert.clone()], // ... from this cert.
-        vec![], vec![], false);
+        vec![], vec![], false,
+        sq.batch,
+        prompt);
     helper.quiet(true);
 
     let policy = sq.policy().clone();
