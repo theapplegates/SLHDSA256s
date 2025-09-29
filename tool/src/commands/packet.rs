@@ -106,8 +106,7 @@ pub fn dispatch(sq: Sq, command: Command)
                 load_keys(command.secret_key_file.iter())?;
             let session_keys = command.session_key;
             let prompt = password::Prompt::new(&sq, true);
-            sequoia::decrypt::decrypt_unwrap(
-                &sq.sequoia,
+            sq.sequoia.decrypt_unwrap(
                 &mut input, &mut output,
                 secrets,
                 session_keys,

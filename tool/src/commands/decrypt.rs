@@ -1,7 +1,6 @@
 use sequoia::openpgp;
 use openpgp::Result;
 
-use sequoia::decrypt::decrypt;
 use sequoia::types::TrustThreshold;
 
 use crate::{
@@ -41,13 +40,14 @@ pub fn dispatch(sq: Sq, command: cli::decrypt::Command) -> Result<()> {
     let session_keys = command.session_key;
     let prompt = password::Prompt::new(&sq, true);
     let verify_output = Stream::new(&sq, VerifyContext::Decrypt);
-    let result = decrypt(&sq.sequoia, &mut input, &mut output,
-                         signatures, signers, secrets,
-                         command.dump_session_key,
-                         session_keys,
-                         sq.batch,
-                         prompt,
-                         verify_output);
+    let result = sq.sequoia.decrypt(
+        &mut input, &mut output,
+        signatures, signers, secrets,
+        command.dump_session_key,
+        session_keys,
+        sq.batch,
+        prompt,
+        verify_output);
     if result.is_err() {
         if let Some(path) = command.output.path() {
             // Drop output here so that the file is persisted and

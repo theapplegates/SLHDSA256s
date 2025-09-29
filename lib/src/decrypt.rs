@@ -41,6 +41,116 @@ use crate::verify;
 
 const TRACE: bool = false;
 
+impl Sequoia {
+    pub fn decrypt<P, S>(&self,
+                         input: &mut (dyn io::Read + Sync + Send),
+                         output: &mut (dyn io::Write + Sync + Send),
+                         signatures: usize, certs: Vec<Cert>, secrets: Vec<Cert>,
+                         dump_session_key: bool,
+                         sk: Vec<crate::types::SessionKey>,
+                         batch: bool,
+                         prompt: P,
+                         verify_output_stream: S)
+        -> Result<()>
+    where
+        P: prompt::Prompt,
+        S: verify::Stream,
+    {
+        let mut helper = Helper::new(self, signatures, certs.clone(),
+                                     secrets, sk, dump_session_key, batch, prompt);
+
+        let params = verify::Params {
+            sequoia: self,
+            detached_sig_arg: None,
+            detached_sig_value: None,
+            signatures,
+            designated_signers: if certs.is_empty() {
+                None
+            } else {
+                Some(certs)
+            },
+        };
+        helper.vhelper.stream
+            = Some((Box::new(verify_output_stream), Cow::Owned(params)));
+
+        let mut decryptor = DecryptorBuilder::from_reader(input)?
+            .with_policy(self.policy(), None, helper)
+            .context("Decryption failed")?;
+
+        io::copy(&mut decryptor, output).context("Decryption failed")?;
+
+        let helper = decryptor.into_helper();
+        helper.print_status();
+        helper.vhelper.print_status();
+        Ok(())
+    }
+
+    pub fn decrypt_unwrap<P>(&self,
+                             input: &mut (dyn io::Read + Sync + Send),
+                             output: &mut dyn io::Write,
+                             secrets: Vec<Cert>,
+                             session_keys: Vec<crate::types::SessionKey>,
+                             dump_session_key: bool,
+                             batch: bool,
+                             prompt: P)
+        -> Result<()>
+    where
+        P: prompt::Prompt
+    {
+        let mut helper = Helper::new(self, 0, Vec::new(), secrets,
+                                     session_keys,
+                                     dump_session_key,
+                                     batch,
+                                     prompt);
+
+        let mut ppr = PacketParser::from_reader(input)?;
+
+        let mut pkesks: Vec<packet::PKESK> = Vec::new();
+        let mut skesks: Vec<packet::SKESK> = Vec::new();
+        while let PacketParserResult::Some(mut pp) = ppr {
+            let sym_algo_hint = match &pp.packet {
+                Packet::SEIP(SEIP::V2(seip)) => Some(seip.symmetric_algo()),
+                _ => None,
+            };
+
+            match pp.packet {
+                Packet::SEIP(_) => {
+                    {
+                        let mut decrypt = |algo, secret: &SessionKey| {
+                            pp.decrypt(algo, secret).is_ok()
+                        };
+                        helper.decrypt(&pkesks[..], &skesks[..], sym_algo_hint,
+                                       &mut decrypt)?;
+                    }
+                    if ! pp.processed() {
+                        return Err(
+                            openpgp::Error::MissingSessionKey(
+                                "No session key".into()).into());
+                    }
+
+                    io::copy(&mut pp, output)?;
+                    return Ok(());
+                },
+                #[allow(deprecated)]
+                Packet::MDC(ref mdc) => if ! mdc.valid() {
+                    return Err(openpgp::Error::ManipulatedMessage.into());
+                },
+                _ => (),
+            }
+
+            let (p, ppr_tmp) = pp.recurse()?;
+            match p {
+                Packet::PKESK(pkesk) => pkesks.push(pkesk),
+                Packet::SKESK(skesk) => skesks.push(skesk),
+                _ => (),
+            }
+            ppr = ppr_tmp;
+        }
+
+        Ok(())
+    }
+}
+
 pub struct Helper<'c> {
     sequoia: &'c Sequoia,
     vhelper: VerificationHelper<'c>,
@@ -582,116 +692,4 @@ impl<'c> DecryptionHelper for Helper<'c> {
             weprintln!("Incorrect password.");
         }
     }
-}
-
-// Allow too many arguments now, should be reworked later
-#[allow(clippy::too_many_arguments)]
-pub fn decrypt<P, S>(sequoia: &Sequoia,
-                     input: &mut (dyn io::Read + Sync + Send),
-                     output: &mut dyn io::Write,
-                     signatures: usize, certs: Vec<Cert>, secrets: Vec<Cert>,
-                     dump_session_key: bool,
-                     sk: Vec<crate::types::SessionKey>,
-                     batch: bool,
-                     prompt: P,
-                     verify_output_stream: S)
-    -> Result<()>
-where
-    P: prompt::Prompt,
-    S: verify::Stream,
-{
-    let mut helper = Helper::new(sequoia, signatures, certs.clone(),
-                                 secrets, sk, dump_session_key, batch, prompt);
-
-    // XXX: Transitional hack.  Remove once we move decrypt into the
-    // library.
-    let params = verify::Params {
-        sequoia,
-        detached_sig_arg: None,
-        detached_sig_value: None,
-        signatures,
-        designated_signers: if certs.is_empty() {
-            None
-        } else {
-            Some(certs)
-        },
-    };
-    helper.vhelper.stream
-        = Some((Box::new(verify_output_stream), Cow::Owned(params)));
-
-    let mut decryptor = DecryptorBuilder::from_reader(input)?
-        .with_policy(sequoia.policy(), None, helper)
-        .context("Decryption failed")?;
-
-    io::copy(&mut decryptor, output).context("Decryption failed")?;
-
-    let helper = decryptor.into_helper();
-    helper.print_status();
-    helper.vhelper.print_status();
-    Ok(())
-}
-
-pub fn decrypt_unwrap<P>(sequoia: &Sequoia,
-                         input: &mut (dyn io::Read + Sync + Send),
-                         output: &mut dyn io::Write,
-                         secrets: Vec<Cert>,
-                         session_keys: Vec<crate::types::SessionKey>,
-                         dump_session_key: bool,
-                         batch: bool,
-                         prompt: P)
-    -> Result<()>
-where
-    P: prompt::Prompt
-{
-    let mut helper = Helper::new(sequoia, 0, Vec::new(), secrets,
-                                 session_keys,
-                                 dump_session_key,
-                                 batch,
-                                 prompt);
-
-    let mut ppr = PacketParser::from_reader(input)?;
-
-    let mut pkesks: Vec<packet::PKESK> = Vec::new();
-    let mut skesks: Vec<packet::SKESK> = Vec::new();
-    while let PacketParserResult::Some(mut pp) = ppr {
-        let sym_algo_hint = match &pp.packet {
-            Packet::SEIP(SEIP::V2(seip)) => Some(seip.symmetric_algo()),
-            _ => None,
-        };
-
-        match pp.packet {
-            Packet::SEIP(_) => {
-                {
-                    let mut decrypt = |algo, secret: &SessionKey| {
-                        pp.decrypt(algo, secret).is_ok()
-                    };
-                    helper.decrypt(&pkesks[..], &skesks[..], sym_algo_hint,
-                                   &mut decrypt)?;
-                }
-                if ! pp.processed() {
-                    return Err(
-                        openpgp::Error::MissingSessionKey(
-                            "No session key".into()).into());
-                }
-
-                io::copy(&mut pp, output)?;
-                return Ok(());
-            },
-            #[allow(deprecated)]
-            Packet::MDC(ref mdc) => if ! mdc.valid() {
-                return Err(openpgp::Error::ManipulatedMessage.into());
-            },
-            _ => (),
-        }
-
-        let (p, ppr_tmp) = pp.recurse()?;
-        match p {
-            Packet::PKESK(pkesk) => pkesks.push(pkesk),
-            Packet::SKESK(skesk) => skesks.push(skesk),
-            _ => (),
-        }
-        ppr = ppr_tmp;
-    }
-
-    Ok(())
 }
