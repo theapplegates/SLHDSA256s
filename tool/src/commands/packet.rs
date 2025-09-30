@@ -41,6 +41,7 @@ use crate::cli::types::StdinWarning;
 use crate::common::password;
 use crate::common::ui;
 use crate::load_keys;
+use crate::output::decrypt::DecryptContext;
 
 pub mod armor;
 pub mod dearmor;
@@ -104,16 +105,17 @@ pub fn dispatch(sq: Sq, command: Command)
 
             let secrets =
                 load_keys(command.secret_key_file.iter())?;
-            let session_keys = command.session_key;
+
+            let stream = crate::output::decrypt::Stream::new(
+                &sq, DecryptContext::PacketDecrypt, command.dump_session_key);
+
             let prompt = password::Prompt::new(&sq, true);
-            sq.sequoia.decrypt_unwrap(
-                &mut input, &mut output,
-                secrets,
-                session_keys,
-                command.dump_session_key,
-                sq.batch,
-                prompt,
-            )?;
+
+            sq.sequoia.decrypt()
+                .secret_keys(secrets)
+                .session_keys(command.session_key)
+                .decrypt_unwrap(&mut input, &mut output, prompt, stream)?;
+
             output.finalize()?;
         },
 

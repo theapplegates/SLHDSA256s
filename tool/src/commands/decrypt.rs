@@ -8,8 +8,8 @@ use crate::{
     cli,
     common::password,
     load_keys,
-    output::verify::Stream,
-    output::verify::VerifyContext,
+    output::decrypt::Stream,
+    output::decrypt::DecryptContext,
 };
 
 pub fn dispatch(sq: Sq, command: cli::decrypt::Command) -> Result<()> {
@@ -35,19 +35,22 @@ pub fn dispatch(sq: Sq, command: cli::decrypt::Command) -> Result<()> {
             1
         }
     });
-    let secrets =
+    let secret_keys =
         load_keys(command.secret_key_file.iter())?;
     let session_keys = command.session_key;
     let prompt = password::Prompt::new(&sq, true);
-    let verify_output = Stream::new(&sq, VerifyContext::Decrypt);
-    let result = sq.sequoia.decrypt(
-        &mut input, &mut output,
-        signatures, signers, secrets,
-        command.dump_session_key,
-        session_keys,
-        sq.batch,
-        prompt,
-        verify_output);
+    let stream = Stream::new(
+        &sq, DecryptContext::Decrypt, command.dump_session_key);
+    let mut decryptor = sq.sequoia.decrypt();
+    decryptor.signatures(signatures)
+        .secret_keys(secret_keys)
+        .session_keys(session_keys);
+    if ! signers.is_empty() {
+        decryptor.designated_signers(signers);
+    }
+
+    let result = decryptor.decrypt(&mut input, &mut output, prompt, stream);
+
     if result.is_err() {
         if let Some(path) = command.output.path() {
             // Drop output here so that the file is persisted and

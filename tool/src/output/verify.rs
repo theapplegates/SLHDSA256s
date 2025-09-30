@@ -20,10 +20,11 @@ pub enum VerifyContext {
     Verify,
     Decrypt,
     Download,
+    PacketDecrypt,
 }
 
 pub struct Stream<'a> {
-    sq: &'a Sq,
+    pub(crate) sq: &'a Sq,
     #[allow(dead_code)]
     context: VerifyContext,
 }
@@ -90,13 +91,7 @@ impl verify::Stream for Stream<'_> {
             }
             verify::Output::Report(report) => {
                 if report.authenticated || ! self.sq.quiet() {
-                    // XXX transitional: don't always show for
-                    // decrypt.  Decrypt does it itself.
-                    if self.context != VerifyContext::Decrypt
-                        || ! report.authenticated
-                    {
-                        self.print_status(report);
-                    }
+                    self.print_status(report);
                 }
             }
             _ => (),

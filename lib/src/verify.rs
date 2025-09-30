@@ -153,10 +153,12 @@
 //! ```
 
 use std::borrow::Cow;
+use std::cell::RefCell;
 use std::collections::{HashSet, btree_map::{BTreeMap, Entry}};
 use std::io;
 use std::path::Path;
 use std::path::PathBuf;
+use std::rc::Rc;
 
 use sequoia_openpgp::parse::buffered_reader;
 
@@ -181,6 +183,7 @@ use sequoia_wot::store::Store as _;
 
 use crate::Result;
 use crate::Sequoia;
+use crate::decrypt;
 use crate::inspect::Kind;
 
 const TRACE: bool = false;
@@ -763,6 +766,8 @@ impl<'sequoia> Params<'sequoia> {
     pub fn designated_signers(&self) -> Option<&[Cert]> {
         self.designated_signers.as_deref()
     }
+
+    // If you add any methods here, add forwarders in decrypt::Params.
 }
 
 /// Verify signatures.
@@ -937,9 +942,14 @@ impl<'sequoia> Builder<'sequoia> {
             None
         };
 
+        let proxy: Rc<RefCell<Box<dyn VerifyDecryptStream>>>
+            = Rc::new(RefCell::new(Box::new(StreamProxy {
+                stream: Box::new(stream),
+            })));
+
         let mut helper = VerificationHelper::new(
             sequoia, signatures, designated_signers.clone());
-        helper.stream = Some((Box::new(stream), Cow::Borrowed(&self.params)));
+        helper.stream = Some((proxy, Cow::Borrowed(&self.params)));
         let helper = if let Some(ref mut dsig) = detached {
             let mut v = DetachedVerifierBuilder::from_reader(dsig)?
                 .with_policy(sequoia.policy(), Some(sequoia.time()), helper)?;
@@ -961,11 +971,45 @@ impl<'sequoia> Builder<'sequoia> {
     }
 }
 
-pub struct VerificationHelper<'c> {
+struct StreamProxy<'a> {
+    stream: Box<dyn Stream + 'a>,
+}
+
+impl Stream for StreamProxy<'_>
+{
+    fn output(&mut self, params: &Params, output: Output)
+        -> Result<()>
+    {
+        self.stream.output(params, output)
+    }
+}
+
+impl decrypt::Stream for StreamProxy<'_>
+{
+    fn output(&mut self, _params: &decrypt::Params, _output: decrypt::Output)
+        -> Result<()>
+    {
+        Ok(())
+    }
+}
+
+/// A wrapper trait so that we can have a `Box<dyn verify::Stream +
+/// decrypt::Stream>`.
+pub(crate) trait VerifyDecryptStream: Stream + decrypt::Stream {
+}
+
+/// Implement the wrapper for everything that implements
+/// verify::Stream and `Stream`.
+impl<T: ?Sized> VerifyDecryptStream for T where T: Stream + decrypt::Stream {
+}
+
+pub struct VerificationHelper<'c>
+{
     sequoia: &'c Sequoia,
     signatures: usize,
 
-    pub(crate) stream: Option<(Box<dyn Stream + 'c>, Cow<'c, Params<'c>>)>,
+    pub(crate) stream: Option<(Rc<RefCell<Box<dyn VerifyDecryptStream + 'c>>>,
+                               Cow<'c, Params<'c>>)>,
 
     /// Require signatures to be made by this set of certs.
     designated_signers: Option<Vec<Cert>>,
@@ -1159,8 +1203,13 @@ impl<'c> stream::VerificationHelper for VerificationHelper<'c> {
         let authenticated
             = self.authenticated_signatures >= self.signatures;
 
-        if let Some((stream, params)) = self.stream.as_mut() {
-            stream.output(&params,
+        if let Some((stream, params)) = self.stream.as_ref() {
+            use std::ops::DerefMut;
+
+            let mut stream = stream.borrow_mut();
+            let stream = stream.deref_mut();
+
+            stream.output(params,
                           Output::MessageStructure(message_structure))?;
 
             stream.output(
