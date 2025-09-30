@@ -68,7 +68,7 @@ pub fn dump<W>(sq: &crate::Sq,
     let mut is_keyring = true;
     let prompt = password::Prompt::new(sq, true);
     let mut helper = sequoia::decrypt::Helper::new(
-        &sq.sequoia, 0, Vec::new(), secrets, session_keys.clone(), false,
+        &sq.sequoia, 0, None, secrets, session_keys.clone(), false,
         sq.batch, prompt);
 
   loop {

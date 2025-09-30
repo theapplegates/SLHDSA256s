@@ -86,7 +86,7 @@ pub fn import_certs(sq: &Sq, source: &mut Box<dyn BufferedReader<Cookie>>,
     let mut helper = Helper::new(
         &sq.sequoia,
         1, // Require one trusted signature...
-        vec![sender_cert.clone()], // ... from this cert.
+        Some(vec![sender_cert.clone()]), // ... from this cert.
         vec![], vec![], false,
         sq.batch,
         prompt);

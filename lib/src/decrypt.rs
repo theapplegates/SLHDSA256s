@@ -56,8 +56,14 @@ impl Sequoia {
         P: prompt::Prompt,
         S: verify::Stream,
     {
-        let mut helper = Helper::new(self, signatures, certs.clone(),
-                                     secrets, sk, dump_session_key, batch, prompt);
+        let mut helper = Helper::new(
+            self, signatures,
+            if certs.is_empty() {
+                None
+            } else {
+                Some(certs.clone())
+            },
+            secrets, sk, dump_session_key, batch, prompt);
 
         let params = verify::Params {
             sequoia: self,
@@ -97,7 +103,7 @@ impl Sequoia {
     where
         P: prompt::Prompt
     {
-        let mut helper = Helper::new(self, 0, Vec::new(), secrets,
+        let mut helper = Helper::new(self, 0, None, secrets,
                                      session_keys,
                                      dump_session_key,
                                      batch,
@@ -186,7 +192,7 @@ impl<'c> std::ops::DerefMut for Helper<'c> {
 
 impl<'c> Helper<'c> {
     pub fn new<P>(sequoia: &'c Sequoia,
-                  signatures: usize, certs: Vec<Cert>, secrets: Vec<Cert>,
+                  signatures: usize, certs: Option<Vec<Cert>>, secrets: Vec<Cert>,
                   session_keys: Vec<crate::types::SessionKey>,
                   dump_session_key: bool,
                   batch: bool,
@@ -215,12 +221,7 @@ impl<'c> Helper<'c> {
         Helper {
             sequoia: &sequoia,
             vhelper: VerificationHelper::new(
-                &sequoia, signatures,
-                if certs.is_empty() {
-                    None
-                } else {
-                    Some(certs)
-                }),
+                &sequoia, signatures, certs),
             secret_keys: keys,
             key_identities: identities,
             session_keys,
