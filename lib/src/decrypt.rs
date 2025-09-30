@@ -12,7 +12,7 @@ use sequoia_openpgp as openpgp;
 use openpgp::types::SymmetricAlgorithm;
 use openpgp::fmt::hex;
 use openpgp::KeyHandle;
-use openpgp::crypto::{self, SessionKey};
+use openpgp::crypto;
 use openpgp::{Fingerprint, Cert, KeyID, Result};
 use openpgp::packet;
 use openpgp::packet::prelude::*;
@@ -36,6 +36,7 @@ use crate::Sequoia;
 use crate::prompt::Prompt as _;
 use crate::prompt;
 use crate::transitional::output::cert::emit_cert;
+use crate::types::SessionKey;
 use crate::verify::VerificationHelper;
 use crate::verify;
 
@@ -47,7 +48,7 @@ impl Sequoia {
                          output: &mut (dyn io::Write + Sync + Send),
                          signatures: usize, certs: Vec<Cert>, secrets: Vec<Cert>,
                          dump_session_key: bool,
-                         sk: Vec<crate::types::SessionKey>,
+                         sk: Vec<SessionKey>,
                          batch: bool,
                          prompt: P,
                          verify_output_stream: S)
@@ -95,7 +96,7 @@ impl Sequoia {
                              input: &mut (dyn io::Read + Sync + Send),
                              output: &mut dyn io::Write,
                              secrets: Vec<Cert>,
-                             session_keys: Vec<crate::types::SessionKey>,
+                             session_keys: Vec<SessionKey>,
                              dump_session_key: bool,
                              batch: bool,
                              prompt: P)
@@ -122,7 +123,7 @@ impl Sequoia {
             match pp.packet {
                 Packet::SEIP(_) => {
                     {
-                        let mut decrypt = |algo, secret: &SessionKey| {
+                        let mut decrypt = |algo, secret: &crypto::SessionKey| {
                             pp.decrypt(algo, secret).is_ok()
                         };
                         helper.decrypt(&pkesks[..], &skesks[..], sym_algo_hint,
@@ -162,7 +163,7 @@ pub struct Helper<'c> {
     vhelper: VerificationHelper<'c>,
     secret_keys: HashMap<KeyID, (Cert, Key<key::SecretParts, key::UnspecifiedRole>)>,
     key_identities: HashMap<KeyID, Arc<Cert>>,
-    session_keys: Vec<crate::types::SessionKey>,
+    session_keys: Vec<SessionKey>,
     dump_session_key: bool,
 
     /// XXX transitional: Remove.
@@ -193,7 +194,7 @@ impl<'c> std::ops::DerefMut for Helper<'c> {
 impl<'c> Helper<'c> {
     pub fn new<P>(sequoia: &'c Sequoia,
                   signatures: usize, certs: Option<Vec<Cert>>, secrets: Vec<Cert>,
-                  session_keys: Vec<crate::types::SessionKey>,
+                  session_keys: Vec<SessionKey>,
                   dump_session_key: bool,
                   batch: bool,
                   prompt: P)
@@ -235,8 +236,8 @@ impl<'c> Helper<'c> {
     /// Checks if a session key can decrypt the packet parser using
     /// `decrypt`.
     fn try_session_key(&self, fpr: &Fingerprint,
-                       algo: Option<SymmetricAlgorithm>, sk: SessionKey,
-                       decrypt: &mut dyn FnMut(Option<SymmetricAlgorithm>, &SessionKey) -> bool)
+                       algo: Option<SymmetricAlgorithm>, sk: crypto::SessionKey,
+                       decrypt: &mut dyn FnMut(Option<SymmetricAlgorithm>, &crypto::SessionKey) -> bool)
                        -> Option<Option<Cert>>
     {
         if decrypt(algo, &sk) {
@@ -265,7 +266,7 @@ impl<'c> Helper<'c> {
     fn try_decrypt(&self, pkesk: &PKESK,
                    sym_algo: Option<SymmetricAlgorithm>,
                    keypair: &mut dyn crypto::Decryptor,
-                   decrypt: &mut dyn FnMut(Option<SymmetricAlgorithm>, &SessionKey) -> bool)
+                   decrypt: &mut dyn FnMut(Option<SymmetricAlgorithm>, &crypto::SessionKey) -> bool)
                    -> Option<Option<Cert>>
     {
         let fpr = keypair.public().fingerprint();
@@ -304,7 +305,7 @@ impl<'c> stream::VerificationHelper for Helper<'c> {
 impl<'c> DecryptionHelper for Helper<'c> {
     fn decrypt(&mut self, pkesks: &[PKESK], skesks: &[SKESK],
                sym_algo: Option<SymmetricAlgorithm>,
-               decrypt: &mut dyn FnMut(Option<SymmetricAlgorithm>, &SessionKey) -> bool)
+               decrypt: &mut dyn FnMut(Option<SymmetricAlgorithm>, &crypto::SessionKey) -> bool)
                -> openpgp::Result<Option<Cert>>
     {
         tracer!(TRACE, "DecryptionHelper::decrypt");
