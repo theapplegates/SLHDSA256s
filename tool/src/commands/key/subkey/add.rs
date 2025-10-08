@@ -16,6 +16,7 @@ use sequoia::types::TrustThreshold;
 use crate::Sq;
 use crate::cli::key::subkey::add::Command;
 use crate::cli::types::EncryptPurpose;
+use crate::common::password::CheckNewPassword;
 use crate::common::password;
 
 /// Add a new Subkey for an existing primary key
@@ -62,12 +63,14 @@ pub fn dispatch(sq: Sq, command: Command) -> Result<()>
                 } else {
                     let prompt = password::Prompt::new(&sq, false);
 
+                    let mut checker = CheckNewPassword::new();
+
                     let mut context = prompt::ContextBuilder::password(
                         prompt::Reason::LockNewKey)
                         .sequoia(&sq.sequoia)
                         .build();
 
-                    let password = match prompt.prompt(&mut context)? {
+                    let password = match prompt.prompt(&mut context, &mut checker)? {
                         prompt::Response::Password(password) => Some(password),
                         prompt::Response::NoPassword => None,
                         unknown => {

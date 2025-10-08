@@ -22,6 +22,8 @@ use sequoia::types::FileStdinOrKeyHandle;
 
 use crate::Sq;
 use crate::cli::types::FileOrStdout;
+use crate::common::password::CheckNewPassword;
+use crate::common::password::CheckRemoteKey;
 use crate::common::password;
 
 pub fn password<'a, P>(
@@ -56,6 +58,8 @@ where
             } else {
                 let prompt = password::Prompt::new(&sq, false);
 
+                let mut checker = CheckNewPassword::new();
+
                 // We explicitly don't add the certificate to the
                 // prompt context as we will have already printed out
                 // information about the certificate before showing
@@ -69,7 +73,7 @@ where
                     .sequoia(&sq.sequoia)
                     .build();
 
-                let password = match prompt.prompt(&mut context)? {
+                let password = match prompt.prompt(&mut context, &mut checker)? {
                     prompt::Response::Password(password) => Some(password),
                     prompt::Response::NoPassword => None,
                     unknown => {
@@ -124,30 +128,27 @@ where
                             .key(key.key().fingerprint())
                             .build();
 
-                        loop {
-                            let p = match prompt.prompt(&mut context)? {
-                                prompt::Response::Password(p) => p,
-                                prompt::Response::NoPassword => {
-                                    weprintln!("You must enter a password \
-                                                to continue.");
-                                    continue;
-                                }
-                                unknown => {
-                                    unreachable!("Internal error: UnlockKey \
-                                                  should return a password, \
-                                                  but got: {:?}",
-                                                 unknown);
-                                }
-                            };
+                        let mut checker = CheckRemoteKey::required(&mut remote_key);
 
-                            match remote_key.unlock(p.clone()) {
-                                Ok(()) => {
-                                    sq.cache_password(p.clone());
-                                    break;
+                        match prompt.prompt(&mut context, &mut checker)? {
+                            prompt::Response::Password(p) => {
+                                if ! checker.resolve() {
+                                    unreachable!("CheckRemoteKey::required \
+                                                  guarantees we unlock the key");
                                 }
-                                Err(err) => {
-                                    weprintln!("Failed to unlock key: {}", err);
+                                sq.cache_password(p.clone());
+                            }
+                            prompt::Response::NoPassword => {
+                                if ! checker.resolve() {
+                                    unreachable!("CheckRemoteKey::required \
+                                                  guarantees we unlock the key");
                                 }
+                            }
+                            unknown => {
+                                unreachable!("Internal error: UnlockKey \
+                                              should return a password, \
+                                              but got: {:?}",
+                                             unknown);
                             }
                         }
                     }

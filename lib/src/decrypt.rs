@@ -34,6 +34,8 @@ use sequoia_keystore as keystore;
 
 use crate::Sequoia;
 use crate::prompt::Prompt as _;
+use crate::prompt::check::CheckRemoteKey;
+use crate::prompt::check::CheckSkesks;
 use crate::prompt;
 use crate::transitional::output::cert::emit_cert;
 use crate::types::SessionKey;
@@ -536,57 +538,57 @@ impl<'c> DecryptionHelper for Helper<'c> {
                                     }
                                     drop(password_cache);
 
-                                    loop {
-                                        if self.batch {
-                                            eprintln!(
-                                                "{}, {} is locked, but not \
-                                                 prompting for a password, \
-                                                 because you passed --batch.",
-                                                keyid, userid.display());
-                                            break;
-                                        }
+                                    if self.batch {
+                                        eprintln!(
+                                            "{}, {} is locked, but not \
+                                             prompting for a password, \
+                                             because you passed --batch.",
+                                            keyid, userid.display());
+                                        break;
+                                    }
 
-                                        let mut context = prompt::ContextBuilder::password(
-                                            prompt::Reason::UnlockKey)
-                                            .sequoia(&self.vhelper.sequoia())
-                                            .key(key.fingerprint());
+                                    let mut context = prompt::ContextBuilder::password(
+                                        prompt::Reason::UnlockKey)
+                                        .sequoia(&self.vhelper.sequoia())
+                                        .key(key.fingerprint());
 
-                                        if let Ok(cert) = cert.as_ref() {
-                                            context = context.cert(Cow::Borrowed(cert));
-                                        }
-                                        let mut context = context.build();
+                                    if let Ok(cert) = cert.as_ref() {
+                                        context = context.cert(Cow::Borrowed(cert));
+                                    }
+                                    let mut context = context.build();
 
-                                        match self.prompt.prompt(&mut context) {
-                                            Ok(prompt::Response::Password(p)) => {
-                                                if let Err(_err) = key.unlock(p) {
-                                                    weprintln!("Bad password.");
-                                                    continue;
+                                    let mut checker = CheckRemoteKey::new(&mut key);
+
+                                    match self.prompt.prompt(&mut context, &mut checker) {
+                                        Ok(prompt::Response::Password(_)) => {
+                                            if checker.unlocked() {
+                                                if let Some(fp) = self.try_decrypt(
+                                                    &pkesk, sym_algo, &mut key, decrypt)
+                                                {
+                                                    return Ok(fp);
+                                                } else {
+                                                    weprintln!(
+                                                        "Unlocked {}, {}, but it failed \
+                                                         to decrypt the message",
+                                                        keyid,
+                                                        userid.display());
                                                 }
                                             }
-                                            Ok(prompt::Response::NoPassword) => {
-                                                weprintln!("Skipping {}, {}",
-                                                           keyid,
-                                                           userid.display());
-                                                break;
-                                            }
-                                            Err(prompt::Error::Cancelled(_)) => {
-                                                // Skip.
-                                                break;
-                                            }
-                                            Err(err) => {
-                                                return Err(err).context(
-                                                    "Password prompt");
-                                            }
-                                        };
-
-                                        if let Some(fp) = self.try_decrypt(
-                                            &pkesk, sym_algo, &mut key, decrypt)
-                                        {
-                                            return Ok(fp);
-                                        } else {
-                                            break;
+                                        }
+                                        Ok(prompt::Response::NoPassword) => {
+                                            weprintln!("Skipping {}, {}",
+                                                       keyid,
+                                                       userid.display());
+                                        }
+                                        Err(prompt::Error::Cancelled(_)) => {
+                                            // Skip.
+                                        }
+                                        Err(err) => {
+                                            return Err(err).context(
+                                                "Password prompt");
                                         }
                                     }
+
                                 }
                             }
                             // Failed to decrypt using the keystore.
@@ -662,36 +664,36 @@ impl<'c> DecryptionHelper for Helper<'c> {
         }
 
         // Now prompt for passwords.
-        loop {
-            let mut context
-                = prompt::ContextBuilder::password(
-                    prompt::Reason::DecryptMessage)
-                .sequoia(&self.vhelper.sequoia())
-                .build();
-            let password = match self.prompt.prompt(&mut context) {
-                Ok(prompt::Response::Password(p)) => p,
-                Ok(prompt::Response::NoPassword)
-                    | Err(prompt::Error::Cancelled(_)) =>
-                {
-                    break Err(anyhow::anyhow!("Decryption failed."));
-                }
-                Err(err) => {
-                    break Err(err).context("Password prompt");
-                }
-            };
+        let mut checker = CheckSkesks::new(skesks, decrypt);
 
-            for skesk in skesks {
-                if let Some(sk) = skesk.decrypt(&password).ok()
-                    .and_then(|(algo, sk)| { if decrypt(algo, &sk) { Some(sk) } else { None }})
-                {
+        let mut context
+            = prompt::ContextBuilder::password(
+                prompt::Reason::DecryptMessage)
+            .sequoia(&self.vhelper.sequoia())
+            .build();
+        match self.prompt.prompt(&mut context, &mut checker) {
+            Ok(prompt::Response::Password(p)) => {
+                self.sequoia.cache_password(p);
+
+                if let Some((_i, sk)) = checker.resolve() {
                     if self.dump_session_key {
                         weprintln!("Session key: {}", hex::encode(&sk));
                     }
-                    return Ok(None);
+                    Ok(None)
+                } else {
+                    // We shouldn't get here: if CheckSkesks returns a
+                    // password, then it should also set sk.
+                    Err(anyhow::anyhow!("Decryption failed."))
                 }
+            },
+            Ok(prompt::Response::NoPassword)
+                | Err(prompt::Error::Cancelled(_)) =>
+            {
+                Err(anyhow::anyhow!("Decryption failed."))
             }
-
-            weprintln!("Incorrect password.");
+            Err(err) => {
+                Err(err).context("Password prompt")
+            }
         }
     }
 }

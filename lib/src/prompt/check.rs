@@ -1,0 +1,153 @@
+//! Various implementations of [`Check`][crate::prompt::Check].
+
+use sequoia_openpgp as openpgp;
+use openpgp::packet::SKESK;
+use openpgp::types::SymmetricAlgorithm;
+use openpgp::crypto;
+
+use crate::prompt;
+
+// When the password is wrong, we often get an unexpected eof.  It
+// doesn't make sense to propagate this to the user; suppress it.
+fn flatten_eof(err: anyhow::Error) -> Option<anyhow::Error> {
+    // For soft keys.
+    match err.downcast::<std::io::Error>() {
+        Ok(err) => {
+            if err.kind() == std::io::ErrorKind::UnexpectedEof {
+                None
+            } else {
+                Some(err.into())
+            }
+        }
+        Err(err) => {
+            // For remote keys.
+            match err.downcast::<sequoia_keystore::Error>() {
+                Ok(err) => {
+                    match err {
+                        sequoia_keystore::Error::EOF => {
+                            None
+                        }
+                        sequoia_keystore::Error::GenericError(Some(ref s)) => {
+                            // At the RPC boundary, UnexpectedEof may
+                            // be mapped to a string.  Use a sledgehammer.
+
+                            // https://gitlab.com/sequoia-pgp/sequoia/-/blob/12d1d02e/buffered-reader/src/eof.rs#L69
+                            static EOF_MSG: &'static str = "unexpected EOF";
+
+                            if s == EOF_MSG {
+                                None
+                            } else {
+                                Some(err.into())
+                            }
+                        }
+                        _ => Some(err.into()),
+                    }
+                }
+                Err(err) => Some(err),
+            }
+        }
+    }
+}
+
+pub(crate) struct CheckRemoteKey<'a> {
+    unlocked: bool,
+    key: &'a mut crate::key_store::Key,
+}
+
+impl<'a> CheckRemoteKey<'a> {
+    pub fn new(key: &'a mut crate::key_store::Key) -> Self {
+        CheckRemoteKey {
+            unlocked: false,
+            key
+        }
+    }
+
+    /// Returns whether the key was unlocked.
+    pub fn unlocked(self) -> bool {
+        self.unlocked
+    }
+}
+
+impl prompt::Check<'_> for CheckRemoteKey<'_> {
+    fn check(&mut self,
+             _context: &mut prompt::Context,
+             response: &prompt::Response)
+        -> std::result::Result<(), prompt::CheckError>
+    {
+        match response {
+            prompt::Response::Password(password) => {
+                if let Err(err) = self.key.unlock(password.clone()) {
+                    Err(prompt::CheckError::IncorrectPassword(flatten_eof(err)))
+                } else {
+                    self.unlocked = true;
+                    Ok(())
+                }
+            }
+            prompt::Response::NoPassword => {
+                // Skip.
+                Ok(())
+            }
+        }
+    }
+}
+
+pub(crate) struct CheckSkesks<'a> {
+    skesks: &'a [SKESK],
+    decrypt: &'a mut dyn FnMut(Option<SymmetricAlgorithm>, &crypto::SessionKey) -> bool,
+    // The session key.  The usize is the index of the decrypted
+    // SKESK.
+    sk: Option<(usize, crypto::SessionKey)>,
+}
+
+impl<'a> CheckSkesks<'a> {
+    pub fn new(skesks: &'a [SKESK],
+               decrypt: &'a mut dyn FnMut(Option<SymmetricAlgorithm>, &crypto::SessionKey) -> bool)
+        -> Self
+    {
+        Self {
+            skesks,
+            decrypt,
+            sk: None,
+        }
+    }
+
+    /// Returns the decrypted session key, if any.
+    pub fn resolve(self) -> Option<(usize, crypto::SessionKey)> {
+        self.sk
+    }
+}
+
+impl prompt::Check<'_> for CheckSkesks<'_> {
+    fn check(&mut self,
+             _context: &mut prompt::Context,
+             response: &prompt::Response)
+        -> std::result::Result<(), prompt::CheckError>
+    {
+        match response {
+            prompt::Response::Password(password) => {
+                let mut err = None;
+                for (i, skesk) in self.skesks.into_iter().enumerate() {
+                    match skesk.decrypt(password) {
+                        Ok((algo, sk)) => {
+                            if (self.decrypt)(algo, &sk) {
+                                self.sk = Some((i, sk));
+                                return Ok(());
+                            }
+                        }
+                        Err(e) => {
+                            if err.is_none() {
+                                err = flatten_eof(e);
+                            }
+                        }
+                    }
+                }
+
+                Err(prompt::CheckError::IncorrectPassword(err))
+            }
+            prompt::Response::NoPassword => {
+                // Skip.
+                Ok(())
+            }
+        }
+    }
+}

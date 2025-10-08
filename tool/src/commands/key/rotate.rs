@@ -40,6 +40,7 @@ use crate::cli::types::Expiration;
 use crate::cli::types::FileOrStdout;
 use crate::cli;
 use crate::common::key::certify_generated;
+use crate::common::password::CheckNewPassword;
 use crate::common::password;
 use crate::common::pki::list::summarize_certification;
 use crate::common::pki::replay::replay;
@@ -252,7 +253,9 @@ pub fn dispatch(
             .sequoia(&sq.sequoia)
             .build();
 
-        let password = match prompt.prompt(&mut context)? {
+        let mut checker = CheckNewPassword::new();
+
+        let password = match prompt.prompt(&mut context, &mut checker)? {
             prompt::Response::Password(password) => Some(password),
             prompt::Response::NoPassword => None,
             unknown => {

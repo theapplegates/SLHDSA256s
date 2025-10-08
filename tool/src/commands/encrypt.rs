@@ -34,6 +34,7 @@ use crate::Result;
 use crate::Sq;
 use crate::cli::types::EncryptPurpose;
 use crate::cli;
+use crate::common::password::CheckNewPassword;
 use crate::common::password;
 use crate::output::pluralize::Pluralize;
 use crate::print_error_chain;
@@ -119,12 +120,14 @@ pub fn encrypt<'a, 'b: 'a>(
         loop {
             let prompt = password::Prompt::npasswords(sq, n + 1, npasswords);
 
+            let mut checker = CheckNewPassword::new();
+
             let mut context = prompt::ContextBuilder::password(
                 prompt::Reason::EncryptMessage)
                 .sequoia(&sq.sequoia)
                 .build();
 
-            match prompt.prompt(&mut context)? {
+            match prompt.prompt(&mut context, &mut checker)? {
                 prompt::Response::Password(password) => {
                     passwords.push(password);
                     break;

@@ -29,6 +29,7 @@ use crate::cli::{
     },
 };
 use crate::common::key::certify_generated;
+use crate::common::password::CheckNewPassword;
 use crate::output::import::ImportStatus;
 
 pub fn generate(
@@ -178,12 +179,14 @@ pub fn generate(
     } else if ! command.without_password {
         let prompt = password::Prompt::new(&sq, false);
 
+        let mut checker = CheckNewPassword::new();
+
         let mut context = prompt::ContextBuilder::password(
             prompt::Reason::LockNewCert)
             .sequoia(&sq.sequoia)
             .build();
 
-        let password = match prompt.prompt(&mut context)? {
+        let password = match prompt.prompt(&mut context, &mut checker)? {
             prompt::Response::Password(password) => Some(password),
             prompt::Response::NoPassword => None,
             unknown => {

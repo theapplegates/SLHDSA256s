@@ -14,6 +14,8 @@ use crate::STANDARD_POLICY;
 use crate::Sequoia;
 use crate::types::Convert;
 
+pub(crate) mod check;
+
 /// Prompt-specific errors.
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
@@ -546,20 +548,120 @@ pub enum Response {
     NoPassword,
 }
 
+/// Errors returned by `Check`.
+///
+/// The errors that need to be returned by an implementation of
+/// [`Check`].
+#[non_exhaustive]
+#[derive(thiserror::Error, Debug)]
+pub enum CheckError {
+    /// The password is incorrect.
+    #[error("Incorrect password{}.",
+            if let Some(err) = .0.as_ref() {
+                Cow::Owned(format!(": {}", err))
+            } else {
+                Cow::Borrowed("")
+            })]
+    IncorrectPassword(Option<anyhow::Error>),
+
+    /// A password was not provided, but one is required.
+    #[error("You must enter a password to continue{}.",
+            if let Some(err) = .0.as_ref() {
+                Cow::Owned(format!(": {}", err))
+            } else {
+                Cow::Borrowed("")
+            })]
+    PasswordRequired(Option<anyhow::Error>),
+
+    /// The password is invalid.
+    ///
+    /// This indicates that the password doesn't conform to the
+    /// password policy.
+    #[error("Invalid password{}.",
+            if let Some(err) = .0.as_ref() {
+                Cow::Owned(format!(": {}", err))
+            } else {
+                Cow::Borrowed("")
+            })]
+    InvalidPassword(Option<anyhow::Error>),
+
+    /// Another error.
+    ///
+    /// This allows the caller to return arbitrary errors.  This
+    /// causes the prompt to immediately abort, and propagate the
+    /// error to the caller.  As such, this needs to be used with
+    /// care.
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
+}
+
+/// Checks that a password is acceptable or correct.
+///
+/// When prompting for a new password, this checks that the password
+/// has the desired properties (e.g., length).  If it doesn't, then
+/// the implementation should return [`CheckError::InvalidPassword`].
+///
+/// When unlocking something, this attempts to unlock the object.  If
+/// it fails, it should return [`CheckError::IncorrectPassword`].
+/// Since you've unlocked the thing, you should probably also store it
+/// so you don't have to unlock it a second time.  A convenient place
+/// to put it is in your `Check` struct.  If the user does not enter a
+/// password, but a password is required, return
+/// [`CheckError::PasswordRequired`].
+///
+/// Note: The `Check` implementation is not responsible for the
+/// presentation; all presentation logic should be in the `Prompt`
+/// implementation.
+pub trait Check<'a, T=()> {
+    /// Returns whether the response is acceptable for the given
+    /// context.
+    fn check(&mut self, context: &mut Context<'a, T>, response: &Response)
+        -> std::result::Result<(), CheckError>;
+}
+
+/// An implementation of `Check` that accepts all passwords as well as
+/// no password.
+pub struct AcceptAll {
+}
+
+impl AcceptAll {
+    /// Returns a new instance of `AcceptAll`.
+    pub fn new() -> Self {
+        Self {
+        }
+    }
+}
+
+impl<'a, T> Check<'a, T> for AcceptAll {
+    fn check(&mut self, _context: &mut Context<'a, T>, _response: &Response)
+        -> std::result::Result<(), CheckError>
+    {
+        Ok(())
+    }
+}
+
 /// The prompting interface.
 pub trait Prompt<T=()> {
-    /// Return a password for the specified context.
+    /// Returns a password for the specified context.
     ///
     /// Normally the password is obtained by prompting the user.  If
     /// prompting is disabled, this should return [`Error::Disabled`].
     ///
-    /// If `confirm` is true, then the user should confirm the
-    /// password is correct.  This is usually done by prompting for
-    /// the same password a second time.
-    fn prompt(&self, context: &mut Context<T>)
+    /// If `context.reason().confirm()` is true, then the user should
+    /// confirm that the password is correct.  This is usually done by
+    /// prompting for the same password a second time.
+    ///
+    /// Before returning, the function must call `check.check`.  If
+    /// the function returns `Ok`, it should return the response.  If
+    /// it returns a [`CheckError`] error, it should display error and
+    /// loop, or propagate the error to the caller, as appropriate.
+    /// When a password requires confirmation, `check.check` should
+    /// only be called after the password has been confirmed.
+    fn prompt<'a>(&self, context: &mut Context<'a, T>,
+                  check: &mut dyn Check<'a, T>)
         -> std::result::Result<Response, Error>;
 
-    /// Return a password for one of the the specified contexts.
+    /// Returns a password for one of the the specified contexts.
     ///
     /// Sometimes there are multiple ways to access an object.  For
     /// instance, when decrypting a message, the session key may be
@@ -579,11 +681,14 @@ pub trait Prompt<T=()> {
     /// A more sophisticated implementation would show a single dialog
     /// that allows the user to select the context they want to
     /// provide the password for.
-    fn multiprompt<'a, 'c>(&self, contexts: &'c mut [Context<'a, T>])
+    ///
+    /// See [`Prompt::prompt`] for more details.
+    fn multiprompt<'a, 'c>(&self, contexts: &'c mut [Context<'a, T>],
+                           check: &mut dyn Check<'a, T>)
         -> std::result::Result<(&'c Context<'a, T>, Response), Error>
     {
         for context in contexts.iter_mut() {
-            match self.prompt(context) {
+            match self.prompt(context, check) {
                 Ok(password) => {
                     return Ok((context, password));
                 }
@@ -632,7 +737,8 @@ pub trait Prompt<T=()> {
     /// }
     ///
     /// impl prompt::Prompt for MyPrompt {
-    ///     fn prompt(&self, _context: &mut prompt::Context)
+    ///     fn prompt(&self, _context: &mut prompt::Context,
+    ///               _check: &mut dyn prompt::Check)
     ///         -> std::result::Result<prompt::Response, prompt::Error>
     ///     {
     ///         let timeout = std::time::Duration::new(10, 0);
@@ -666,7 +772,9 @@ pub trait Prompt<T=()> {
     ///             prompt::Action::Attach, prompt::Reason::UnlockKey)
     ///             .build();
     ///
-    ///         prompt_ref.prompt(&mut context)
+    ///         let mut checker = prompt::AcceptAll::new();
+    ///
+    ///         prompt_ref.prompt(&mut context, &mut checker)
     ///     });
     ///
     ///     prompt.close();
@@ -680,16 +788,17 @@ pub trait Prompt<T=()> {
 }
 
 impl<'b, T> Prompt<T> for Box<dyn Prompt<T> + 'b> {
-    fn prompt(&self, context: &mut Context<T>)
+    fn prompt<'a>(&self, context: &mut Context<'a, T>, check: &mut dyn Check<'a, T>)
         -> std::result::Result<Response, Error>
     {
-        self.as_ref().prompt(context)
+        self.as_ref().prompt(context, check)
     }
 
-    fn multiprompt<'a, 'c>(&self, contexts: &'c mut [Context<'a, T>])
+    fn multiprompt<'a, 'c>(&self, contexts: &'c mut [Context<'a, T>],
+                           check: &mut dyn Check<'a, T>)
         -> std::result::Result<(&'c Context<'a, T>, Response), Error>
     {
-        self.as_ref().multiprompt(contexts)
+        self.as_ref().multiprompt(contexts, check)
     }
 
     fn close(&self) {
@@ -701,16 +810,17 @@ impl<'b, T, P> Prompt<T> for &P
 where
     P: Prompt<T> + 'b
 {
-    fn prompt(&self, context: &mut Context<T>)
+    fn prompt<'a>(&self, context: &mut Context<'a, T>, check: &mut dyn Check<'a, T>)
         -> std::result::Result<Response, Error>
     {
-        (*self).prompt(context)
+        (*self).prompt(context, check)
     }
 
-    fn multiprompt<'a, 'c>(&self, contexts: &'c mut [Context<'a, T>])
+    fn multiprompt<'a, 'c>(&self, contexts: &'c mut [Context<'a, T>],
+                           check: &mut dyn Check<'a, T>)
         -> std::result::Result<(&'c Context<'a, T>, Response), Error>
     {
-        (*self).multiprompt(contexts)
+        (*self).multiprompt(contexts, check)
     }
 
     fn close(&self) {
@@ -733,7 +843,7 @@ impl Cancel {
 }
 
 impl<T> Prompt<T> for Cancel {
-    fn prompt(&self, _context: &mut Context<T>)
+    fn prompt(&self, _context: &mut Context<T>, _check: &mut dyn Check<T>)
         -> std::result::Result<Response, Error>
     {
         Err(Error::Cancelled(None))

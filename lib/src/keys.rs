@@ -5,13 +5,100 @@ use anyhow::Context;
 use sequoia_openpgp as openpgp;
 use openpgp::Cert;
 use openpgp::packet::Key;
+use openpgp::packet::key::Encrypted;
 use openpgp::packet::key::SecretKeyMaterial;
+use openpgp::packet::key::Unencrypted;
 use openpgp::packet::key;
 
 use crate::Result;
 use crate::Sequoia;
 use crate::TRACE;
 use crate::prompt;
+
+// When the password is wrong, we often get an unexpected eof.  It
+// doesn't make sense to propagate this to the user; suppress it.
+fn flatten_eof(err: anyhow::Error) -> Option<anyhow::Error> {
+    // For soft keys.
+    match err.downcast::<std::io::Error>() {
+        Ok(err) => {
+            if err.kind() == std::io::ErrorKind::UnexpectedEof {
+                None
+            } else {
+                Some(err.into())
+            }
+        }
+        Err(err) => {
+            // For remote keys.
+            match err.downcast::<sequoia_keystore::Error>() {
+                Ok(err) => {
+                    match err {
+                        sequoia_keystore::Error::EOF => {
+                            None
+                        }
+                        sequoia_keystore::Error::GenericError(Some(ref s)) => {
+                            // At the RPC boundary, UnexpectedEof may
+                            // be mapped to a string.  Use a sledgehammer.
+
+                            // https://gitlab.com/sequoia-pgp/sequoia/-/blob/12d1d02e/buffered-reader/src/eof.rs#L69
+                            static EOF_MSG: &'static str = "unexpected EOF";
+
+                            if s == EOF_MSG {
+                                None
+                            } else {
+                                Some(err.into())
+                            }
+                        }
+                        _ => Some(err.into()),
+                    }
+                }
+                Err(err) => Some(err),
+            }
+        }
+    }
+}
+
+struct Check<'a, R>
+where
+    R: key::KeyRole + Clone,
+{
+    allow_skipping: bool,
+    key: Key<key::SecretParts, R>,
+    encrypted: &'a Encrypted,
+    unencrypted: Option<Unencrypted>,
+}
+
+impl<R> prompt::Check<'_> for Check<'_, R>
+where
+    R: key::KeyRole + Clone,
+{
+    fn check(&mut self,
+             _context: &mut prompt::Context,
+             response: &prompt::Response)
+        -> std::result::Result<(), prompt::CheckError>
+    {
+        match response {
+            prompt::Response::Password(password) => {
+                match self.encrypted.decrypt(&self.key, password) {
+                    Ok(unencrypted) => {
+                        self.unencrypted = Some(unencrypted);
+                        Ok(())
+                    }
+                    Err(err) => {
+                        Err(prompt::CheckError::IncorrectPassword(
+                            flatten_eof(err)))
+                    }
+                }
+            }
+            prompt::Response::NoPassword => {
+                if self.allow_skipping {
+                    Ok(())
+                } else {
+                    Err(prompt::CheckError::PasswordRequired(None))
+                }
+            }
+        }
+    }
+}
 
 impl Sequoia {
     /// Decrypts a key, if possible.
@@ -75,27 +162,26 @@ impl Sequoia {
                 }
                 let mut context = context.build();
 
-                loop {
-                    match prompt.prompt(&mut context)
-                        .context("Prompting for password")?
-                    {
-                        prompt::Response::NoPassword => {
-                            if allow_skipping {
-                                return Err(prompt::Error::Cancelled(Some(
-                                    "User canceled operation".into())).into());
-                            } else {
-                                weprintln!("You must enter a password \
-                                            to continue.");
-                            }
-                        }
-                        prompt::Response::Password(password) => {
-                           if let Ok(unencrypted) = e.decrypt(&key, &password) {
-                               let (key, _) = key.add_secret(unencrypted.into());
-                               self.cache_password(password);
-                               return Ok(key);
-                           }
+                let mut checker = Check {
+                    allow_skipping,
+                    key: key.clone(),
+                    encrypted: e,
+                    unencrypted: None,
+                };
 
-                           weprintln!("Incorrect password.");
+                match prompt.prompt(&mut context, &mut checker)
+                    .context("Prompting for password")?
+                {
+                    prompt::Response::NoPassword => {
+                        return Err(prompt::Error::Cancelled(Some(
+                            "User canceled operation".into())).into());
+                    }
+                    prompt::Response::Password(password) => {
+                        if let Some(unencrypted) = checker.unencrypted {
+                            self.cache_password(password);
+                            Ok(key.add_secret(unencrypted.into()).0)
+                        } else {
+                            panic!("Internal error: missing unencrypted key");
                         }
                     }
                 }

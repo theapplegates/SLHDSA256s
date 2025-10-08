@@ -59,6 +59,7 @@ use crate::cli::types::SpecialName;
 use crate::cli::types::StdinWarning;
 use crate::cli::types::cert_designator;
 use crate::cli::types::key_designator;
+use crate::common::password::CheckRemoteKey;
 use crate::common::password;
 use crate::common::ui;
 use crate::output::hint::Hint;
@@ -552,56 +553,53 @@ impl Sq {
                         .find(|password| {
                             key.unlock(password.clone()).is_ok()
                         })
-                        .is_none()
+                        .is_some()
                     {
+                        return Ok(Box::new(key));
+                    } else {
                         if let Some(hint) = hint {
                             weprintln!("{}", hint);
                         }
 
-                        loop {
-                            let prompt = password::Prompt::new(self, true);
+                        let prompt = password::Prompt::new(self, true);
 
-                            let mut context
-                                = prompt::ContextBuilder::password(
-                                    prompt::Reason::UnlockKey)
-                                .sequoia(&self.sequoia)
-                                .cert(Cow::Borrowed(ka.cert()))
-                                .key(key.fingerprint())
-                                .build();
+                        let mut context
+                            = prompt::ContextBuilder::password(
+                                prompt::Reason::UnlockKey)
+                            .sequoia(&self.sequoia)
+                            .cert(Cow::Borrowed(ka.cert()))
+                            .key(key.fingerprint())
+                            .build();
 
-                            let p = match prompt.prompt(&mut context) {
-                                Ok(prompt::Response::Password(p)) => p,
-                                Ok(prompt::Response::NoPassword)
-                                    | Err(prompt::Error::Cancelled(_)) =>
-                                {
-                                    continue 'key;
-                                }
-                                Ok(unknown) => {
-                                    unreachable!("Internal error: UnlockKey \
-                                                  should return a password, \
-                                                  but got: {:?}",
-                                                 unknown);
-                                }
-                                Err(err) => {
-                                    return Err(err)
-                                        .context("Prompting password");
-                                }
-                            };
+                        let mut checker = CheckRemoteKey::optional(&mut key);
 
-                            match key.unlock(p.clone()) {
-                                Ok(()) => {
-                                    self.cache_password(p.clone());
-                                    break;
-                                }
-                                Err(err) => {
-                                    weprintln!("Failed to unlock key: {}", err);
-                                }
+                        match prompt.prompt(&mut context, &mut checker) {
+                            Ok(prompt::Response::Password(p)) => {
+                                assert!(checker.resolve());
+                                self.cache_password(p.clone());
+                                return Ok(Box::new(key));
+                            },
+                            Ok(prompt::Response::NoPassword)
+                                | Err(prompt::Error::Cancelled(_)) =>
+                            {
+                                continue 'key;
+                            }
+                            Ok(unknown) => {
+                                unreachable!("Internal error: UnlockKey \
+                                              should return a password, \
+                                              but got: {:?}",
+                                             unknown);
+                            }
+                            Err(err) => {
+                                return Err(err)
+                                    .context("Prompting password");
                             }
                         }
                     }
+                } else {
+                    // Not locked.
+                    return Ok(Box::new(key));
                 }
-
-                return Ok(Box::new(key));
             }
 
             Err(anyhow!("Key not managed by keystore."))

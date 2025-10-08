@@ -22,8 +22,9 @@ use sequoia::prompt;
 use sequoia::types::TrustThreshold;
 
 use crate::Sq;
+use crate::cli::types::EncryptPurpose;
 use crate::cli;
-use cli::types::EncryptPurpose;
+use crate::common::password::CheckKeys;
 use crate::common::password;
 
 pub fn bind(sq: Sq, command: cli::key::subkey::bind::Command) -> Result<()>
@@ -231,7 +232,7 @@ pub fn bind(sq: Sq, command: cli::key::subkey::bind::Command) -> Result<()>
             let mut ks = ks.lock().unwrap();
 
             // Try to get secrets from the store.
-            let secrets = ks.find_key(key.key_handle())?.into_iter()
+            let mut secrets = ks.find_key(key.key_handle())?.into_iter()
                 .filter_map(|mut k| k.export().ok()).collect::<Vec<_>>();
 
             match secrets.len() {
@@ -251,67 +252,30 @@ pub fn bind(sq: Sq, command: cli::key::subkey::bind::Command) -> Result<()>
                     // a bit annoying, but on the plus side we don't
                     // need to ask the user again to create the
                     // primary key binding signature.
-                    'password_loop: loop {
-                        let prompt = password::Prompt::new(&sq, false);
+                    let prompt = password::Prompt::new(&sq, false);
 
-                        let mut context = prompt::ContextBuilder::password(
-                            prompt::Reason::UnlockKey)
-                            .sequoia(&sq.sequoia)
-                            .cert(Cow::Borrowed(&cert))
-                            .key(key.fingerprint())
-                            .build();
+                    let mut context = prompt::ContextBuilder::password(
+                        prompt::Reason::UnlockKey)
+                        .sequoia(&sq.sequoia)
+                        .cert(Cow::Borrowed(&cert))
+                        .key(key.fingerprint())
+                        .build();
 
-                        let p = match prompt.prompt(&mut context)? {
-                            prompt::Response::Password(p) => Some(p),
-                            prompt::Response::NoPassword => None,
-                            unknown => {
-                                unreachable!("Internal error: UnlockKey \
-                                              should return a password, \
-                                              but got: {:?}",
-                                             unknown);
-                            }
-                        };
+                    let mut checker = CheckKeys::required(&mut secrets);
 
-                        // Empty password given and a key without
-                        // encryption?  Pick it.
-                        if p.is_none() {
-                            if let Some(k) = secrets.iter()
-                                .find(|k| ! k.secret().is_encrypted())
-                            {
-                                keypair =
-                                    Some(k.clone().into_keypair()?);
-                                key = k.clone().into();
-                                break;
-                            }
-                        }
+                    prompt.prompt(&mut context, &mut checker)?;
 
-                        let mut err = None;
-                        if let Some(p) = p.as_ref() {
-                            for k in &secrets {
-                                match k.secret().clone().decrypt(&key, &p) {
-                                    Ok(decrypted) => {
-                                        // Keep the decrypted keypair.
-                                        keypair = Some({
-                                            let k = key.add_secret(decrypted).0;
-                                            k.clone().into_keypair()?
-                                        });
-                                        // Bind the encrypted key.
-                                        key = k.clone().into();
-                                        break 'password_loop;
-                                    },
+                    let (i, k) = if let Some((i, k)) = checker.resolve() {
+                        (i, k)
+                    } else {
+                        panic!("Internal error: password is required, \
+                                but the prompt returned");
+                    };
 
-                                    Err(e) => err = Some(e),
-                                }
-                            }
-                        }
-
-                        if p.is_none() {
-                            weprintln!("Giving up.");
-                            return Err(anyhow::anyhow!(
-                                "Failed to unlock key: {}",
-                                err.expect("must be set when we came here")));
-                        }
-                    }
+                    // Keep the decrypted keypair.
+                    keypair = Some(k.into_keypair()?);
+                    // Bind the encrypted key.
+                    key = secrets[i].clone().into();
                 },
             }
         }

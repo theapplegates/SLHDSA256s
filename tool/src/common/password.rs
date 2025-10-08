@@ -1,5 +1,11 @@
 //! Common password-related functionality such as prompting.
 
+use sequoia::openpgp as openpgp;
+use openpgp::packet::Key;
+use openpgp::packet::key;
+
+use sequoia::key_store as keystore;
+
 use sequoia::prompt;
 
 use crate::Sq;
@@ -47,8 +53,9 @@ impl<'a> Prompt<'a> {
 }
 
 impl<'a> prompt::Prompt for Prompt<'a> {
-    fn prompt(&self, context: &mut prompt::Context)
-        -> std::result::Result<prompt::Response, prompt::Error>
+    fn prompt<'c>(&self, context: &mut prompt::Context<'c>,
+                  check: &mut dyn prompt::Check<'c>)
+                  -> std::result::Result<prompt::Response, prompt::Error>
     {
         if self.sq.batch {
             return Err(prompt::Error::Disabled(Some(
@@ -86,9 +93,14 @@ impl<'a> prompt::Prompt for Prompt<'a> {
         loop {
             let password = rpassword::prompt_password(&p0)?;
 
-            if password.is_empty() && self.cancel {
-                weprintln!("Skipping.");
-                return Err(prompt::Error::Cancelled(None));
+            if password.is_empty() {
+                if self.cancel {
+                    weprintln!("Skipping.");
+                    return Err(prompt::Error::Cancelled(None));
+                } else if ! context.reason().optional() {
+                    eprintln!("You must enter a password.");
+                    continue;
+                }
             }
 
             if context.reason().confirm() {
@@ -101,11 +113,259 @@ impl<'a> prompt::Prompt for Prompt<'a> {
                 }
             }
 
-            return if password.is_empty() {
-                Ok(prompt::Response::NoPassword)
+            let response = if password.is_empty() {
+                prompt::Response::NoPassword
             } else {
-                Ok(prompt::Response::Password(password.into()))
+                prompt::Response::Password(password.into())
             };
+
+            if let Err(err) = check.check(context, &response) {
+                eprintln!("{}", err);
+            } else {
+                return Ok(response);
+            }
+        }
+    }
+}
+
+// When the password is wrong, we often get an unexpected eof.  This
+// message is confusing for a user; suppress it.
+fn flatten_eof(err: anyhow::Error) -> Option<anyhow::Error> {
+    // For soft keys.
+    match err.downcast::<std::io::Error>() {
+        Ok(err) => {
+            if err.kind() == std::io::ErrorKind::UnexpectedEof {
+                None
+            } else {
+                Some(err.into())
+            }
+        }
+        Err(err) => {
+            // For remote keys.
+            match err.downcast::<sequoia::key_store::Error>() {
+                Ok(err) => {
+                    match err {
+                        sequoia::key_store::Error::EOF => {
+                            None
+                        }
+                        sequoia::key_store::Error::GenericError(Some(ref s)) => {
+                            // At the RPC boundary, UnexpectedEof may
+                            // be mapped to a string.  Use a sledgehammer.
+
+                            // https://gitlab.com/sequoia-pgp/sequoia/-/blob/12d1d02e/buffered-reader/src/eof.rs#L69
+                            static EOF_MSG: &'static str = "unexpected EOF";
+
+                            if s == EOF_MSG {
+                                None
+                            } else {
+                                Some(err.into())
+                            }
+                        }
+                        _ => Some(err.into()),
+                    }
+                }
+                Err(err) => Some(err),
+            }
+        }
+    }
+}
+
+/// Checks a new password.
+///
+/// Don't place any restrictions on passwords, and accept everything
+/// including the empty password.
+pub struct CheckNewPassword {
+}
+
+impl CheckNewPassword {
+    pub fn new() -> Self
+    {
+        Self {
+        }
+    }
+}
+
+impl prompt::Check<'_> for CheckNewPassword {
+    fn check(&mut self,
+             _context: &mut prompt::Context,
+             _response: &prompt::Response)
+        -> std::result::Result<(), prompt::CheckError>
+    {
+        Ok(())
+    }
+}
+
+/// Checks that a password can be used to unlock a remove key.
+///
+/// [`CheckRemoteKey::resolve`] returns whether the key was unlocked.
+pub struct CheckRemoteKey<'a> {
+    allow_skipping: bool,
+    key: &'a mut keystore::Key,
+    unlocked: bool,
+}
+
+impl<'a> CheckRemoteKey<'a> {
+    /// Tries to unlock the remote key.
+    ///
+    /// The user may not skip this.
+    pub fn required(key: &'a mut keystore::Key) -> Self {
+        Self {
+            allow_skipping: false,
+            key,
+            unlocked: false,
+        }
+    }
+
+    /// Tries to unlock the remote key.
+    ///
+    /// The user may skip this.
+    pub fn optional(key: &'a mut keystore::Key) -> Self {
+        Self {
+            allow_skipping: true,
+            key,
+            unlocked: false,
+        }
+    }
+
+    /// Returns whether we unlocked the key.
+    pub fn resolve(self) -> bool {
+        self.unlocked
+    }
+}
+
+impl prompt::Check<'_> for CheckRemoteKey<'_> {
+    fn check(&mut self,
+             _context: &mut prompt::Context,
+             response: &prompt::Response)
+        -> std::result::Result<(), prompt::CheckError>
+    {
+        match response {
+            prompt::Response::Password(password) => {
+                if let Err(err) = self.key.unlock(password.clone()) {
+                    Err(prompt::CheckError::IncorrectPassword(
+                        flatten_eof(err)))
+                } else {
+                    self.unlocked = true;
+                    Ok(())
+                }
+            }
+            prompt::Response::NoPassword => {
+                if self.allow_skipping {
+                    // Skip.
+                    Ok(())
+                } else {
+                    Err(prompt::CheckError::PasswordRequired(None))
+                }
+            }
+            r => {
+                Err(anyhow::anyhow!("Unhandled response: {:?}", r).into())
+            }
+        }
+    }
+}
+
+/// Tries to unlock a key.
+pub struct CheckKeys<'a, R>
+where
+    R: key::KeyRole + Clone,
+{
+    allow_skipping: bool,
+    keys: &'a mut [Key<key::SecretParts, R>],
+    unlocked: Option<(usize, Key<key::SecretParts, R>)>,
+}
+
+impl<'a, R> CheckKeys<'a, R>
+where
+    R: key::KeyRole + Clone,
+{
+    /// Tries to unlock one of the remote keys.
+    ///
+    /// The user may not skip this.
+    pub fn required(keys: &'a mut [Key<key::SecretParts, R>]) -> Self {
+        Self {
+            allow_skipping: false,
+            keys,
+            unlocked: None,
+        }
+    }
+
+    /// Tries to unlock one of the remote keys.
+    ///
+    /// The user may skip this.
+    #[allow(dead_code)]
+    pub fn optional(keys: &'a mut [Key<key::SecretParts, R>]) -> Self {
+        Self {
+            allow_skipping: true,
+            keys,
+            unlocked: None,
+        }
+    }
+
+    /// Returns the unlock key, if any.
+    ///
+    /// The number is the index of the unlocked key.
+    pub fn resolve(self) -> Option<(usize, Key<key::SecretParts, R>)> {
+        self.unlocked
+    }
+}
+
+impl<'a, R> prompt::Check<'_> for CheckKeys<'a, R>
+where
+    R: key::KeyRole + Clone,
+{
+    fn check(&mut self,
+             _context: &mut prompt::Context,
+             response: &prompt::Response)
+        -> std::result::Result<(), prompt::CheckError>
+    {
+        let p = match response {
+            prompt::Response::Password(p) => {
+                Some(p)
+            }
+            prompt::Response::NoPassword => {
+                None
+            }
+            r => {
+                return Err(anyhow::anyhow!("Unhandled response: {:?}", r).into());
+            }
+        };
+
+        // Empty password given and a key without
+        // encryption?  Pick it.
+        if p.is_none() {
+            if let Some((i, k)) = self.keys.iter().enumerate()
+                .find(|(_, k)| ! k.secret().is_encrypted())
+            {
+                self.unlocked = Some((i, k.clone()));
+                return Ok(());
+            }
+        }
+
+        let mut err = None;
+        if let Some(p) = p.as_ref() {
+            for (i, k) in self.keys.iter().enumerate() {
+                match k.secret().clone().decrypt(k, &p) {
+                    Ok(decrypted) => {
+                        // Keep the decrypted keypair.
+                        self.unlocked = Some((
+                            i, k.clone().add_secret(decrypted).0));
+                        return Ok(());
+                    },
+
+                    Err(e) => err = flatten_eof(e),
+                }
+            }
+        }
+
+        if p.is_none() {
+            if self.allow_skipping {
+                // Skip.
+                Ok(())
+            } else {
+                Err(prompt::CheckError::PasswordRequired(None))
+            }
+        } else {
+            Err(prompt::CheckError::IncorrectPassword(err))
         }
     }
 }
