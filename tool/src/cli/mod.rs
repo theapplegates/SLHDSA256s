@@ -124,7 +124,7 @@ use types::version::VersionInvalidPositionValueParser;
 /// ugly.  We first check check if adding quotes is necessary.
 /// Specifically, if `s` just consists of alphanumeric characters and
 /// a few others, then we don't need quotes.
-pub fn escape_for_shell(s: &str) -> Cow<str> {
+pub fn escape_for_shell(s: &str) -> Cow<'_, str> {
     if s.chars().all(|c| {
         c.is_ascii_alphanumeric()
             || ['@', '.', ',', '+', '-', '_', '/'].contains(&c)

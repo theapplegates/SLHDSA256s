@@ -45,7 +45,7 @@ impl std::str::FromStr for SessionKey {
 impl SessionKey {
     /// Returns an object that implements Display for explicitly opting into
     /// printing a `SessionKey`.
-    pub fn display_sensitive(&self) -> SessionKeyDisplay {
+    pub fn display_sensitive(&self) -> SessionKeyDisplay<'_> {
         SessionKeyDisplay { csk: self }
     }
 }

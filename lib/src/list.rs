@@ -186,7 +186,7 @@ impl Sequoia {
 
     /// Returns a builder that can be used to control
     /// `Sequoia::list`'s behavior.
-    pub fn list_builder<Q>(&self, queries: Vec<Q>) -> Builder
+    pub fn list_builder<Q>(&self, queries: Vec<Q>) -> Builder<'_>
     where
         Q: Into<Query>,
     {
@@ -382,7 +382,7 @@ impl<'a> Builder<'a> {
     /// Returns the parameters.
     ///
     /// This is useful for examining the builder's configuration.
-    pub fn params(&self) -> &Params {
+    pub fn params(&self) -> &Params<'_> {
         &self.params
     }
 

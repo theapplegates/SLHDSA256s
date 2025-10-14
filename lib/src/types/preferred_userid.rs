@@ -129,7 +129,7 @@ impl PreferredUserID {
     /// authentication information.
     ///
     /// Do not use for arguments in hints.
-    pub fn userid_lossy(&self) -> Cow<str> {
+    pub fn userid_lossy(&self) -> Cow<'_, str> {
         match &self.userid {
             UserIDLike::UserID(u) => String::from_utf8_lossy(u.value()),
             UserIDLike::String(u) => Cow::Borrowed(&u),

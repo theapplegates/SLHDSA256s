@@ -34,7 +34,7 @@ impl CertOrKeyHandle {
         }
     }
 
-    pub fn cert(&self) -> Option<Ref<Cert>> {
+    pub fn cert(&self) -> Option<Ref<'_, Cert>> {
         match self {
             CertOrKeyHandle::Cert(cert) => Some(cert.borrow()),
             CertOrKeyHandle::KeyHandle(_) => None,
