@@ -11,7 +11,6 @@ use std::{
 #[macro_use] mod log;
 #[macro_use] mod macros;
 
-use anyhow::Result;
 use anyhow::Context;
 
 // Re-exports.
@@ -65,6 +64,9 @@ mod password_cache;
 mod time;
 pub use time::Time;
 pub mod verify;
+
+// XXX transitional: Switch to our own Error type.
+pub type Result<T, E=anyhow::Error> = anyhow::Result<T, E>;
 
 static STANDARD_POLICY: &StandardPolicy = &StandardPolicy::new();
 static NULL_POLICY: &NullPolicy = unsafe { &NullPolicy::new() };
