@@ -1,3 +1,4 @@
+pub mod cert;
 pub mod hint;
 pub mod pluralize;
 pub mod print_path;
