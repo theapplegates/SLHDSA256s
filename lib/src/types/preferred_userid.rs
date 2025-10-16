@@ -27,7 +27,7 @@ enum UserIDLike {
 /// ```text
 /// format!("{:.70}", userid);
 /// ```
-#[derive(Clone, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PreferredUserID {
     userid: UserIDLike,
     trust_amount: usize,
