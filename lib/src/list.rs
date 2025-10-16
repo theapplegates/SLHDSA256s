@@ -123,7 +123,7 @@ pub struct Report {
 }
 
 /// The variants of this enum are the different types of output that
-/// `Sequoia::authenticate` emits.
+/// `Sequoia::list` emits.
 #[non_exhaustive]
 pub enum Output {
     /// We're about to emit the actual results.
@@ -364,20 +364,16 @@ impl<'a> Builder<'a> {
         self
     }
 
-    /// Sets whether a report will be generated.
+    /// Sets whether a report will be generated at the end of the
+    /// operation.
     ///
-    /// See [`Output::Report`] for more information.
+    /// The report includes lints and some statistics.  See
+    /// [`Output::Report`] for more details of what is returned.  This
+    /// is disabled by default.
     pub fn report(&mut self, report: bool) -> &mut Self {
         self.params.report = report;
         self
     }
-
-    /// Sets whether a report will be generated at the end of the
-    /// operation.
-    ///
-    /// The report includes lints and some statistics.  See [`Report`]
-    /// for more details of what is returned.  This is disabled by
-    /// default.
 
     /// Returns the parameters.
     ///
