@@ -43,6 +43,7 @@ use cert_store::{
 
 pub mod consts;
 pub mod decrypt;
+pub mod encrypt;
 pub mod inspect;
 pub mod list;
 pub mod types;

@@ -151,3 +151,28 @@ impl prompt::Check<'_> for CheckSkesks<'_> {
         }
     }
 }
+
+/// Checks a new password.
+///
+/// Don't place any restrictions on passwords, and accept everything
+/// including the empty password.
+pub(crate) struct CheckNewPassword {
+}
+
+impl CheckNewPassword {
+    pub fn new() -> Self
+    {
+        Self {
+        }
+    }
+}
+
+impl prompt::Check<'_> for CheckNewPassword {
+    fn check(&mut self,
+             _context: &mut prompt::Context,
+             _response: &prompt::Response)
+        -> std::result::Result<(), prompt::CheckError>
+    {
+        Ok(())
+    }
+}
