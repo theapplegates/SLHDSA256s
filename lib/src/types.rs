@@ -11,6 +11,8 @@ pub use cert_designator::FileStdinOrKeyHandle;
 pub use cert_designator::FileOrStdin;
 mod convert;
 pub use convert::Convert;
+mod encrypt_purpose;
+pub use encrypt_purpose::EncryptPurpose;
 mod preferred_userid;
 pub use preferred_userid::PreferredUserID;
 mod query;

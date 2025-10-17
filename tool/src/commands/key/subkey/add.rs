@@ -11,11 +11,11 @@ use openpgp::types::KeyFlags;
 
 use sequoia::prompt::Prompt as _;
 use sequoia::prompt;
+use sequoia::types::EncryptPurpose;
 use sequoia::types::TrustThreshold;
 
 use crate::Sq;
 use crate::cli::key::subkey::add::Command;
-use crate::cli::types::EncryptPurpose;
 use crate::common::password::CheckNewPassword;
 use crate::common::password;
 

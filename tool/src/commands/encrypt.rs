@@ -27,12 +27,12 @@ use openpgp::types::SignatureType;
 use sequoia::prompt;
 use sequoia::prompt::Prompt as _;
 use sequoia::types::Convert;
+use sequoia::types::EncryptPurpose;
 use sequoia::types::FileOrStdin;
 use sequoia::types::TrustThreshold;
 
 use crate::Result;
 use crate::Sq;
-use crate::cli::types::EncryptPurpose;
 use crate::cli;
 use crate::common::password::CheckNewPassword;
 use crate::common::password;

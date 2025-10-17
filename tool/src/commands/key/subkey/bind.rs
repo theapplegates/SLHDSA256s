@@ -19,10 +19,10 @@ use sequoia::openpgp;
 
 use sequoia::prompt::Prompt as _;
 use sequoia::prompt;
+use sequoia::types::EncryptPurpose;
 use sequoia::types::TrustThreshold;
 
 use crate::Sq;
-use crate::cli::types::EncryptPurpose;
 use crate::cli;
 use crate::common::password::CheckKeys;
 use crate::common::password;

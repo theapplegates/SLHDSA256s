@@ -194,7 +194,7 @@ pub fn dispatch(
     }
 
     // Encryption Capability
-    use cli::types::EncryptPurpose::*;
+    use sequoia::types::EncryptPurpose::*;
     match (command.can_encrypt, command.cannot_encrypt) {
         (Some(Universal), false) => {
             builder = builder.add_subkey(

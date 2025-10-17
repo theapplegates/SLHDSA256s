@@ -5,6 +5,7 @@ use clap::ArgGroup;
 
 use sequoia::config::CipherSuite;
 use sequoia::config::Config;
+use sequoia::types::EncryptPurpose;
 
 use crate::cli::examples;
 use examples::Action;
@@ -13,7 +14,6 @@ use examples::Actions;
 use crate::cli::config;
 use crate::cli::types::CertDesignators;
 use crate::cli::types::ClapData;
-use crate::cli::types::EncryptPurpose;
 use crate::cli::types::ExpirationArg;
 use crate::cli::types::FileOrStdout;
 use crate::cli::types::cert_designator;

@@ -9,10 +9,10 @@ use sequoia::config::DEFAULT_KEY_ROTATE_RETIRE_IN_IN_DAYS;
 use sequoia::config::DEFAULT_KEY_VALIDITY_DURATION;
 use sequoia::config::DEFAULT_KEY_VALIDITY_IN_YEARS;
 use sequoia::config::Profile;
+use sequoia::types::EncryptPurpose;
 
 use crate::cli::config;
 use crate::cli::types::ClapData;
-use crate::cli::types::EncryptPurpose;
 use crate::cli::types::Expiration;
 use crate::cli::types::ExpirationArg;
 use crate::cli::types::FileOrStdout;
