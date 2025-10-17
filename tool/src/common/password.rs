@@ -1,5 +1,7 @@
 //! Common password-related functionality such as prompting.
 
+use std::cell::RefCell;
+
 use sequoia::openpgp as openpgp;
 use openpgp::packet::Key;
 use openpgp::packet::key;
@@ -16,7 +18,7 @@ const REPEAT_PROMPT: &str = "Repeat the password";
 pub struct Prompt<'a> {
     sq: &'a Sq,
     // Adds (password n of t) to the message.
-    password: usize,
+    password: RefCell<usize>,
     password_count: usize,
     // Whether the user can skip this by entering the empty strip.  If
     // so, `prompt::Error::Cancelled` is returned instead of
@@ -33,7 +35,7 @@ impl<'a> Prompt<'a> {
     pub fn new(sq: &'a Sq, cancel: bool) -> Self {
         Prompt {
             sq,
-            password: 0,
+            password: RefCell::new(0),
             password_count: 0,
             cancel,
         }
@@ -42,10 +44,10 @@ impl<'a> Prompt<'a> {
     /// Adds "(password n of t)".
     ///
     /// Cancel is disabled.
-    pub fn npasswords(sq: &'a Sq, password: usize, count: usize) -> Self {
+    pub fn npasswords(sq: &'a Sq, count: usize) -> Self {
         Prompt {
             sq,
-            password,
+            password: RefCell::new(0),
             password_count: count,
             cancel: false,
         }
@@ -73,16 +75,15 @@ impl<'a> prompt::Prompt for Prompt<'a> {
         // Add (password n of t), if appropriate.
         if self.password_count > 0 {
             assert_eq!(context.reason(), prompt::Reason::EncryptMessage);
-            assert!(self.password > 0);
-            assert!(self.password <= self.password_count);
+            let password = self.password.borrow();
 
-            if self.password_count > 1 {
+            if self.password_count > 1 && *password <= self.password_count {
                 prompt.push_str(&format!(
                     " (password {} of {})",
-                    self.password, self.password_count));
+                    *password + 1, self.password_count));
             }
         } else {
-            assert_eq!(self.password, 0);
+            assert_eq!(*self.password.borrow(), 0);
             assert_eq!(self.password_count, 0);
         }
 
@@ -116,6 +117,7 @@ impl<'a> prompt::Prompt for Prompt<'a> {
             let response = if password.is_empty() {
                 prompt::Response::NoPassword
             } else {
+                *self.password.borrow_mut() += 1;
                 prompt::Response::Password(password.into())
             };
 

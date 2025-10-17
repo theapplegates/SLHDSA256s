@@ -115,10 +115,9 @@ pub fn encrypt<'a, 'b: 'a>(
     make_qprintln!(sq.quiet());
 
     let mut passwords: Vec<crypto::Password> = Vec::with_capacity(npasswords);
-    for n in 0..npasswords {
+    let prompt = password::Prompt::npasswords(sq, npasswords);
+    for _ in 0..npasswords {
         loop {
-            let prompt = password::Prompt::npasswords(sq, n + 1, npasswords);
-
             let mut checker = CheckNewPassword::new();
 
             let mut context = prompt::ContextBuilder::password(
