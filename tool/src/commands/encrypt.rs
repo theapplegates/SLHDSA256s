@@ -304,7 +304,7 @@ pub fn encrypt<'a, 'b: 'a>(
                       cert.fingerprint());
 
             for ka in selected_keys {
-                have_one_secret |= sq.have_secret_key(ka.amalgamation());
+                have_one_secret |= sq.sequoia.have_secret_key(ka.amalgamation());
                 recipient_subkeys.push(ka);
             }
         }
