@@ -7,8 +7,6 @@ use openpgp::policy::HashAlgoSecurity;
 use openpgp::policy::Policy;
 
 use crate::Sq;
-
-use crate::cli::encrypt::CompressionMode;
 use crate::cli::types::FileOrStdout;
 use crate::cli::types::MyAsRef;
 use crate::cli::{SqCommand, SqSubcommands};

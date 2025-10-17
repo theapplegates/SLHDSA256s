@@ -1,10 +1,11 @@
 //! Command-line parser for `sq encrypt`.
 
-use clap::{ValueEnum, Parser};
+use clap::Parser;
 
 use sequoia::config::Config;
 use sequoia::config::Profile;
 
+use sequoia::types::CompressionMode;
 use sequoia::types::EncryptPurpose;
 use sequoia::types::FileOrStdin;
 
@@ -197,13 +198,4 @@ impl AdditionalDocs for SignerDoc {
             },
         }
     }
-}
-
-#[derive(ValueEnum, Debug, Clone)]
-pub enum CompressionMode {
-    None,
-    Pad,
-    Zip,
-    Zlib,
-    Bzip2
 }

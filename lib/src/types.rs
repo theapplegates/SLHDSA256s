@@ -9,6 +9,8 @@ use crate::errors::Result;
 mod cert_designator;
 pub use cert_designator::FileStdinOrKeyHandle;
 pub use cert_designator::FileOrStdin;
+mod compression_mode;
+pub use compression_mode::CompressionMode;
 mod convert;
 pub use convert::Convert;
 mod encrypt_purpose;

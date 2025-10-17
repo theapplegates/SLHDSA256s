@@ -26,6 +26,7 @@ use openpgp::types::SignatureType;
 
 use sequoia::prompt;
 use sequoia::prompt::Prompt as _;
+use sequoia::types::CompressionMode;
 use sequoia::types::Convert;
 use sequoia::types::EncryptPurpose;
 use sequoia::types::FileOrStdin;
@@ -38,8 +39,6 @@ use crate::common::password::CheckNewPassword;
 use crate::common::password;
 use crate::output::pluralize::Pluralize;
 use crate::print_error_chain;
-
-use crate::commands::CompressionMode;
 
 pub fn dispatch(sq: Sq, command: cli::encrypt::Command) -> Result<()> {
     tracer!(TRACE, "decrypt::dispatch");
