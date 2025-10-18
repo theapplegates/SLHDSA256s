@@ -59,6 +59,8 @@ use config::ConfigFile;
 mod errors;
 pub use errors::Error;
 mod keys;
+pub use keys::GetKeysOptions;
+pub use keys::KeyType;
 mod lookup;
 pub mod packet;
 pub mod prompt;

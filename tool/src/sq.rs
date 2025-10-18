@@ -1,5 +1,4 @@
 use std::borrow::Borrow;
-use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
@@ -11,7 +10,6 @@ use std::time::SystemTime;
 
 use typenum::Unsigned;
 
-use anyhow::anyhow;
 use anyhow::Context as _;
 
 use sequoia::config::Config;
@@ -44,11 +42,10 @@ use cert_store::store::StoreUpdate;
 use sequoia::wot;
 
 use sequoia::key_store as keystore;
-use keystore::Protection;
 
+use sequoia::GetKeysOptions;
 use sequoia::Sequoia;
 use sequoia::prompt;
-use sequoia::prompt::Prompt as _;
 use sequoia::types::FileStdinOrKeyHandle;
 use sequoia::types::PreferredUserID;
 use sequoia::types::TrustThreshold;
@@ -59,7 +56,6 @@ use crate::cli::types::SpecialName;
 use crate::cli::types::StdinWarning;
 use crate::cli::types::cert_designator;
 use crate::cli::types::key_designator;
-use crate::common::password::CheckRemoteKey;
 use crate::common::password;
 use crate::common::ui;
 use crate::output::hint::Hint;
@@ -69,26 +65,6 @@ use crate::print_error_chain;
 const TRACE: bool = false;
 
 pub static NULL_POLICY: NullPolicy = unsafe { NullPolicy::new() };
-
-/// Flags for Sq::get_keys and related functions.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum GetKeysOptions {
-    /// Don't ignore keys that are not alive.
-    AllowNotAlive,
-    /// Don't ignore keys that are not revoke.
-    AllowRevoked,
-    /// Use the NULL Policy.
-    NullPolicy,
-}
-
-/// Flag for Sq::get_keys and related function.
-enum KeyType {
-    /// Only consider primary key.
-    Primary,
-    /// Only consider keys that have at least one of the specified
-    /// capabilities.
-    KeyFlags(KeyFlags),
-}
 
 // A shorthand for our store type.
 type WotStore
@@ -461,252 +437,8 @@ impl Sq {
         -> Result<Box<dyn crypto::Signer + Send + Sync>>
         where P: key::KeyParts + Clone, R: key::KeyRole + Clone
     {
-        let try_tsk = |cert: &Cert, key: &Key<_, _>|
-            -> Result<_>
-        {
-            if let Ok(key) = key.parts_as_secret() {
-                let key = self.decrypt_key(
-                    Some(cert), key.clone(), true, false)?;
-                let keypair = Box::new(key.into_keypair()
-                    .expect("decrypted secret key material"));
-                Ok(keypair)
-            } else {
-                Err(anyhow!("No secret key material."))
-            }
-        };
-        let try_keyrings = |cert: &Cert, key: &Key<_, _>|
-            -> Result<_>
-        {
-            let keyring_tsks = self.keyring_tsks()?;
-            if let Some((cert_fpr, key))
-                = keyring_tsks.get(&key.fingerprint())
-            {
-                if cert_fpr == &cert.fingerprint() {
-                    return try_tsk(cert, key);
-                }
-            }
-
-            Err(anyhow!("No secret key material."))
-        };
-        let try_keystore = |ka: &KeyAmalgamation<_, _, R2>|
-            -> Result<_>
-        {
-            let ks = self.key_store_or_else()?;
-
-            let mut ks = ks.lock().unwrap();
-
-            let remote_keys = ks.find_key(ka.key().key_handle())?;
-
-            // XXX: Be a bit smarter.  If there are multiple
-            // keys, sort them so that we try the easiest one
-            // first (available, no password).
-
-            'key: for mut key in remote_keys.into_iter() {
-                if let Protection::Password(hint) = key.locked()? {
-                    if self.cached_passwords()
-                        .find(|password| {
-                            key.unlock(password.clone()).is_ok()
-                        })
-                        .is_some()
-                    {
-                        return Ok(Box::new(key));
-                    } else {
-                        if let Some(hint) = hint {
-                            weprintln!("{}", hint);
-                        }
-
-                        let prompt = password::Prompt::new(self, true);
-
-                        let mut context
-                            = prompt::ContextBuilder::password(
-                                prompt::Reason::UnlockKey)
-                            .sequoia(&self.sequoia)
-                            .cert(Cow::Borrowed(ka.cert()))
-                            .key(key.fingerprint())
-                            .build();
-
-                        let mut checker = CheckRemoteKey::optional(&mut key);
-
-                        match prompt.prompt(&mut context, &mut checker) {
-                            Ok(prompt::Response::Password(p)) => {
-                                assert!(checker.resolve());
-                                self.cache_password(p.clone());
-                                return Ok(Box::new(key));
-                            },
-                            Ok(prompt::Response::NoPassword)
-                                | Err(prompt::Error::Cancelled(_)) =>
-                            {
-                                continue 'key;
-                            }
-                            Ok(unknown) => {
-                                unreachable!("Internal error: UnlockKey \
-                                              should return a password, \
-                                              but got: {:?}",
-                                             unknown);
-                            }
-                            Err(err) => {
-                                return Err(err)
-                                    .context("Prompting password");
-                            }
-                        }
-                    }
-                } else {
-                    // Not locked.
-                    return Ok(Box::new(key));
-                }
-            }
-
-            Err(anyhow!("Key not managed by keystore."))
-        };
-
-        let key = ka.key().parts_as_public().role_as_unspecified();
-
-        if let Ok(key) = try_tsk(ka.cert(), key) {
-            Ok(key)
-        } else if let Ok(key) = try_keyrings(ka.cert(), key) {
-            Ok(key)
-        } else if let Ok(key) = try_keystore(ka) {
-            Ok(key)
-        } else {
-            Err(anyhow!("No secret key material."))
-        }
-    }
-
-    /// Returns a signer for each certificate.
-    ///
-    /// This returns one key for each certificate.  If a certificate
-    /// doesn't have a suitable key, then this returns an error.
-    ///
-    /// A key is considered suitable if:
-    ///
-    /// - the certificate is valid
-    /// - the key matches the key type specified in `keytype` (it's either
-    ///   the primary, or it has one of the key capabilities)
-    /// - the key is alive (unless allowed by `options`)
-    /// - the key is not revoked (unless allowed by `options`)
-    /// - the key's algorithm is supported by the underlying crypto engine.
-    ///
-    /// If a key is locked, then the user will be prompted to enter
-    /// the password.
-    fn get_keys<C>(&self, certs: &[C],
-                   keytype: KeyType,
-                   options: Option<&[GetKeysOptions]>)
-        -> Result<Vec<(Cert, Box<dyn crypto::Signer + Send + Sync>)>>
-    where C: Borrow<Cert>
-    {
-        let mut bad = Vec::new();
-
-        let options = options.unwrap_or(&[][..]);
-        let allow_not_alive = options.contains(&GetKeysOptions::AllowNotAlive);
-        let allow_revoked = options.contains(&GetKeysOptions::AllowRevoked);
-        let null_policy = options.contains(&GetKeysOptions::NullPolicy);
-
-        let policy = if null_policy {
-            &NULL_POLICY as &dyn Policy
-        } else {
-            self.policy() as &dyn Policy
-        };
-
-        let mut keys = vec![];
-
-        'next_cert: for cert in certs {
-            let cert = cert.borrow();
-            let vc = match cert.with_policy(policy, self.time()) {
-                Ok(vc) => vc,
-                Err(err) => {
-                    return Err(
-                        err.context(format!("Found no suitable key on {}", cert)));
-                }
-            };
-
-            let keyiter = match keytype {
-                KeyType::Primary => {
-                    Box::new(
-                        std::iter::once(
-                            vc.keys()
-                                .next()
-                                .expect("a valid cert has a primary key")))
-                        as Box<dyn Iterator<Item=ValidErasedKeyAmalgamation<openpgp::packet::key::PublicParts>>>
-                },
-                KeyType::KeyFlags(ref flags) => {
-                    Box::new(vc.keys().key_flags(flags.clone()))
-                        as Box<dyn Iterator<Item=_>>
-                },
-            };
-            for ka in keyiter {
-                let mut bad_ = [
-                    ! allow_not_alive && matches!(ka.alive(), Err(_)),
-                    ! allow_revoked && matches!(ka.revocation_status(),
-                                                RevocationStatus::Revoked(_)),
-                    ! ka.key().pk_algo().is_supported(),
-                    false,
-                ];
-                if bad_.iter().any(|x| *x) {
-                    bad.push((ka.key().fingerprint(), bad_));
-                    continue;
-                }
-
-                if let Ok(key) = self.get_signer(ka.amalgamation()) {
-                    keys.push((cert.clone(), key));
-                    continue 'next_cert;
-                } else {
-                    bad_[3] = true;
-                    bad.push((ka.key().fingerprint(), bad_));
-                    continue;
-                }
-            }
-
-            // We didn't get a key.  Lint the cert.
-
-            let time = chrono::DateTime::<chrono::offset::Utc>::from(self.time());
-
-            let mut context = Vec::new();
-            for (fpr, [not_alive, revoked, not_supported, no_secret_key]) in bad {
-                let id: String = if fpr == cert.fingerprint() {
-                    fpr.to_string()
-                } else {
-                    format!("{}/{}", cert.fingerprint(), fpr)
-                };
-
-                let preface = if ! self.time_is_now() {
-                    format!("{} was not considered because\n\
-                             at the specified time ({}) it was",
-                            id, time)
-                } else {
-                    format!("{} was not considered because\nit is", fpr)
-                };
-
-                let mut reasons = Vec::new();
-                if not_alive {
-                    reasons.push("not alive");
-                }
-                if revoked {
-                    reasons.push("revoked");
-                }
-                if not_supported {
-                    reasons.push("not supported");
-                }
-                if no_secret_key {
-                    reasons.push("missing the secret key");
-                }
-
-                context.push(format!("{}: {}",
-                                     preface, reasons.join(", ")));
-            }
-
-            if context.is_empty() {
-                return Err(anyhow::anyhow!(
-                    format!("Found no suitable key on {}", cert)));
-            } else {
-                let context = context.join("\n");
-                return Err(
-                    anyhow::anyhow!(
-                        format!("Found no suitable key on {}", cert))
-                        .context(context));
-            }
-        }
-
-        Ok(keys)
+        let prompt = password::Prompt::new(self, true);
+        self.sequoia.get_signer(ka, prompt)
     }
 
     /// Returns a signer for each certificate's primary key.
@@ -728,10 +460,8 @@ impl Sq {
         -> Result<Vec<Box<dyn crypto::Signer + Send + Sync>>>
     where C: std::borrow::Borrow<Cert>
     {
-        self.get_keys(certs, KeyType::Primary, options)
-            .map(|keys| keys.into_iter()
-                 .map(|(_, signer)| signer)
-                 .collect())
+        let prompt = password::Prompt::new(self, true);
+        self.sequoia.get_primary_keys(certs, options, prompt)
     }
 
     /// Returns a signer for the certificate's primary key.
@@ -748,17 +478,13 @@ impl Sq {
     ///
     /// If a key is locked, then the user will be prompted to enter
     /// the password.
-    pub fn get_primary_key<C>(&self, certs: C,
+    pub fn get_primary_key<C>(&self, cert: C,
                               options: Option<&[GetKeysOptions]>)
         -> Result<Box<dyn crypto::Signer + Send + Sync>>
     where C: std::borrow::Borrow<Cert>
     {
-        let keys = self.get_primary_keys(&[certs], options)?;
-        assert!(
-            keys.len() == 1,
-            "Expected exactly one result from get_primary_keys()"
-        );
-        Ok(keys.into_iter().next().unwrap())
+        let prompt = password::Prompt::new(self, true);
+        self.sequoia.get_primary_key(cert, options, prompt)
     }
 
     /// Returns a signer for a signing-capable key for each
@@ -782,64 +508,8 @@ impl Sq {
         -> Result<Vec<(Cert, Box<dyn crypto::Signer + Send + Sync>)>>
     where C: Borrow<Cert>
     {
-        self.get_keys(certs,
-                      KeyType::KeyFlags(KeyFlags::empty().set_signing()),
-                      options)
-    }
-
-    /// Returns a signer for a signing-capable key for the
-    /// certificate.
-    ///
-    /// If a certificate doesn't have a suitable key, then this
-    /// returns an error.
-    ///
-    /// A key is considered suitable if:
-    ///
-    /// - the certificate is valid
-    /// - the key is signing capable
-    /// - the key is alive (unless allowed by `options`)
-    /// - the key is not revoked (unless allowed by `options`)
-    /// - the key's algorithm is supported by the underlying crypto engine.
-    ///
-    /// If a key is locked, then the user will be prompted to enter
-    /// the password.
-    pub fn get_signing_key<C>(&self, cert: C,
-                               options: Option<&[GetKeysOptions]>)
-        -> Result<Box<dyn crypto::Signer + Send + Sync>>
-    where C: Borrow<Cert>
-    {
-        let keys = self.get_signing_keys(&[cert], options)?;
-        assert!(
-            keys.len() == 1,
-            "Expected exactly one result from get_signing_keys()"
-        );
-        Ok(keys.into_iter().next().unwrap().1)
-    }
-
-    /// Returns a signer for a certification-capable key for each
-    /// certificate.
-    ///
-    /// This returns one key for each certificate.  If a certificate
-    /// doesn't have a suitable key, then this returns an error.
-    ///
-    /// A key is considered suitable if:
-    ///
-    /// - the certificate is valid
-    /// - the key is certification capable
-    /// - the key is alive (unless allowed by `options`)
-    /// - the key is not revoked (unless allowed by `options`)
-    /// - the key's algorithm is supported by the underlying crypto engine.
-    ///
-    /// If a key is locked, then the user will be prompted to enter
-    /// the password.
-    pub fn get_certification_keys<C>(&self, certs: &[C],
-                                     options: Option<&[GetKeysOptions]>)
-        -> Result<Vec<(Cert, Box<dyn crypto::Signer + Send + Sync>)>>
-    where C: std::borrow::Borrow<Cert>
-    {
-        self.get_keys(certs,
-                      KeyType::KeyFlags(KeyFlags::empty().set_certification()),
-                      options)
+        let prompt = password::Prompt::new(self, true);
+        self.sequoia.get_signing_keys(certs, options, prompt)
     }
 
     /// Returns a signer for a certification-capable key for the
@@ -863,12 +533,8 @@ impl Sq {
         -> Result<Box<dyn crypto::Signer + Send + Sync>>
     where C: std::borrow::Borrow<Cert>
     {
-        let keys = self.get_certification_keys(&[cert], options)?;
-        assert!(
-            keys.len() == 1,
-            "Expected exactly one result from get_certification_keys()"
-        );
-        Ok(keys.into_iter().next().unwrap().1)
+        let prompt = password::Prompt::new(self, true);
+        self.sequoia.get_certification_key(cert, options, prompt)
     }
 
     /// Prints additional information in verbose mode.

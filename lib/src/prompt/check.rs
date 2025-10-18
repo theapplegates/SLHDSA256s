@@ -5,6 +5,8 @@ use openpgp::packet::SKESK;
 use openpgp::types::SymmetricAlgorithm;
 use openpgp::crypto;
 
+use sequoia_keystore as keystore;
+
 use crate::prompt;
 
 // When the password is wrong, we often get an unexpected eof.  It
@@ -49,16 +51,24 @@ fn flatten_eof(err: anyhow::Error) -> Option<anyhow::Error> {
     }
 }
 
-pub(crate) struct CheckRemoteKey<'a> {
+/// Checks that a password can be used to unlock a remove key.
+///
+/// [`CheckRemoteKey::resolve`] returns whether the key was unlocked.
+pub struct CheckRemoteKey<'a> {
+    allow_skipping: bool,
+    key: &'a mut keystore::Key,
     unlocked: bool,
-    key: &'a mut crate::key_store::Key,
 }
 
 impl<'a> CheckRemoteKey<'a> {
-    pub fn new(key: &'a mut crate::key_store::Key) -> Self {
-        CheckRemoteKey {
+    /// Tries to unlock the remote key.
+    ///
+    /// The user may skip this.
+    pub fn optional(key: &'a mut keystore::Key) -> Self {
+        Self {
+            allow_skipping: true,
+            key,
             unlocked: false,
-            key
         }
     }
 
@@ -84,8 +94,12 @@ impl prompt::Check<'_> for CheckRemoteKey<'_> {
                 }
             }
             prompt::Response::NoPassword => {
-                // Skip.
-                Ok(())
+                if self.allow_skipping {
+                    // Skip.
+                    Ok(())
+                } else {
+                    Err(prompt::CheckError::PasswordRequired(None))
+                }
             }
         }
     }

@@ -17,9 +17,10 @@ use sequoia::cert_store;
 use cert_store::StoreUpdate;
 use cert_store::LazyCert;
 
+use sequoia::GetKeysOptions;
+
 use crate::cli::types::FileOrStdout;
 use crate::Sq;
-use crate::sq::GetKeysOptions;
 
 /// A trait for unifying the approach of writing a revocation to an output
 pub trait RevocationOutput {

@@ -943,7 +943,7 @@ impl<'c> DecryptionHelper for Helper<'c> {
                                     }
                                     let mut context = context.build();
 
-                                    let mut checker = CheckRemoteKey::new(&mut key);
+                                    let mut checker = CheckRemoteKey::optional(&mut key);
 
                                     match self.prompt.prompt(&mut context, &mut checker) {
                                         Ok(prompt::Response::Password(_)) => {

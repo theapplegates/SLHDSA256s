@@ -218,17 +218,6 @@ impl<'a> CheckRemoteKey<'a> {
         }
     }
 
-    /// Tries to unlock the remote key.
-    ///
-    /// The user may skip this.
-    pub fn optional(key: &'a mut keystore::Key) -> Self {
-        Self {
-            allow_skipping: true,
-            key,
-            unlocked: false,
-        }
-    }
-
     /// Returns whether we unlocked the key.
     pub fn resolve(self) -> bool {
         self.unlocked
