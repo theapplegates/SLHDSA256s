@@ -8,6 +8,7 @@ use std::io::Write;
 use anyhow::{anyhow, Result};
 
 pub mod decrypt;
+pub mod encrypt;
 pub mod hint;
 pub mod import;
 pub mod pluralize;

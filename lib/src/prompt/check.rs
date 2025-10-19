@@ -171,12 +171,14 @@ impl prompt::Check<'_> for CheckSkesks<'_> {
 /// Don't place any restrictions on passwords, and accept everything
 /// including the empty password.
 pub(crate) struct CheckNewPassword {
+    allow_skipping: bool,
 }
 
 impl CheckNewPassword {
-    pub fn new() -> Self
-    {
+    /// A password is required.
+    pub fn required() -> Self {
         Self {
+            allow_skipping: false
         }
     }
 }
@@ -184,9 +186,21 @@ impl CheckNewPassword {
 impl prompt::Check<'_> for CheckNewPassword {
     fn check(&mut self,
              _context: &mut prompt::Context,
-             _response: &prompt::Response)
+             response: &prompt::Response)
         -> std::result::Result<(), prompt::CheckError>
     {
-        Ok(())
+        match response {
+            prompt::Response::Password(_password) => {
+                Ok(())
+            }
+            prompt::Response::NoPassword => {
+                if self.allow_skipping {
+                    // Skip.
+                    Ok(())
+                } else {
+                    Err(prompt::CheckError::PasswordRequired(None))
+                }
+            }
+        }
     }
 }
