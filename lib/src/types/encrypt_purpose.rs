@@ -15,8 +15,8 @@ pub enum EncryptPurpose {
     Universal,
 }
 
-impl From<EncryptPurpose> for KeyFlags {
-    fn from(p: EncryptPurpose) -> Self {
+impl From<&EncryptPurpose> for KeyFlags {
+    fn from(p: &EncryptPurpose) -> Self {
         match p {
             EncryptPurpose::Storage => {
                 KeyFlags::empty().set_storage_encryption()
@@ -28,5 +28,11 @@ impl From<EncryptPurpose> for KeyFlags {
                 .set_storage_encryption()
                 .set_transport_encryption(),
         }
+    }
+}
+
+impl From<EncryptPurpose> for KeyFlags {
+    fn from(p: EncryptPurpose) -> Self {
+        KeyFlags::from(&p)
     }
 }
