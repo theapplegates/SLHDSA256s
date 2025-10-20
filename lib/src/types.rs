@@ -15,6 +15,8 @@ mod convert;
 pub use convert::Convert;
 mod encrypt_purpose;
 pub use encrypt_purpose::EncryptPurpose;
+mod part_file_writer;
+pub use part_file_writer::PartFileWriter;
 mod preferred_userid;
 pub use preferred_userid::PreferredUserID;
 mod query;
