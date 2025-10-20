@@ -2,13 +2,10 @@
 
 use std::path::PathBuf;
 
-use clap::{ArgGroup, Parser, ValueEnum};
-
-use sequoia::openpgp::{
-    types::SignatureType,
-};
+use clap::{ArgGroup, Parser};
 
 use sequoia::types::FileOrStdin;
+use sequoia::types::HashMode;
 
 use super::types::ClapData;
 use super::types::FileOrStdout;
@@ -116,7 +113,7 @@ Text mode normalizes line endings, which makes signatures \
 more robust when a text is transported over a channel which \
 may change line endings.  In doubt, create binary signatures.",
     )]
-    pub mode: Mode,
+    pub mode: HashMode,
 
     #[clap(
         long,
@@ -176,26 +173,6 @@ impl AdditionalDocs for SignerDoc {
                              "Create the signature using the key")
                     .into()
             },
-        }
-    }
-}
-
-/// Signature mode, either binary or text.
-#[derive(ValueEnum, Clone, Copy, Debug, Default)]
-pub enum Mode {
-    /// Create binary signatures.
-    #[default]
-    Binary,
-
-    /// Create text signatures.
-    Text,
-}
-
-impl From<Mode> for SignatureType {
-    fn from(m: Mode) -> Self {
-        match m {
-            Mode::Binary => SignatureType::Binary,
-            Mode::Text => SignatureType::Text,
         }
     }
 }

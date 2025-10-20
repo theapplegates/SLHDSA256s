@@ -15,6 +15,8 @@ mod convert;
 pub use convert::Convert;
 mod encrypt_purpose;
 pub use encrypt_purpose::EncryptPurpose;
+mod hash_mode;
+pub use hash_mode::HashMode;
 mod part_file_writer;
 pub use part_file_writer::PartFileWriter;
 mod preferred_userid;
@@ -26,6 +28,7 @@ mod safe;
 pub use safe::Safe;
 mod session_key;
 pub use session_key::SessionKey;
+
 mod trust_amount;
 pub use trust_amount::TrustAmount;
 mod trust_threshold;

@@ -24,12 +24,12 @@ use openpgp::serialize::stream::{
 use openpgp::types::SignatureType;
 
 use sequoia::types::FileOrStdin;
+use sequoia::types::HashMode;
 use sequoia::types::TrustThreshold;
 
 use crate::Sq;
 
 use crate::cli;
-use crate::cli::sign::Mode;
 use crate::cli::types::FileOrStdout;
 
 mod merge_signatures;
@@ -92,7 +92,7 @@ pub fn sign<'a>(
     input: &'a mut (dyn BufferedReader<Cookie> + Sync + Send),
     output: &'a FileOrStdout,
     signers: Vec<(openpgp::Cert, Box<dyn crypto::Signer + Send + Sync>)>,
-    mode: Mode,
+    mode: HashMode,
     detached: bool,
     binary: bool,
     append: bool,
@@ -128,7 +128,7 @@ fn sign_data<'a>(
     input: &'a mut (dyn BufferedReader<Cookie> + Sync + Send),
     output_path: &'a FileOrStdout,
     mut signers: Vec<(openpgp::Cert, Box<dyn crypto::Signer + Send + Sync>)>,
-    mode: Mode,
+    mode: HashMode,
     detached: bool,
     binary: bool,
     append: bool,
@@ -243,7 +243,7 @@ fn sign_message<'a>(
     input: &'a mut (dyn BufferedReader<Cookie> + Sync + Send),
     output: &'a FileOrStdout,
     signers: Vec<(openpgp::Cert, Box<dyn crypto::Signer + Send + Sync>)>,
-    mode: Mode,
+    mode: HashMode,
     binary: bool,
     notarize: bool,
     notations: &'a [(bool, NotationData)])
@@ -269,7 +269,7 @@ fn sign_message_<'a>(
     sq: Sq,
     input: &'a mut (dyn BufferedReader<Cookie> + Sync + Send),
     mut signers: Vec<(openpgp::Cert, Box<dyn crypto::Signer + Send + Sync>)>,
-    mode: Mode,
+    mode: HashMode,
     notarize: bool,
     notations: &'a [(bool, NotationData)],
     output: &mut (dyn io::Write + Sync + Send))
