@@ -83,7 +83,7 @@ pub fn dispatch(sq: Sq, command: Command) -> Result<()>
                 }
             }
             Err(error) => {
-                return Err(error)
+                return Err(error.into())
             }
         };
 

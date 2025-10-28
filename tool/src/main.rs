@@ -15,11 +15,11 @@ use std::time::SystemTime;
 
 use sequoia::openpgp;
 
-use openpgp::Result;
 use openpgp::Cert;
 use openpgp::parse::Parse;
 use openpgp::cert::prelude::*;
 
+use sequoia::Result;
 use sequoia::Sequoia;
 use sequoia::Time;
 use sequoia::config;

@@ -21,7 +21,6 @@ use openpgp::crypto;
 use openpgp::crypto::Password;
 use openpgp::Fingerprint;
 use openpgp::KeyHandle;
-use openpgp::Result;
 use openpgp::cert::prelude::*;
 use openpgp::packet::key::PublicParts;
 use openpgp::packet::prelude::*;
@@ -45,11 +44,13 @@ use sequoia::key_store as keystore;
 
 use sequoia::GetKeysOptions;
 use sequoia::Sequoia;
+use sequoia::cert::CertError;
 use sequoia::prompt;
 use sequoia::types::FileStdinOrKeyHandle;
 use sequoia::types::PreferredUserID;
 use sequoia::types::TrustThreshold;
 
+use crate::Result;
 use crate::cli::types::CertDesignators;
 use crate::cli::types::KeyDesignators;
 use crate::cli::types::SpecialName;
@@ -434,7 +435,7 @@ impl Sq {
     /// unlock the key.  The correct password is added to the password
     /// cache.
     pub fn get_signer<P, R, R2>(&self, ka: &KeyAmalgamation<P, R, R2>)
-        -> Result<Box<dyn crypto::Signer + Send + Sync>>
+        -> Result<Box<dyn crypto::Signer + Send + Sync>, CertError>
         where P: key::KeyParts + Clone, R: key::KeyRole + Clone
     {
         let prompt = password::Prompt::new(self, true);
@@ -457,7 +458,7 @@ impl Sq {
     /// the password.
     pub fn get_primary_keys<C>(&self, certs: &[C],
                                options: Option<&[GetKeysOptions]>)
-        -> Result<Vec<Box<dyn crypto::Signer + Send + Sync>>>
+        -> Result<Vec<Box<dyn crypto::Signer + Send + Sync>>, CertError>
     where C: std::borrow::Borrow<Cert>
     {
         let prompt = password::Prompt::new(self, true);
@@ -480,7 +481,7 @@ impl Sq {
     /// the password.
     pub fn get_primary_key<C>(&self, cert: C,
                               options: Option<&[GetKeysOptions]>)
-        -> Result<Box<dyn crypto::Signer + Send + Sync>>
+        -> Result<Box<dyn crypto::Signer + Send + Sync>, CertError>
     where C: std::borrow::Borrow<Cert>
     {
         let prompt = password::Prompt::new(self, true);
@@ -505,7 +506,8 @@ impl Sq {
     /// the password.
     pub fn get_signing_keys<C>(&self, certs: &[C],
                                options: Option<&[GetKeysOptions]>)
-        -> Result<Vec<(Cert, Box<dyn crypto::Signer + Send + Sync>)>>
+        -> Result<Vec<(Cert, Box<dyn crypto::Signer + Send + Sync>)>,
+                  CertError>
     where C: Borrow<Cert>
     {
         let prompt = password::Prompt::new(self, true);
@@ -530,7 +532,7 @@ impl Sq {
     /// the password.
     pub fn get_certification_key<C>(&self, cert: C,
                                     options: Option<&[GetKeysOptions]>)
-        -> Result<Box<dyn crypto::Signer + Send + Sync>>
+        -> Result<Box<dyn crypto::Signer + Send + Sync>, CertError>
     where C: std::borrow::Borrow<Cert>
     {
         let prompt = password::Prompt::new(self, true);

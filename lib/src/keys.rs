@@ -5,7 +5,6 @@ use anyhow::Context as _;
 
 use sequoia_openpgp as openpgp;
 use openpgp::Cert;
-use openpgp::Result;
 use openpgp::cert::prelude::*;
 use openpgp::crypto;
 use openpgp::packet::Key;
@@ -21,7 +20,10 @@ use sequoia_keystore as keystore;
 use keystore::Protection;
 
 use crate::NULL_POLICY;
+use crate::Result;
 use crate::Sequoia;
+use crate::cert::CertError;
+use crate::cert;
 use crate::prompt::Prompt;
 use crate::prompt::check::CheckRemoteKey;
 use crate::prompt;
@@ -236,7 +238,7 @@ impl Sequoia {
     /// cache.
     pub fn get_signer<P1, R1, R2, P>(&self, ka: &KeyAmalgamation<P1, R1, R2>,
                                      prompt: P)
-        -> Result<Box<dyn crypto::Signer + Send + Sync>>
+        -> Result<Box<dyn crypto::Signer + Send + Sync>, CertError>
     where P1: key::KeyParts + Clone,
           R1: key::KeyRole + Clone,
           P: Prompt,
@@ -340,7 +342,16 @@ impl Sequoia {
         } else if let Ok(key) = try_keystore(ka) {
             Ok(key)
         } else {
-            Err(anyhow::anyhow!("No secret key material."))
+            Err(CertError {
+                cert: ka.cert().clone(),
+                problems: vec![
+                    cert::CertProblem::MissingSecretKeyMaterial(
+                        cert::problem::MissingSecretKeyMaterial {
+                            cert: ka.cert().fingerprint(),
+                            key: ka.key().fingerprint(),
+                        })
+                ]
+            })
         }
     }
 
@@ -364,12 +375,11 @@ impl Sequoia {
                       keytype: KeyType,
                       options: Option<&[GetKeysOptions]>,
                       prompt: P)
-        -> Result<Vec<(Cert, Box<dyn crypto::Signer + Send + Sync>)>>
+        -> Result<Vec<(Cert, Box<dyn crypto::Signer + Send + Sync>)>,
+                  CertError>
     where C: Borrow<Cert>,
           P: Prompt,
     {
-        let mut bad = Vec::new();
-
         let options = options.unwrap_or(&[][..]);
         let allow_not_alive = options.contains(&GetKeysOptions::AllowNotAlive);
         let allow_revoked = options.contains(&GetKeysOptions::AllowRevoked);
@@ -387,9 +397,17 @@ impl Sequoia {
             let cert = cert.borrow();
             let vc = match cert.with_policy(policy, self.time()) {
                 Ok(vc) => vc,
-                Err(err) => {
-                    return Err(
-                        err.context(format!("Found no suitable key on {}", cert)));
+                Err(error) => {
+                    return Err(CertError {
+                        cert: cert.clone(),
+                        problems: vec![
+                            cert::CertProblem::CertInvalid(
+                                cert::problem::CertInvalid {
+                                    cert: cert.fingerprint(),
+                                    error
+                                })
+                        ]
+                    });
                 }
             };
 
@@ -407,76 +425,94 @@ impl Sequoia {
                         as Box<dyn Iterator<Item=_>>
                 },
             };
+
+            let mut problems = Vec::new();
+
+            let mut key_count = 0;
             for ka in keyiter {
-                let mut bad_ = [
-                    ! allow_not_alive && matches!(ka.alive(), Err(_)),
-                    ! allow_revoked && matches!(ka.revocation_status(),
-                                                RevocationStatus::Revoked(_)),
-                    ! ka.key().pk_algo().is_supported(),
-                    false,
-                ];
-                if bad_.iter().any(|x| *x) {
-                    bad.push((ka.key().fingerprint(), bad_));
+                key_count += 1;
+
+                let problem_count = problems.len();
+
+                if ! allow_not_alive {
+                    if let Err(err) = ka.alive() {
+                        problems.push(cert::CertProblem::NotLive(
+                            cert::problem::NotLive {
+                                cert: cert.fingerprint(),
+                                key: ka.key().fingerprint(),
+                                creation_time: ka.key().creation_time(),
+                                expiration_time: ka.key_expiration_time(),
+                                reference_time: self.time(),
+                                error: err,
+                            }));
+                    }
+                }
+
+                if ! allow_revoked {
+                    if let RevocationStatus::Revoked(sigs)
+                        = ka.revocation_status()
+                    {
+                        problems.push(cert::CertProblem::KeyRevoked(
+                            cert::problem::KeyRevoked {
+                                cert: cert.fingerprint(),
+                                key: ka.key().fingerprint(),
+                                revocations: sigs.into_iter()
+                                    .map(|sig| sig.clone())
+                                    .collect(),
+                            }));
+                    }
+                }
+
+                if ! ka.key().pk_algo().is_supported() {
+                    problems.push(cert::CertProblem::UnsupportedAlgorithm(
+                        cert::problem::UnsupportedAlgorithm {
+                            cert: cert.fingerprint(),
+                            key: ka.key().fingerprint(),
+                            algo: ka.key().pk_algo(),
+                        }));
+                }
+
+                if problems.len() > problem_count {
+                    // This key has at least one problem.
                     continue;
                 }
 
-                if let Ok(key) = self.get_signer(ka.amalgamation(), &prompt) {
-                    keys.push((cert.clone(), key));
-                    continue 'next_cert;
-                } else {
-                    bad_[3] = true;
-                    bad.push((ka.key().fingerprint(), bad_));
-                    continue;
+                match self.get_signer(ka.amalgamation(), &prompt) {
+                    Ok(key) => {
+                        keys.push((cert.clone(), key));
+                        continue 'next_cert;
+                    }
+                    Err(err) => {
+                        problems.extend(err.problems);
+                        continue;
+                    }
                 }
             }
 
-            // We didn't get a key.  Lint the cert.
-
-            let time = chrono::DateTime::<chrono::offset::Utc>::from(self.time());
-
-            let mut context = Vec::new();
-            for (fpr, [not_alive, revoked, not_supported, no_secret_key]) in bad {
-                let id: String = if fpr == cert.fingerprint() {
-                    fpr.to_string()
-                } else {
-                    format!("{}/{}", cert.fingerprint(), fpr)
+            // We didn't get a key.  Return an error.
+            if problems.is_empty() {
+                let key_flags = match keytype {
+                    KeyType::Primary =>
+                        unreachable!("All certificates have a primary key"),
+                    KeyType::KeyFlags(flags) => flags.clone(),
                 };
 
-                let preface = if ! self.time_is_now() {
-                    format!("{} was not considered because\n\
-                             at the specified time ({}) it was",
-                            id, time)
-                } else {
-                    format!("{} was not considered because\nit is", fpr)
-                };
-
-                let mut reasons = Vec::new();
-                if not_alive {
-                    reasons.push("not alive");
-                }
-                if revoked {
-                    reasons.push("revoked");
-                }
-                if not_supported {
-                    reasons.push("not supported");
-                }
-                if no_secret_key {
-                    reasons.push("missing the secret key");
-                }
-
-                context.push(format!("{}: {}",
-                                     preface, reasons.join(", ")));
-            }
-
-            if context.is_empty() {
-                return Err(anyhow::anyhow!(
-                    format!("Found no suitable key on {}", cert)));
+                return Err(CertError {
+                    cert: cert.clone(),
+                    problems: vec![
+                        cert::CertProblem::NoUsableKeys(
+                            cert::problem::NoUsableKeys {
+                                cert: cert.fingerprint(),
+                                capabilities: key_flags,
+                                unusable: key_count,
+                            })
+                    ]
+                });
             } else {
-                let context = context.join("\n");
-                return Err(
-                    anyhow::anyhow!(
-                        format!("Found no suitable key on {}", cert))
-                        .context(context));
+                return Err(CertError {
+                    cert: cert.clone(),
+                    problems,
+                });
             }
         }
 
@@ -500,7 +536,7 @@ impl Sequoia {
     pub fn get_primary_keys<C, P>(&self, certs: &[C],
                                   options: Option<&[GetKeysOptions]>,
                                   prompt: P)
-        -> Result<Vec<Box<dyn crypto::Signer + Send + Sync>>>
+        -> Result<Vec<Box<dyn crypto::Signer + Send + Sync>>, CertError>
     where
         C: std::borrow::Borrow<Cert>,
         P: Prompt,
@@ -528,7 +564,7 @@ impl Sequoia {
     pub fn get_primary_key<C, P>(&self, certs: C,
                                  options: Option<&[GetKeysOptions]>,
                                  prompt: P)
-        -> Result<Box<dyn crypto::Signer + Send + Sync>>
+        -> Result<Box<dyn crypto::Signer + Send + Sync>, CertError>
     where
         C: std::borrow::Borrow<Cert>,
         P: Prompt,
@@ -560,7 +596,8 @@ impl Sequoia {
     pub fn get_signing_keys<C, P>(&self, certs: &[C],
                                   options: Option<&[GetKeysOptions]>,
                                   prompt: P)
-        -> Result<Vec<(Cert, Box<dyn crypto::Signer + Send + Sync>)>>
+        -> Result<Vec<(Cert, Box<dyn crypto::Signer + Send + Sync>)>,
+                  CertError>
     where
         C: Borrow<Cert>,
         P: Prompt,
@@ -589,7 +626,7 @@ impl Sequoia {
     pub fn get_signing_key<C, P>(&self, cert: C,
                                  options: Option<&[GetKeysOptions]>,
                                  prompt: P)
-        -> Result<Box<dyn crypto::Signer + Send + Sync>>
+        -> Result<Box<dyn crypto::Signer + Send + Sync>, CertError>
     where
         C: Borrow<Cert>,
         P: Prompt,
@@ -621,7 +658,8 @@ impl Sequoia {
     pub fn get_certification_keys<C, P>(&self, certs: &[C],
                                         options: Option<&[GetKeysOptions]>,
                                         prompt: P)
-        -> Result<Vec<(Cert, Box<dyn crypto::Signer + Send + Sync>)>>
+        -> Result<Vec<(Cert, Box<dyn crypto::Signer + Send + Sync>)>,
+                  CertError>
     where
         C: std::borrow::Borrow<Cert>,
         P: Prompt,
@@ -650,7 +688,7 @@ impl Sequoia {
     pub fn get_certification_key<C, P>(&self, cert: C,
                                        options: Option<&[GetKeysOptions]>,
                                        prompt: P)
-        -> Result<Box<dyn crypto::Signer + Send + Sync>>
+        -> Result<Box<dyn crypto::Signer + Send + Sync>, CertError>
     where
         C: std::borrow::Borrow<Cert>,
         P: Prompt,
