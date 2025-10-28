@@ -12,6 +12,7 @@ pub mod encrypt;
 pub mod hint;
 pub mod import;
 pub mod pluralize;
+pub mod sign;
 pub mod verify;
 pub mod wrapping;
 
