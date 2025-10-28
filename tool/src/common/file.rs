@@ -34,7 +34,20 @@ impl FileOrStdout {
         &self,
         sq: &Sq,
     ) -> Result<Box<dyn Write + Sync + Send>> {
-        self.create(sq)
+        self.create(sq, false)
+    }
+
+    /// Like [`FileOrStdout::create_safe`], but allows overwriting the
+    /// target.
+    ///
+    /// The overwrite check respects both `sq.overwrite` and
+    /// `overwrite`!
+    pub fn create_safe_overwrite(
+        &self,
+        sq: &Sq,
+        overwrite: bool
+    ) -> Result<Box<dyn Write + Sync + Send>> {
+        self.create(sq, overwrite)
     }
 
     /// Opens the file (or stdout) for writing data that is NOT safe
@@ -43,7 +56,7 @@ impl FileOrStdout {
         &self,
         sq: &Sq,
     ) -> Result<Box<dyn Write + Sync + Send>> {
-        self.create(sq)
+        self.create(sq, false)
     }
 
     /// Opens the file (or stdout) for writing data that is safe for
@@ -74,8 +87,10 @@ impl FileOrStdout {
 
     /// Helper function, do not use directly. Instead, use create_or_stdout_safe
     /// or create_or_stdout_unsafe.
-    fn create(&self, sq: &Sq) -> Result<Box<dyn Write + Sync + Send>> {
-        let sink = self._create_sink(sq)?;
+    fn create(&self, sq: &Sq, overwrite: bool)
+        -> Result<Box<dyn Write + Sync + Send>>
+    {
+        let sink = self._create_sink(sq, overwrite)?;
         if self.is_for_secrets() || ! cfg!(debug_assertions) {
             // We either expect secrets, or we are in release mode.
             Ok(sink)
@@ -85,10 +100,11 @@ impl FileOrStdout {
             Ok(Box::new(SecretLeakDetector::new(sink)))
         }
     }
-    fn _create_sink(&self, sq: &Sq) -> Result<Box<dyn Write + Sync + Send>>
+    fn _create_sink(&self, sq: &Sq, overwrite: bool)
+        -> Result<Box<dyn Write + Sync + Send>>
     {
         if let Some(path) = self.path() {
-            if !path.exists() || sq.overwrite {
+            if !path.exists() || sq.overwrite || overwrite {
                 Ok(Box::new(
                     PartFileWriter::create(path)
                         .context("Failed to create output file")?,
