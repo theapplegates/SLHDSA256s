@@ -395,6 +395,26 @@ impl Sequoia {
 
         'next_cert: for cert in certs {
             let cert = cert.borrow();
+
+            if ! allow_revoked {
+                let revocation_status
+                    = cert.revocation_status(policy, self.time());
+                if let RevocationStatus::Revoked(sigs) = revocation_status {
+                    return Err(CertError {
+                        cert: cert.clone(),
+                        problems: vec![
+                            cert::CertProblem::CertRevoked(
+                                cert::problem::CertRevoked {
+                                    cert: cert.fingerprint(),
+                                    revocations: sigs.into_iter()
+                                        .cloned()
+                                        .collect(),
+                                }),
+                        ],
+                    });
+                }
+            }
+
             let vc = match cert.with_policy(policy, self.time()) {
                 Ok(vc) => vc,
                 Err(error) => {
