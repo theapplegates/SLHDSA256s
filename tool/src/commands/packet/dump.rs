@@ -616,6 +616,14 @@ impl<'a> PacketDumper<'a> {
         if let Some(bits) = k.mpis().bits() {
             writeln!(output, "{}  Pk size: {} bits", i, bits)?;
         }
+        match k.mpis() {
+            mpi::PublicKey::EdDSA { curve, .. }
+            | mpi::PublicKey::ECDSA { curve, .. }
+            | mpi::PublicKey::ECDH { curve, .. } => {
+                writeln!(output, "{}  Curve: {}", i, curve)?;
+            }
+            _ => (),
+        };
         writeln!(output, "{}  Fingerprint: {}", i, k.fingerprint())?;
         writeln!(output, "{}  KeyID: {}", i, k.keyid())?;
         if self.mpis {
