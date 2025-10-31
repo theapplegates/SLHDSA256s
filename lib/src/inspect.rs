@@ -479,7 +479,13 @@ fn inspect_key(
         mpi::PublicKey::EdDSA { curve, .. }
         | mpi::PublicKey::ECDSA { curve, .. }
         | mpi::PublicKey::ECDH { curve, .. } => {
-            writeln!(output, "{:>WIDTH$}: {}", "Curve", curve)?;
+            writeln!(output, "{:>WIDTH$}: {}{}", "Curve",
+                     curve,
+                     if curve.is_supported() {
+                         ""
+                     } else {
+                         " (not supported)"
+                     })?;
         }
         _ => (),
     };
