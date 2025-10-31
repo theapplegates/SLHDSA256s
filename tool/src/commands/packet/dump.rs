@@ -612,7 +612,13 @@ impl<'a> PacketDumper<'a> {
         writeln!(output, "{}  Version: {}", i, k.version())?;
         writeln!(output, "{}  Creation time: {}", i,
                  k.creation_time().convert())?;
-        writeln!(output, "{}  Pk algo: {}", i, k.pk_algo())?;
+        writeln!(output, "{}  Pk algo: {}{}", i,
+                 k.pk_algo(),
+                 if k.pk_algo().is_supported() {
+                     ""
+                 } else {
+                     " (not supported)"
+                 })?;
         if let Some(bits) = k.mpis().bits() {
             writeln!(output, "{}  Pk size: {} bits", i, bits)?;
         }
@@ -620,7 +626,13 @@ impl<'a> PacketDumper<'a> {
             mpi::PublicKey::EdDSA { curve, .. }
             | mpi::PublicKey::ECDSA { curve, .. }
             | mpi::PublicKey::ECDH { curve, .. } => {
-                writeln!(output, "{}  Curve: {}", i, curve)?;
+                writeln!(output, "{}  Curve: {}{}", i,
+                         curve,
+                         if curve.is_supported() {
+                             ""
+                         } else {
+                             " (not supported)"
+                         })?;
             }
             _ => (),
         };
