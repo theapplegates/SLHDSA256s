@@ -120,9 +120,9 @@ impl<'sequoia> Params<'sequoia> {
     }
 }
 
-/// Verify signatures.
+/// Decrypt messages.
 ///
-/// This command builder is used to verify signatures.
+/// This command builder is used to decrypt messages.
 pub struct Builder<'sequoia> {
     params: Params<'sequoia>,
 }
