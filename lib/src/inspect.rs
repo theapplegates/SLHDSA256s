@@ -10,6 +10,7 @@ use sequoia_openpgp as openpgp;
 use openpgp::{Fingerprint, KeyHandle, Packet, Result};
 use openpgp::armor::ReaderMode;
 use openpgp::cert::prelude::*;
+use openpgp::crypto::mpi;
 use openpgp::packet::{
     Signature,
     key::PublicParts,
@@ -474,6 +475,14 @@ fn inspect_key(
     if let Some(bits) = key.mpis().bits() {
         writeln!(output, "{:>WIDTH$}: {} bits", "Public-key size", bits)?;
     }
+    match key.mpis() {
+        mpi::PublicKey::EdDSA { curve, .. }
+        | mpi::PublicKey::ECDSA { curve, .. }
+        | mpi::PublicKey::ECDH { curve, .. } => {
+            writeln!(output, "{:>WIDTH$}: {}", "Curve", curve)?;
+        }
+        _ => (),
+    };
     if let Some(secret) = key.optional_secret() {
         writeln!(output, "{:>WIDTH$}: {}", "Secret key",
                  if let SecretKeyMaterial::Unencrypted(_) = secret {
