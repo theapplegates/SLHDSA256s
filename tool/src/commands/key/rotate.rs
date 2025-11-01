@@ -34,6 +34,7 @@ use sequoia::prompt::Prompt as _;
 use sequoia::prompt;
 use sequoia::types::TrustAmount;
 use sequoia::types::TrustThreshold;
+use sequoia::types::import_stats::ImportStatus;
 
 use crate::Sq;
 use crate::cli::types::Expiration;
@@ -45,7 +46,6 @@ use crate::common::password;
 use crate::common::pki::list::summarize_certification;
 use crate::common::pki::replay::replay;
 use crate::common::ui;
-use crate::output::import::ImportStatus;
 
 pub fn dispatch(
     sq: Sq,

@@ -5,8 +5,7 @@ use openpgp::cert::CertParser;
 use openpgp::parse::Parse;
 
 use sequoia::types::FileOrStdin;
-
-use crate::output::import::ImportStats;
+use sequoia::types::import_stats::ImportStats;
 
 use crate::cli;
 use crate::Sq;
@@ -18,7 +17,7 @@ pub fn import(sq: Sq, command: cli::key::import::Command)
     let o = &mut std::io::stdout();
     let mut stats = Default::default();
     let r = import_internal(o, &sq, command, &mut stats);
-    stats.print_summary(o, &sq)?;
+    stats.print_summary(o, &sq.sequoia)?;
     r
 }
 

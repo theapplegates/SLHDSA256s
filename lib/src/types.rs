@@ -19,6 +19,7 @@ mod encrypt_purpose;
 pub use encrypt_purpose::EncryptPurpose;
 mod hash_mode;
 pub use hash_mode::HashMode;
+pub mod import_stats;
 mod part_file_writer;
 pub use part_file_writer::PartFileWriter;
 mod preferred_userid;

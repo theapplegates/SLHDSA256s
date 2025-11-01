@@ -47,6 +47,8 @@ use sequoia::Sequoia;
 use sequoia::cert::CertError;
 use sequoia::prompt;
 use sequoia::types::FileStdinOrKeyHandle;
+use sequoia::types::import_stats::ImportStats;
+use sequoia::types::import_stats::ImportStatus;
 use sequoia::types::PreferredUserID;
 use sequoia::types::TrustThreshold;
 
@@ -60,7 +62,6 @@ use crate::cli::types::key_designator;
 use crate::common::password;
 use crate::common::ui;
 use crate::output::hint::Hint;
-use crate::output::import::{ImportStats, ImportStatus};
 use crate::print_error_chain;
 
 const TRACE: bool = false;

@@ -47,15 +47,13 @@ use cert_store::store::UserIDQueryParams;
 use sequoia::provenance::certify_downloads;
 use sequoia::types::Convert;
 use sequoia::types::TrustThreshold;
+use sequoia::types::import_stats::ImportStats;
 
 use crate::{
     commands::FileOrStdout,
     common::password,
     common::ui,
-    output::{
-        import::ImportStats,
-        pluralize::Pluralize,
-    },
+    output::pluralize::Pluralize,
     Sq,
     print_error_chain,
     utils::cert_exportable,
@@ -124,7 +122,7 @@ pub fn import_certs(sq: &Sq, certs: Vec<Cert>) -> Result<()> {
             })?;
     }
 
-    stats.print_summary(o, sq)?;
+    stats.print_summary(o, &sq.sequoia)?;
 
     for vcert in certs.iter()
         .filter_map(|cert| cert.with_policy(sq.policy(), sq.time()).ok())

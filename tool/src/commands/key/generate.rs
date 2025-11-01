@@ -17,6 +17,7 @@ use sequoia::inspect::inspect;
 use sequoia::prompt::Prompt as _;
 use sequoia::prompt;
 use sequoia::types::TrustAmount;
+use sequoia::types::import_stats::ImportStatus;
 
 use crate::common::password;
 use crate::common::userid::{lint_userids, lint_names, lint_emails};
@@ -30,7 +31,6 @@ use crate::cli::{
 };
 use crate::common::key::certify_generated;
 use crate::common::password::CheckNewPassword;
-use crate::output::import::ImportStatus;
 
 pub fn generate(
     sq: Sq,
