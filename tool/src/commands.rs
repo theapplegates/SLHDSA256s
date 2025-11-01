@@ -7,7 +7,6 @@ use crate::Sq;
 use crate::cli::types::FileOrStdout;
 use crate::cli::{SqCommand, SqSubcommands};
 
-pub mod autocrypt;
 pub mod cert;
 pub mod config;
 pub mod decrypt;

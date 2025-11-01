@@ -15,6 +15,7 @@ use anyhow::Context;
 
 // Re-exports.
 pub use anyhow;
+pub use sequoia_autocrypt as autocrypt;
 pub use sequoia_cert_store as cert_store;
 pub use sequoia_directories as directories;
 pub use sequoia_keystore as key_store;
