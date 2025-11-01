@@ -20,6 +20,13 @@ impl Sequoia {
         Hint::new(! self.config.hints())
             .hint(msg)
     }
+
+    /// Prints additional information in verbose mode.
+    pub fn info(&self, msg: std::fmt::Arguments) {
+        if self.config().verbose() {
+            weprintln!("{}", msg);
+        }
+    }
 }
 
 // Sometimes the same error cascades, e.g.:

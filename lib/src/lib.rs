@@ -47,6 +47,7 @@ pub mod decrypt;
 pub mod encrypt;
 pub mod inspect;
 pub mod list;
+pub mod provenance;
 pub mod sign;
 pub mod types;
 use types::StateDirectory;

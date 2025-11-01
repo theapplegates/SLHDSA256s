@@ -8,12 +8,11 @@ use openpgp::{
 };
 use sequoia_autocrypt as autocrypt;
 
+use sequoia::provenance::certify_downloads;
+
 use crate::{
     Sq,
-    commands::{
-        cert::import::import_and_report,
-        network::certify_downloads,
-    },
+    commands::cert::import::import_and_report,
     common::password,
     output::import::ImportStats,
 };
@@ -52,9 +51,11 @@ pub fn import_certs(sq: &Sq, source: &mut Box<dyn BufferedReader<Cookie>>,
                 if let Ok((ca, _)) = sq.certd_or_else()
                     .and_then(|certd| certd.shadow_ca_autocrypt())
                 {
+                    let prompt = password::Prompt::new(sq, true);
                     acc.append(&mut certify_downloads(
-                        sq, false, ca,
-                        vec![cert], Some(&addr[..])));
+                        &sq.sequoia, false, ca,
+                        vec![cert], Some(&addr[..]),
+                        prompt));
                     provenance_recorded = true;
                 } else {
                     acc.push(cert);

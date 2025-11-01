@@ -6,6 +6,7 @@ use openpgp::packet::key::KeyParts;
 
 use sequoia::key_store as keystore;
 
+use sequoia::provenance::certify_downloads;
 use sequoia::types::FileStdinOrKeyHandle;
 
 use crate::Sq;
@@ -113,8 +114,6 @@ pub fn certify_generated(sq: &Sq,
                                           cert: &Cert)
     -> Result<Cert>
 {
-    use crate::commands::network::certify_downloads;
-
     let hostname =
         gethostname::gethostname().to_string_lossy().to_string();
     let certd = sq.certd_or_else()?;
@@ -126,6 +125,9 @@ pub fn certify_generated(sq: &Sq,
         1,
         &[])?;
 
-    Ok(certify_downloads(sq, false, ca, vec![cert.clone()], None)
+    let prompt = crate::common::password::Prompt::new(sq, true);
+
+    Ok(certify_downloads(&sq.sequoia, false, ca, vec![cert.clone()], None,
+                         prompt)
        .into_iter().next().expect("exactly one"))
 }

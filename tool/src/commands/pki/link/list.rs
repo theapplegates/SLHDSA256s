@@ -9,13 +9,13 @@ use sequoia::cert_store;
 use cert_store::LazyCert;
 use cert_store::Store;
 
+use sequoia::provenance::active_certification;
 use sequoia::types::TrustThreshold;
 
 use crate::Result;
 use crate::Sq;
 use crate::cli::pki::link;
 use crate::cli::types::cert_designator;
-use crate::commands::active_certification;
 use crate::common::pki::list::summarize_certification;
 use crate::common::ui;
 
@@ -69,7 +69,7 @@ pub fn list(sq: Sq, c: link::ListCommand)
                 let cert = cert.to_cert()?;
 
                 let active_certifications = active_certification(
-                    &sq, cert, userids,
+                    &sq.sequoia, cert, userids,
                     trust_root.primary_key().key().role_as_unspecified());
 
                 if active_certifications.iter().any(|(_userid, certifications)| {
@@ -117,7 +117,7 @@ pub fn list(sq: Sq, c: link::ListCommand)
             let userids = cert.userids().map(|ua| ua.userid().clone());
 
             active_certification(
-                &sq, &cert, userids,
+                &sq.sequoia, &cert, userids,
                 trust_root.primary_key().key().role_as_unspecified())
         };
 

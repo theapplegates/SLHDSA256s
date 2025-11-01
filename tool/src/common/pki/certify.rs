@@ -21,6 +21,7 @@ use sequoia::cert_store;
 use cert_store::StoreUpdate;
 use cert_store::store::UserIDQueryParams;
 
+use sequoia::provenance::active_certification;
 use sequoia::types::Convert;
 use sequoia::types::TrustAmount;
 
@@ -28,7 +29,6 @@ use crate::Sq;
 use crate::cli::types::Expiration;
 use crate::cli::types::FileOrStdout;
 use crate::cli::types::userid_designator::ResolvedUserID;
-use crate::commands::active_certification;
 use crate::common::ui;
 
 // Returns whether two certifications have different parameters.
@@ -301,7 +301,7 @@ The certifier is the same as the certificate to certify."));
 
     // Get the active certification as of the reference time.
     let certifications = active_certification(
-            &sq, &cert, userids.iter(),
+            &sq.sequoia, &cert, userids.iter(),
             certifier.primary_key().key().role_as_unspecified())
         .into_iter()
         .map(|(userid, active_certification)| {

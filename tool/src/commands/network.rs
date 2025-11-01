@@ -22,18 +22,12 @@ use openpgp::{
         Cert,
         CertParser,
     },
-    crypto::Signer,
-    Packet,
-    packet::{
-        signature::SignatureBuilder,
-        UserID,
-    },
+    packet::UserID,
     parse::Parse,
     serialize::Serialize,
     types::{
         KeyFlags,
         RevocationStatus,
-        SignatureType,
     },
 };
 use sequoia_net as net;
@@ -50,14 +44,13 @@ use cert_store::Store;
 use cert_store::StoreUpdate;
 use cert_store::store::UserIDQueryParams;
 
+use sequoia::provenance::certify_downloads;
 use sequoia::types::Convert;
 use sequoia::types::TrustThreshold;
 
 use crate::{
-    commands::{
-        FileOrStdout,
-        active_certification,
-    },
+    commands::FileOrStdout,
+    common::password,
     common::ui,
     output::{
         import::ImportStats,
@@ -225,195 +218,6 @@ fn serialize_keyring(sq: &Sq, file: &FileOrStdout, certs: Vec<Cert>,
     }
     output.finalize()?;
     Ok(())
-}
-
-/// Creates a non-exportable certification for the specified bindings.
-///
-/// This does not import the certification or the certificate into
-/// the certificate store.
-fn certify(sq: &Sq,
-           emit_provenance_messages: bool,
-           signer: &mut dyn Signer, cert: &Cert, userids: &[UserID],
-           depth: u8, amount: usize)
-    -> Result<Cert>
-{
-    let mut builder =
-        SignatureBuilder::new(SignatureType::GenericCertification)
-        .set_signature_creation_time(sq.time())?;
-
-    if depth != 0 || amount != 120 {
-        builder = builder.set_trust_signature(depth, amount.min(255) as u8)?;
-    }
-
-    builder = builder.set_exportable_certification(false)?;
-
-    let certifications = active_certification(
-        sq, cert,
-        userids.iter(),
-        signer.public())
-        .into_iter()
-        .map(|(userid, active_certification)| {
-            if let Some(_) = active_certification {
-                if emit_provenance_messages {
-                    sq.info(format_args!(
-                        "Provenance information for {}, {} \
-                         exists and is current, not updating it",
-                        cert.fingerprint(),
-                        ui::Safe(userid)));
-                }
-                return vec![];
-            }
-
-            match builder.clone().sign_userid_binding(
-                signer,
-                cert.primary_key().key(),
-                &userid)
-                .with_context(|| {
-                    format!("Creating certification for {}, {}",
-                            cert.fingerprint(),
-                            ui::Safe(userid))
-                })
-            {
-                Ok(sig) => {
-                    if emit_provenance_messages {
-                        sq.info(format_args!(
-                            "Recorded provenance information \
-                             for {}, {}",
-                            cert.fingerprint(),
-                            ui::Safe(userid)));
-                    }
-                    vec![ Packet::from(userid.clone()), Packet::from(sig) ]
-                }
-                Err(err) => {
-                    let err = err.context(format!(
-                        "Warning: recording provenance information \
-                         for {}, {}",
-                        cert.fingerprint(),
-                        ui::Safe(userid)));
-                    print_error_chain(&err);
-                    vec![]
-                }
-            }
-        })
-        .collect::<Vec<Vec<Packet>>>()
-        .into_iter()
-        .flatten()
-        .collect::<Vec<Packet>>();
-
-    if certifications.is_empty() {
-        Ok(cert.clone())
-    } else {
-        Ok(cert.clone().insert_packets(certifications)?.0)
-    }
-}
-
-/// Certify the certificates using the specified CA.
-///
-/// The certificates are certified for User IDs with the specified
-/// email address.  If no email address is specified, then all valid
-/// User IDs are certified.  The results are returned; they are not
-/// imported into the certificate store.
-///
-/// If a certificate cannot be certified for whatever reason, a
-/// diagnostic is emitted, and the certificate is returned as is.
-pub fn certify_downloads(sq: &Sq,
-                                          emit_provenance_messages: bool,
-                                          ca: Arc<LazyCert<'static>>,
-                                          certs: Vec<Cert>, email: Option<&str>)
-    -> Vec<Cert>
-{
-    let ca = || -> Result<_> {
-        let ca = ca.to_cert()?;
-
-        Ok(sq.get_certification_key(ca, None)?)
-    };
-    let mut ca_signer = match ca() {
-        Ok(signer) => signer,
-        Err(err) => {
-            let err = err.context(
-                "Warning: not recording provenance information, \
-                 failed to load CA key");
-            if sq.verbose() {
-                print_error_chain(&err);
-            }
-            return certs;
-        }
-    };
-
-    // Normalize the email.  If it is not valid, just return it as is.
-    let email = email.map(|email| {
-        match UserIDQueryParams::is_email(&email) {
-            Ok(email) => email,
-            Err(_) => email.to_string(),
-        }
-    });
-
-    let certs: Vec<Cert> = certs.into_iter().map(|cert| {
-        let vc = match cert.with_policy(sq.policy(), sq.time()) {
-            Err(err) => {
-                let err = err.context(format!(
-                    "Warning: not recording provenance information \
-                     for {}, not valid",
-                    cert.fingerprint()));
-                if sq.verbose() {
-                    print_error_chain(&err);
-                }
-                return cert;
-            }
-            Ok(vc) => vc,
-        };
-
-        let userids = if let Some(email) = email.as_ref() {
-            // Only the specified email address is authenticated.
-            let userids = vc.userids()
-                .filter_map(|ua| {
-                    if let Ok(Some(e)) = ua.userid().email_normalized() {
-                        if &e == email {
-                            return Some(ua.userid().clone());
-                        }
-                    }
-                    None
-                })
-                .collect::<Vec<UserID>>();
-
-            if userids.is_empty() {
-                if sq.verbose() {
-                    sq.info(format_args!(
-                        "Warning: not recording provenance information \
-                         for {}, it does not contain a valid User ID with \
-                         the specified email address ({:?})",
-                        cert.fingerprint(),
-                        email));
-                }
-                return cert;
-            }
-
-            userids
-        } else {
-            vc.userids().map(|ua| ua.userid().clone()).collect()
-        };
-
-        match certify(
-            sq, emit_provenance_messages,
-            &mut ca_signer, &cert, &userids[..],
-            0, sequoia::wot::FULLY_TRUSTED)
-        {
-            Ok(cert) => cert,
-            Err(err) => {
-                let err = err.context(format!(
-                    "Warning: not recording provenance information \
-                     for {}, failed to certify it",
-                    cert.fingerprint()));
-                if sq.verbose() {
-                    print_error_chain(&err);
-                }
-
-                cert
-            }
-        }
-    }).collect();
-
-    certs
 }
 
 #[derive(Clone)]
@@ -753,8 +557,10 @@ impl Response {
                         } else { pb.suspend(|| -> Result<()> {
                             if let Some(ca) = response.method.ca(sq)
                             {
+                                let prompt = password::Prompt::new(sq, true);
                                 for cert in certify_downloads(
-                                    sq, true, ca, vec![cert], None)
+                                    &sq.sequoia, true, ca, vec![cert], None,
+                                    prompt)
                                 {
                                     merge(certs, &mut new,
                                           response.method.clone(), cert)?;
