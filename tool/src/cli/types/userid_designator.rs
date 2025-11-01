@@ -1003,7 +1003,7 @@ impl From<UserID> for ResolvedUserID {
     }
 }
 
-use crate::cli::types::MyAsRef;
+use sequoia::types::MyAsRef;
 impl MyAsRef<UserID> for &ResolvedUserID {
     fn as_ref(&self) -> &UserID {
         &self.userid

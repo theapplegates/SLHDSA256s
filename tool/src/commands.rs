@@ -6,9 +6,10 @@ use openpgp::packet::prelude::*;
 use openpgp::policy::HashAlgoSecurity;
 use openpgp::policy::Policy;
 
+use sequoia::types::MyAsRef;
+
 use crate::Sq;
 use crate::cli::types::FileOrStdout;
-use crate::cli::types::MyAsRef;
 use crate::cli::{SqCommand, SqSubcommands};
 
 pub mod autocrypt;

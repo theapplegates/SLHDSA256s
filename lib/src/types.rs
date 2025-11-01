@@ -6,6 +6,8 @@ use std::{
 
 use crate::errors::Result;
 
+mod as_ref;
+pub use as_ref::MyAsRef;
 mod cert_designator;
 pub use cert_designator::FileStdinOrKeyHandle;
 pub use cert_designator::FileOrStdin;
