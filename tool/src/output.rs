@@ -7,6 +7,7 @@ use std::io::Write;
 
 use anyhow::{anyhow, Result};
 
+pub mod cert;
 pub mod decrypt;
 pub mod encrypt;
 pub mod hint;

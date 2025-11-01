@@ -1,4 +1,4 @@
-//! Additional functionality related to certificates.
+//! Functionality related to certificate management.
 
 use std::borrow::Cow;
 use std::time::SystemTime;
