@@ -211,7 +211,7 @@ impl<'sequoia> Builder<'sequoia> {
     where
         I: std::io::Read + Send + Sync,
         O: std::io::Write + Send + Sync,
-        S: Stream + verify::Stream + 'a,
+        S: Stream + 'a,
         P: prompt::Prompt,
     {
         let &Builder {
@@ -276,7 +276,7 @@ impl<'sequoia> Builder<'sequoia> {
     where
         I: std::io::Read + Send + Sync,
         O: std::io::Write + Send + Sync,
-        S: Stream + verify::Stream,
+        S: Stream,
         P: prompt::Prompt,
     {
         let &Builder {
@@ -496,7 +496,7 @@ impl Sequoia {
 }
 
 struct StreamProxy<'a> {
-    stream: Box<dyn verify::VerifyDecryptStream + 'a>,
+    stream: Box<dyn Stream + 'a>,
     params: &'a Params<'a>,
 }
 

@@ -54,16 +54,6 @@ impl<'a> Stream<'a> {
     }
 }
 
-impl sequoia::verify::Stream for Stream<'_> {
-    fn output(&mut self,
-              params: &sequoia::verify::Params,
-              output: sequoia::verify::Output)
-        -> Result<()>
-    {
-        self.vstream.output(params, output)
-    }
-}
-
 impl decrypt::Stream for Stream<'_> {
     fn output(&mut self,
               params: &decrypt::Params,
