@@ -1229,7 +1229,7 @@ impl<'c> stream::VerificationHelper for VerificationHelper<'c> {
             Ok(())
         } else {
             Err(anyhow::anyhow!("Verification failed: could not \
-                                 authenticate any signatures"))
+                                 authenticate enough signatures"))
         }
     }
 }
