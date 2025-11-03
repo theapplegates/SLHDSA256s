@@ -809,10 +809,14 @@ impl<'c> DecryptionHelper for Helper<'c> {
         t!("Trying the key store");
         match self.vhelper.sequoia().key_store_or_else() {
             Ok(ks) => {
+                t!("Connected to key store");
+
                 let mut ks = ks.lock().unwrap();
                 match ks.decrypt(&pkesks[..]) {
                     // Success!
                     Ok((_i, fpr, sym_algo, sk)) => {
+                        t!("Key store unlocked session key using {}", fpr);
+
                         if let Some(fp) =
                             self.try_session_key(
                                 &fpr, sym_algo, &sk, decrypt)
@@ -820,6 +824,10 @@ impl<'c> DecryptionHelper for Helper<'c> {
                             let keys = ks.find_key(KeyHandle::from(&fpr))
                                 .with_context(|| {
                                     format!("Looking up {}", fpr)
+                                })
+                                .map_err(|err| {
+                                    t!("Missing certificate for {}!", fpr);
+                                    err
                                 })?;
                             let Some(key) = keys.into_iter().next() else {
                                 // find_key should never return an
@@ -828,6 +836,8 @@ impl<'c> DecryptionHelper for Helper<'c> {
                                 // just in case.
                                 return Err(anyhow::anyhow!("Key for {} not found", fpr));
                             };
+
+                            t!("Decrypted session key");
 
                             self.output(
                                 Output::Decrypted(output::Decrypted {
@@ -843,6 +853,8 @@ impl<'c> DecryptionHelper for Helper<'c> {
                     Err(err) => {
                         match err.downcast() {
                             Ok(keystore::Error::InaccessibleDecryptionKey(keys)) => {
+                                t!("Key store has {} locked keys.", keys.len());
+
                                 // Get a reference to the softkeys backend.
                                 let mut softkeys = if let Ok(backends) = ks.backends() {
                                     let mut softkeys = None;
@@ -863,6 +875,7 @@ impl<'c> DecryptionHelper for Helper<'c> {
                                     let pkesk = key_status.pkesk().clone();
                                     let mut key = key_status.into_key();
                                     let keyid = key.keyid();
+                                    t!("{} is locked", keyid);
                                     let (userid, cert) = self.sequoia.best_userid_for(
                                         &KeyHandle::from(&keyid),
                                         KeyFlags::empty()
@@ -913,6 +926,9 @@ impl<'c> DecryptionHelper for Helper<'c> {
                                         }
 
                                         if on_softkeys {
+                                            t!("{} is on the soft keys backend, \
+                                                prompting user for the password",
+                                               keyid);
                                             for password in password_cache.iter() {
                                                 if let Ok(()) = key.unlock(password.clone()) {
                                                     if let Some(fp) = self.try_decrypt(
@@ -923,6 +939,10 @@ impl<'c> DecryptionHelper for Helper<'c> {
                                                 }
                                             }
                                         } else {
+                                            t!("{} is NOT on the soft keys backend, \
+                                                NOT prompting user for the password",
+                                               keyid);
+
                                             self.output(Output::Info(output::Info::NotTryingCachedPasswords(
                                                 output::NotTryingCachedPasswords {
                                                     key_handle: key.key_handle(),
@@ -947,12 +967,17 @@ impl<'c> DecryptionHelper for Helper<'c> {
 
                                     match self.prompt.prompt(&mut context, &mut checker) {
                                         Ok(prompt::Response::Password(_)) => {
+                                            t!("User entered a password for {}",
+                                               keyid);
                                             if checker.unlocked() {
                                                 if let Some(fp) = self.try_decrypt(
                                                     &pkesk, sym_algo, &mut key, decrypt)?
                                                 {
+                                                    t!("Key unlocked session key!");
                                                     return Ok(fp);
                                                 } else {
+                                                    t!("Key unlocked a BAD \
+                                                        session key!");
                                                     self.output(Output::Info(output::Info::BadSessionKey(
                                                         output::BadSessionKey {
                                                             key_handle: key.key_handle(),
@@ -965,6 +990,7 @@ impl<'c> DecryptionHelper for Helper<'c> {
                                         Ok(prompt::Response::NoPassword) => {
                                         }
                                         Err(prompt::Error::Cancelled(_)) => {
+                                            t!("User cancelled the password prompt");
                                             // Skip.
                                         }
                                         Err(err) => {
@@ -976,19 +1002,26 @@ impl<'c> DecryptionHelper for Helper<'c> {
                                 }
                             }
                             // Failed to decrypt using the keystore.
-                            Ok(_err) => (),
-                            Err(_err) => (),
+                            Ok(err) => {
+                                t!("Failed to decrypt using key store: {}", err);
+                            }
+                            Err(err) => {
+                                t!("Failed to decrypt using key store: {}", err);
+                            }
                         }
                     }
                 }
             }
             Err(err) => {
+                t!("Failed to connect to the key store: {}", err);
                 self.output(Output::Info(output::Info::KeyStoreUnreachable(
                     output::KeyStoreUnreachable {
                         error: err,
                     })))?;
             }
         }
+
+        t!("Exhausted all decryption methods");
 
         if skesks.is_empty() {
             self.output(
