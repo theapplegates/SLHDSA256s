@@ -215,8 +215,40 @@ impl<'sequoia> Builder<'sequoia> {
     /// If you don't want to implement [`Stream`], you can pass `&mut
     /// Vec<Output>` to collect the status messages, or `()` to ignore
     /// them.
-    pub fn decrypt<'a, I, O, S, P>(&self, input: I, mut output: O,
-                                   prompt: P, stream: S) -> Result<()>
+    pub fn decrypt<'a, I, O, S, P>(&self, input: I, output: O,
+                                   prompt: P, mut stream: S)
+        -> Result<()>
+    where
+        I: std::io::Read + Send + Sync,
+        O: std::io::Write + Send + Sync,
+        S: Stream + 'a,
+        P: prompt::Prompt,
+    {
+        let result = self.decrypt_(input, output, prompt, &mut stream);
+
+        if let Err(error) = result {
+            // Create a shallow copy of error, because we can't clone
+            // it.
+            let e = anyhow::anyhow!(error.to_string())
+                .context("Decryption failed");
+
+            stream.output(
+                self.params(),
+                Output::DecryptionFailed(
+                    output::DecryptionFailed::MalformedMessage(
+                        output::MalformedMessage {
+                            error,
+                        })))?;
+
+            Err(e)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn decrypt_<'a, I, O, S, P>(&self, input: I, mut output: O,
+                                prompt: P, mut stream: S)
+        -> Result<()>
     where
         I: std::io::Read + Send + Sync,
         O: std::io::Write + Send + Sync,
@@ -239,7 +271,7 @@ impl<'sequoia> Builder<'sequoia> {
 
         let proxy: Rc<RefCell<Box<dyn verify::VerifyDecryptStream>>>
             = Rc::new(RefCell::new(Box::new(StreamProxy {
-                stream: Box::new(stream),
+                stream: Box::new(&mut stream),
                 params: &self.params,
             })));
 
@@ -255,10 +287,9 @@ impl<'sequoia> Builder<'sequoia> {
                     Cow::Borrowed(&self.params.vparams)));
 
         let mut decryptor = DecryptorBuilder::from_reader(input)?
-            .with_policy(sequoia.policy(), None, helper)
-            .context("Decryption failed")?;
+            .with_policy(sequoia.policy(), None, helper)?;
 
-        io::copy(&mut decryptor, &mut output).context("Decryption failed")?;
+        io::copy(&mut decryptor, &mut output)?;
 
         Ok(())
     }
@@ -279,8 +310,40 @@ impl<'sequoia> Builder<'sequoia> {
     /// Vec<Output>` to collect the status messages, or `()` to ignore
     /// them.
     pub fn decrypt_unwrap<I, O, S, P>(&self,
-                                      input: I, mut output: O,
-                                      prompt: P, stream: S)
+                                      input: I, output: O,
+                                      prompt: P, mut stream: S)
+        -> Result<()>
+    where
+        I: std::io::Read + Send + Sync,
+        O: std::io::Write + Send + Sync,
+        S: Stream,
+        P: prompt::Prompt,
+    {
+        let result = self.decrypt_unwrap_(input, output, prompt, &mut stream);
+
+        if let Err(error) = result {
+            // Create a shallow copy of error, because we can't clone
+            // it.
+            let e = anyhow::anyhow!(error.to_string())
+                .context("Decryption failed");
+
+            stream.output(
+                self.params(),
+                Output::DecryptionFailed(
+                    output::DecryptionFailed::MalformedMessage(
+                        output::MalformedMessage {
+                            error,
+                        })))?;
+
+            Err(e)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn decrypt_unwrap_<I, O, S, P>(&self,
+                                   input: I, mut output: O,
+                                   prompt: P, mut stream: S)
         -> Result<()>
     where
         I: std::io::Read + Send + Sync,
@@ -304,7 +367,7 @@ impl<'sequoia> Builder<'sequoia> {
 
         let proxy: Rc<RefCell<Box<dyn verify::VerifyDecryptStream>>>
             = Rc::new(RefCell::new(Box::new(StreamProxy {
-                stream: Box::new(stream),
+                stream: Box::new(&mut stream),
                 params: &self.params,
             })));
 
@@ -452,12 +515,30 @@ pub mod output {
         pub session_key: crypto::SessionKey,
     }
 
-    /// The message could not be decrypted.
+    /// The message is not an OpenPGP message, or does not contain an
+    /// encrypted part.
     #[non_exhaustive]
     #[derive(Debug)]
-    pub struct DecryptionFailed {
+    pub struct MalformedMessage {
+        pub error: anyhow::Error,
+    }
+
+    /// The session key could not be decrypted, because we aren't able
+    /// to decrypt one of the PKESKs or SKESKs.
+    #[non_exhaustive]
+    #[derive(Debug, Clone)]
+    pub struct MissingSecretKeyMaterial {
         pub pkesks: Vec<PKESK>,
         pub skesks: Vec<SKESK>,
+    }
+
+    /// The message could not be decrypted, because the session key
+    /// could not be decrypted.
+    #[non_exhaustive]
+    #[derive(Debug)]
+    pub enum DecryptionFailed {
+        MalformedMessage(MalformedMessage),
+        MissingSecretKeyMaterial(MissingSecretKeyMaterial),
     }
 
     /// Information about the operation.
@@ -1034,10 +1115,12 @@ impl<'c> DecryptionHelper for Helper<'c> {
 
         if skesks.is_empty() {
             self.output(
-                Output::DecryptionFailed(output::DecryptionFailed {
-                    pkesks: pkesks.to_vec(),
-                    skesks: skesks.to_vec(),
-                }))?;
+                Output::DecryptionFailed(
+                    output::DecryptionFailed::MissingSecretKeyMaterial(
+                        output::MissingSecretKeyMaterial {
+                            pkesks: pkesks.to_vec(),
+                            skesks: skesks.to_vec(),
+                        })))?;
 
             return Err(anyhow::anyhow!("No key to decrypt message"));
         }
@@ -1094,10 +1177,12 @@ impl<'c> DecryptionHelper for Helper<'c> {
 
         if result.is_err() {
             self.output(
-                Output::DecryptionFailed(output::DecryptionFailed {
-                    pkesks: pkesks.to_vec(),
-                    skesks: skesks.to_vec(),
-                }))?;
+                Output::DecryptionFailed(
+                    output::DecryptionFailed::MissingSecretKeyMaterial(
+                        output::MissingSecretKeyMaterial {
+                            pkesks: pkesks.to_vec(),
+                            skesks: skesks.to_vec(),
+                        })))?;
         }
 
         result

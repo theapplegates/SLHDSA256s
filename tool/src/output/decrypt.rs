@@ -134,11 +134,14 @@ impl decrypt::Stream for Stream<'_> {
                     _ => (),
                 }
             }
-            decrypt::Output::DecryptionFailed(decrypt::output::DecryptionFailed {
-                pkesks,
-                skesks,
-                ..
-            }) => {
+            decrypt::Output::DecryptionFailed(
+                decrypt::output::DecryptionFailed::MissingSecretKeyMaterial(
+                    decrypt::output::MissingSecretKeyMaterial {
+                        pkesks,
+                        skesks,
+                        ..
+                    })) =>
+            {
                 // Only show a diagnostic hint if we have no SKESKs.
                 if ! skesks.is_empty() {
                     return Ok(());
