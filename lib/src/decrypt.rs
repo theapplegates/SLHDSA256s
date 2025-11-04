@@ -55,6 +55,15 @@ where
     }
 }
 
+impl<T> Stream for &mut T
+where
+    T: Stream + ?Sized
+{
+    fn output(&mut self, params: &Params, output: Output) -> Result<()> {
+        (*self).output(params, output)
+    }
+}
+
 /// Collects the output in the specified vector.
 impl Stream for &mut Vec<Output> {
     fn output(&mut self, _params: &Params, output: Output) -> Result<()> {
