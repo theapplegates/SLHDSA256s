@@ -1003,7 +1003,7 @@ pub(crate) trait VerifyDecryptStream: Stream + decrypt::Stream {
 impl<T: ?Sized> VerifyDecryptStream for T where T: Stream + decrypt::Stream {
 }
 
-pub struct VerificationHelper<'c>
+pub(crate) struct VerificationHelper<'c>
 {
     sequoia: &'c Sequoia,
     signatures: usize,
@@ -1026,8 +1026,6 @@ pub struct VerificationHelper<'c>
     bad_signatures: usize,
     broken_keys: usize,
     broken_signatures: usize,
-
-    pub quiet: bool,
 }
 
 impl<'c> VerificationHelper<'c> {
@@ -1048,49 +1046,12 @@ impl<'c> VerificationHelper<'c> {
             broken_keys: 0,
             bad_signatures: 0,
             broken_signatures: 0,
-            quiet: sequoia.config().quiet(),
         }
     }
 
     /// Returns the Sequoia instance.
     pub fn sequoia(&self) -> &Sequoia {
         self.sequoia
-    }
-
-    /// Enables or disables quiet operation.
-    ///
-    /// In quiet operation, only errors are emitted.
-    ///
-    /// XXX transitional: Remove once autocrypt doesn't use
-    /// VerificationHelper.
-    pub fn quiet(&mut self, v: bool) {
-        self.quiet = v;
-    }
-
-    /// XXX transitional: Remove once decrypt has been ported to the library.
-    pub fn print_status(&self) {
-        fn p(s: &mut String, what: &str, threshold: usize, quantity: usize) {
-            if quantity >= threshold {
-                use std::fmt::Write;
-                use crate::transitional::output::pluralize::Pluralize;
-                let dirty = ! s.is_empty();
-                write!(s, "{}{}",
-                       if dirty { ", " } else { "" },
-                       quantity.of(what))
-                    .expect("writing to a string is infallible");
-            }
-        }
-
-        let mut status = String::new();
-        p(&mut status, "authenticated signature", 0, self.authenticated_signatures);
-        p(&mut status, "unauthenticated signature", 1, self.unauthenticated_signatures);
-        p(&mut status, "uncheckable signature", 1, self.uncheckable_signatures);
-        p(&mut status, "bad signature", 1, self.bad_signatures);
-        p(&mut status, "bad key", 1, self.broken_keys);
-        p(&mut status, "broken signatures", 1, self.broken_signatures);
-        if ! status.is_empty() {
-            weprintln!("{}.", status);
-        }
     }
 }
 
