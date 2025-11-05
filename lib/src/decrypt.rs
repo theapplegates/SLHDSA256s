@@ -616,7 +616,7 @@ impl Stream for StreamProxy<'_>
     }
 }
 
-pub struct Helper<'c>
+pub(crate) struct Helper<'c>
 {
     sequoia: &'c Sequoia,
     stream: Option<(Rc<RefCell<Box<dyn verify::VerifyDecryptStream + 'c>>>, &'c Params<'c>)>,
