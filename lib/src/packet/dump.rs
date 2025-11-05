@@ -22,6 +22,7 @@ use self::openpgp::parse::{
 };
 
 use crate::Sequoia;
+use crate::prompt::Prompt;
 use crate::types::Convert;
 use crate::types::Safe;
 use crate::types::SessionKey;
@@ -38,15 +39,18 @@ pub enum Kind {
 }
 
 #[allow(clippy::redundant_pattern_matching)]
-pub fn dump<W>(sq: &crate::Sequoia,
-               secrets: Vec<Cert>,
-               input: &mut (dyn io::Read + Sync + Send),
-               output: &mut dyn io::Write,
-               mpis: bool, hex: bool,
-               session_keys: Vec<SessionKey>,
-               width: W)
-               -> Result<Kind>
-    where W: Into<Option<usize>>
+pub fn dump<W, P>(sq: &crate::Sequoia,
+                  secrets: Vec<Cert>,
+                  input: &mut (dyn io::Read + Sync + Send),
+                  output: &mut dyn io::Write,
+                  mpis: bool, hex: bool,
+                  session_keys: Vec<SessionKey>,
+                  width: W,
+                  prompt: P)
+    -> Result<Kind>
+where
+    W: Into<Option<usize>>,
+    P: Prompt,
 {
     let mut ppr
         = self::openpgp::parse::PacketParserBuilder::from_reader(input)?;
@@ -64,36 +68,8 @@ pub fn dump<W>(sq: &crate::Sequoia,
     let width = width.into().unwrap_or(80);
     let mut first_armor_block = true;
     let mut is_keyring = true;
-
-    // TRANSITION: Disable decryption to break a dependency cycle.
-    // Decryption depends on verification, which depends on inspect,
-    // which depends on this code.
-
-    //let mut helper = crate::commands::decrypt::Helper::new(
-    //    &sq, 0, Vec::new(), secrets, session_keys.clone(), false);
-
-    let _secrets = secrets;
-    struct Helper {}
-    impl openpgp::parse::stream::VerificationHelper for Helper {
-        fn get_certs(&mut self, _ids: &[openpgp::KeyHandle]) -> Result<Vec<Cert>> {
-            Ok(Vec::new())
-        }
-        fn check(&mut self, _structure: openpgp::parse::stream::MessageStructure) -> Result<()> {
-            Ok(())
-        }
-    }
-    impl DecryptionHelper for Helper {
-        fn decrypt(&mut self, _: &[PKESK], _skesks: &[SKESK],
-                   _sym_algo: Option<openpgp::types::SymmetricAlgorithm>,
-                   _decrypt: &mut dyn FnMut(Option<openpgp::types::SymmetricAlgorithm>,
-                                            &openpgp::crypto::SessionKey) -> bool)
-                   -> Result<Option<Cert>>
-        {
-            Err(anyhow::anyhow!("Unimplemented."))
-        }
-    }
-    let mut helper = Helper {};
-    // END OF TRANSITION.
+    let mut helper = crate::decrypt::Helper::new(
+        &sq, 0, None, secrets, session_keys.clone(), prompt);
 
   loop {
     let mut dumper = PacketDumper::new(sq, width, mpis);
