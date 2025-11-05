@@ -25,6 +25,7 @@ use openpgp::{
 };
 use openpgp::serialize::stream::Message;
 
+use sequoia::packet::dump;
 use sequoia::types::Convert;
 use sequoia::types::TrustThreshold;
 
@@ -45,7 +46,6 @@ use crate::output::decrypt::DecryptContext;
 
 pub mod armor;
 pub mod dearmor;
-pub mod dump;
 
 pub fn dispatch(sq: Sq, command: Command)
     -> Result<()>
@@ -88,11 +88,13 @@ pub fn dispatch(sq: Sq, command: Command)
             };
             let secrets =
                 load_keys(command.recipient_file.iter())?;
-            dump::dump(&sq,
+            let prompt = password::Prompt::new(&sq, true);
+            dump::dump(&sq.sequoia,
                        secrets,
                        &mut input, &mut output,
                        command.mpis, command.hex,
-                       command.session_key, width)?;
+                       command.session_key, width,
+                       prompt)?;
         },
 
         Subcommands::Decrypt(command) => {
