@@ -4,6 +4,10 @@
 #+STARTUP: content hidestars
 
 
+* Changes in 2.2.0
+** Notable changes
+   - Our MSRV is now 1.85.
+
 * Changes in 2.1.0
 ** Notable fixes
    - When using the OpenSSL backend, we now check at runtime what AEAD
