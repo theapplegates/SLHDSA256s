@@ -29,11 +29,12 @@ use openpgp::Fingerprint;
 use openpgp::cert::raw::RawCertParser;
 use openpgp::crypto::Password;
 use openpgp::packet::Key;
-use openpgp::packet::key;
 use openpgp::parse::Parse;
 use openpgp::policy::NullPolicy;
 use openpgp::policy::Policy;
 use openpgp::policy::StandardPolicy;
+use openpgp::packet::key::PublicParts;
+use openpgp::packet::key::UnspecifiedRole;
 
 use cert_store::{
     LazyCert,
@@ -47,6 +48,7 @@ pub mod consts;
 pub mod decrypt;
 pub mod encrypt;
 pub mod inspect;
+pub mod key;
 pub mod list;
 pub mod provenance;
 pub mod sign;
@@ -107,7 +109,7 @@ pub struct Sequoia {
     /// Map from key fingerprint to cert fingerprint and the key.
     keyring_tsks: OnceLock<BTreeMap<
             Fingerprint,
-        (Fingerprint, Key<key::PublicParts, key::UnspecifiedRole>)>>,
+        (Fingerprint, Key<PublicParts, UnspecifiedRole>)>>,
 
     /// The local trust root, as set in the cert store.
     trust_root_local: OnceLock<Option<Fingerprint>>,
@@ -536,7 +538,7 @@ impl Sequoia {
     /// Returns the secret keys found in any specified keyrings.
     pub fn keyring_tsks(&self)
         -> Result<&BTreeMap<Fingerprint,
-                            (Fingerprint, Key<key::PublicParts, key::UnspecifiedRole>)>>
+                            (Fingerprint, Key<PublicParts, UnspecifiedRole>)>>
     {
         if let Some(keyring_tsks) = self.keyring_tsks.get() {
             Ok(keyring_tsks)
