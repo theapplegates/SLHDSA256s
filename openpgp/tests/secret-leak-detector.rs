@@ -61,7 +61,7 @@
 //! test_ed25519: secret leaked
 //! $ rr replay -d rust-gdb
 //! [...]
-//! (rr) watch *0x7ffc9119dab0 if *0x7ffc9119dab0 == 0x40404040
+//! (rr) watch *(0x7ffc9119dab0 as *u32) if *(0x7ffc9119dab0 as *u32) == 0x40404040
 //! Hardware watchpoint 1: *0x7ffc9119dab0
 //! (rr) c
 //! Continuing.
