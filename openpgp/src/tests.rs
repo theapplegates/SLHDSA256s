@@ -6,6 +6,8 @@
 use std::fmt;
 use std::collections::BTreeMap;
 
+use crate::PublicKeyAlgorithm;
+
 pub struct Test {
     path: &'static str,
     pub bytes: &'static [u8],
@@ -51,6 +53,36 @@ pub const TSKS: &[&Test] = &[
     t!("keys/testy-nistp384-private.pgp"),
     t!("keys/testy-nistp521-private.pgp"),
     t!("keys/testy-private.pgp"),
+];
+
+pub const PQC_CERT_PAIRS: &[(PublicKeyAlgorithm, &str, &str)] = &[
+    //
+    // artifacts/ test vectors from ietf draft
+    //
+    (PublicKeyAlgorithm::MLDSA65_Ed25519,
+    "pqc/ietf/v6-mldsa-65-sample-pk.pgp",
+    "pqc/ietf/v6-mldsa-65-sample-sk.pgp"
+    ),
+    (PublicKeyAlgorithm::MLDSA87_Ed448,
+    "pqc/ietf/v6-mldsa-87-sample-pk.pgp",
+    "pqc/ietf/v6-mldsa-87-sample-sk.pgp"
+    ),
+    (PublicKeyAlgorithm::SLHDSA128s,
+    "pqc/ietf/v6-slhdsa-128s-sample-pk.pgp",
+    "pqc/ietf/v6-slhdsa-128s-sample-sk.pgp"
+    ),
+    (PublicKeyAlgorithm::SLHDSA128f,
+    "pqc/ietf/v6-slhdsa-128f-sample-pk.pgp",
+    "pqc/ietf/v6-slhdsa-128f-sample-sk.pgp"
+    ),
+    (PublicKeyAlgorithm::SLHDSA256s,
+    "pqc/ietf/v6-slhdsa-256s-sample-pk.pgp",
+    "pqc/ietf/v6-slhdsa-256s-sample-sk.pgp"
+    ),
+    (PublicKeyAlgorithm::Ed25519,
+    "pqc/ietf/v4-eddsa-sample-pk.pgp",
+    "pqc/ietf/v4-eddsa-sample-sk.pgp"
+    ),
 ];
 
 /// Returns the content of the given file below `openpgp/tests/data`.

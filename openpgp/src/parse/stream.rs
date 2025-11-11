@@ -4319,53 +4319,17 @@ xHUDBRY0WIQ+50WENDPP";
         Ok(())
     }
 
-    /// This sample detached signature is from draft-ietf-openpgp-pqc-09.
-    #[test]
-    fn detached_mldsa_65() -> Result<()> {
-        sample_detached_sig("pqc/ietf/v6-mldsa-65-sample-pk.pgp",
-                            "pqc/ietf/v6-mldsa-65-sample-signature.pgp",
-                            b"Testing\n")
-    }
-
-    /// This sample detached signature is from draft-ietf-openpgp-pqc-09.
-    #[test]
-    fn detached_mldsa_87() -> Result<()> {
-        sample_detached_sig("pqc/ietf/v6-mldsa-87-sample-pk.pgp",
-                            "pqc/ietf/v6-mldsa-87-sample-signature.pgp",
-                            b"Testing\n")
-    }
-
-    /// This sample detached signature is from draft-ietf-openpgp-pqc-09.
-    #[test]
-    fn detached_slhdsa_128s() -> Result<()> {
-        sample_detached_sig("pqc/ietf/v6-slhdsa-128s-sample-pk.pgp",
-                            "pqc/ietf/v6-slhdsa-128s-sample-signature.pgp",
-                            b"Testing\n")
-    }
-
-    /// This sample detached signature is from draft-ietf-openpgp-pqc-09.
-    #[test]
-    fn detached_slhdsa_128f() -> Result<()> {
-        sample_detached_sig("pqc/ietf/v6-slhdsa-128f-sample-pk.pgp",
-                            "pqc/ietf/v6-slhdsa-128f-sample-signature.pgp",
-                            b"Testing\n")
-    }
-
-    /// This sample detached signature is from draft-ietf-openpgp-pqc-09.
-    #[test]
-    fn detached_slhdsa_256s() -> Result<()> {
-        sample_detached_sig("pqc/ietf/v6-slhdsa-256s-sample-pk.pgp",
-                            "pqc/ietf/v6-slhdsa-256s-sample-signature.pgp",
-                            b"Testing\n")
-    }
-
-    fn sample_detached_sig(cert: &str, sig: &str, data: &[u8])
-                           -> Result<()>
+    // Check that the `signature` over `data` can be verified using
+    // `cert`.
+    fn check_detached_sig(cert: &str, sig: &str, data: &[u8])
+        -> Result<()>
     {
         eprintln!("Test vector {}/{}...", cert, sig);
 
         let cert = Cert::from_bytes(crate::tests::file(cert))?;
         skip_unless_supported!(cert.primary_key().key().pk_algo());
+
+        eprintln!("Cert: {:?}", cert.fingerprint());
 
         let h = VHelper::new(0, 0, 0, 0, vec![cert]);
         let p = &P::new();
@@ -4373,11 +4337,52 @@ xHUDBRY0WIQ+50WENDPP";
             crate::tests::file(sig))?
             .with_policy(p, None, h)?;
 
-        assert!(v.verify_bytes(data).is_ok());
+        let result = v.verify_bytes(data);
+        eprintln!("Result: {:?}", result);
+
+        result.expect("valid signature");
 
         let h = v.into_helper();
         assert_eq!(h.good, 1);
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_detached_sigs() -> Result<()> {
+        let detached_sigs = vec![
+            // ietf draft test vectors
+            (
+            "pqc/ietf/v6-mldsa-65-sample-pk.pgp",
+            "pqc/ietf/v6-mldsa-65-sample-signature.pgp",
+            "Testing\n"
+            ),
+            (
+            "pqc/ietf/v6-mldsa-87-sample-pk.pgp",
+            "pqc/ietf/v6-mldsa-87-sample-signature.pgp",
+            "Testing\n"
+            ),
+            (
+            "pqc/ietf/v6-slhdsa-128s-sample-pk.pgp",
+            "pqc/ietf/v6-slhdsa-128s-sample-signature.pgp",
+            "Testing\n"
+            ),
+            (
+            "pqc/ietf/v6-slhdsa-128f-sample-pk.pgp",
+            "pqc/ietf/v6-slhdsa-128f-sample-signature.pgp",
+            "Testing\n"
+            ),
+            (
+            "pqc/ietf/v6-slhdsa-256s-sample-pk.pgp",
+            "pqc/ietf/v6-slhdsa-256s-sample-signature.pgp",
+            "Testing\n"
+            ),
+        ];
+
+        for (cert_file, detached_sig, data) in detached_sigs {
+            check_detached_sig(cert_file, detached_sig, data.as_bytes())
+                .expect("valid signature");
+        }
         Ok(())
     }
 }
