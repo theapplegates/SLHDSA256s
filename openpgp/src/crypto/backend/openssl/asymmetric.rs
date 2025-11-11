@@ -14,7 +14,7 @@ use std::convert::{TryFrom, TryInto};
 use std::time::SystemTime;
 
 use ossl::{
-    pkey::{EccData, EvpPkey, EvpPkeyType, DsaData, MlkeyData, PkeyData, RsaData},
+    pkey::{EccData, EvpPkey, EvpPkeyType, DsaData, MlkeyData, PkeyData, RsaData, SlhDsaKeyData},
     asymcipher::{EncAlg, EncOp, OsslAsymcipher},
     signature::{OsslSignature, SigAlg, SigOp},
 };
@@ -37,6 +37,108 @@ pub fn wrong_key() -> anyhow::Error {
         .into()
 }
 
+/// Parameterized implementation of SLH-DSA.
+///
+/// This generates a generate, sign and verify method for a SLH-DSA
+/// variant.
+macro_rules! slhdsa {
+    ($generate_key:ident,
+     $priv_type:ty,
+     $sign:ident,
+     $verify:ident,
+     $evp_pkey_type:ident,
+     $n:literal,
+     $sig_alg:ident,
+     $sig_size:literal) =>
+    {
+        fn $generate_key() -> Result<(Protected, $priv_type)>
+        {
+            let ctx = super::context();
+
+            let key = EvpPkey::generate(
+                &ctx, EvpPkeyType::$evp_pkey_type)?;
+            match key.export()? {
+                PkeyData::SlhDsaKey(SlhDsaKeyData {
+                    ref pubkey,
+                    ref prikey,
+                    ..
+                }) => {
+                    let pubkey = pubkey.as_ref().expect("to be set");
+                    let prikey = prikey.as_ref().expect("to be set");
+
+                    assert_eq!(pubkey.len(), 2 * $n);
+                    assert_eq!(prikey.len(), 4 * $n);
+
+                    let mut public = [0; 2 * $n];
+                    public.copy_from_slice(&pubkey);
+
+                    // From
+                    // https://www.ietf.org/archive/id/draft-ietf-openpgp-pqc-13.html#name-key-material-packets-3
+                    //
+                    //   The algorithm-specific part of the secret key
+                    //   consists of:
+                    //
+                    //   * A fixed-length octet string containing the
+                    //     SLH-DSA secret key, whose length depends on
+                    //     the algorithm ID as specified in Table 8.
+
+                    // From
+                    // https://docs.openssl.org/3.5/man7/EVP_PKEY-SLH-DSA/#keygen-parameters
+                    //
+                    //   The private key has a size of 4 * n bytes,
+                    //   which includes the public key
+                    //   components. i.e. It consists of the
+                    //   concatenation of SK.seed, SK.prf, PK.seed and
+                    //   PF.root as defined by FIPS 205 Figure 15.
+                    let private = Protected::from(prikey);
+
+                    Ok((private, public.into()))
+                },
+                _ => Err(wrong_key()),
+            }
+        }
+
+        fn $sign(secret: &Protected, digest: &[u8])
+            -> Result<Box<[u8; $sig_size]>>
+        {
+            let ctx = super::context();
+
+            let mut key = EvpPkey::import(
+                &ctx, EvpPkeyType::$evp_pkey_type,
+                PkeyData::SlhDsaKey(SlhDsaKeyData {
+                    pubkey: None,
+                    prikey: Some(secret.into()),
+                })
+            )?;
+
+            let mut signer = OsslSignature::new(
+                &ctx, SigOp::Sign, SigAlg::$sig_alg, &mut key, None)?;
+            let mut signature = Box::new([0; $sig_size]);
+            signer.sign(digest, Some(&mut signature[..]))?;
+            Ok(signature)
+        }
+
+        fn $verify(public: &[u8; 2 * $n], digest: &[u8],
+                   signature: &[u8; $sig_size])
+            -> Result<bool>
+        {
+            let ctx = super::context();
+
+            let mut key = EvpPkey::import(
+                &ctx, EvpPkeyType::$evp_pkey_type,
+                PkeyData::SlhDsaKey(SlhDsaKeyData {
+                    pubkey: Some(public.to_vec()),
+                    prikey: None,
+                })
+            )?;
+
+            let mut verifier = OsslSignature::new(
+                &ctx, SigOp::Verify, SigAlg::$sig_alg, &mut key, None)?;
+            Ok(verifier.verify(digest, Some(&signature[..])).is_ok())
+        }
+    };
+}
+
 impl Asymmetric for super::Backend {
     fn supports_algo(algo: PublicKeyAlgorithm) -> bool {
         use PublicKeyAlgorithm::*;
@@ -48,8 +150,7 @@ impl Asymmetric for super::Backend {
             DSA => true,
             ECDH | ECDSA | EdDSA => true,
             MLDSA65_Ed25519 | MLDSA87_Ed448 => true,
-            SLHDSA128s | SLHDSA128f | SLHDSA256s =>
-                false,
+            SLHDSA128s | SLHDSA128f | SLHDSA256s => true,
             MLKEM768_X25519 | MLKEM1024_X448 =>
                 true,
             ElGamalEncrypt | ElGamalEncryptSign |
@@ -504,6 +605,31 @@ impl Asymmetric for super::Backend {
             &ctx, SigOp::Verify, SigAlg::Mldsa87, &mut key, None)?;
         Ok(verifier.verify(digest, Some(&signature[..])).is_ok())
     }
+
+    slhdsa!(slhdsa128s_generate_key,
+            [u8; 32],
+            slhdsa128s_sign,
+            slhdsa128s_verify,
+            SlhdsaShake128s,
+            16,
+            SlhdsaShake128s,
+            7856);
+    slhdsa!(slhdsa128f_generate_key,
+            [u8; 32],
+            slhdsa128f_sign,
+            slhdsa128f_verify,
+            SlhdsaShake128f,
+            16,
+            SlhdsaShake128f,
+            17088);
+    slhdsa!(slhdsa256s_generate_key,
+            Box<[u8; 64]>,
+            slhdsa256s_sign,
+            slhdsa256s_verify,
+            SlhdsaShake256s,
+            32,
+            SlhdsaShake256s,
+            29792);
 
     /// Generates a ML-KEM-768 key pair.
     fn mlkem768_generate_key() -> Result<(Protected, Box<[u8; 1184]>)> {
