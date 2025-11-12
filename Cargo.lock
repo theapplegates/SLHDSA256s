@@ -2880,7 +2880,7 @@ dependencies = [
 
 [[package]]
 name = "sequoia-net"
-version = "0.30.0"
+version = "0.31.0-pqc.1"
 dependencies = [
  "anyhow",
  "base64",
