@@ -377,7 +377,7 @@ fn inspect_cert(
     }
 
     for uidb in cert.userids() {
-        writeln!(output, "{:>WIDTH$}: {}", "UserID", uidb.userid())?;
+        writeln!(output, "{:>WIDTH$}: {}", "UserID", Safe(uidb.userid()))?;
         inspect_revocation(output, uidb.revocation_status(sq.policy(), sq.time()))?;
         match uidb.binding_signature(sq.policy(), sq.time()) {
             Ok(sig) => {
