@@ -71,7 +71,7 @@ pub fn dispatch(sq: Sq, command: cli::packet::armor::Command)
         && (want_kind.is_none() || want_kind == have_kind)
     {
         // It is already armored and has the correct kind.
-        let mut output = command.output.create_safe(&sq)?;
+        let mut output = command.output.for_secrets().create_safe(&sq)?;
         io::copy(&mut input, &mut output)?;
         return Ok(());
     }
