@@ -179,11 +179,24 @@ impl Sq {
         self.sequoia.key_store()
     }
 
+    pub fn no_key_store_err() -> clap::Error {
+        clap::Error::raw(clap::error::ErrorKind::ArgumentConflict,
+                         "Operation requires a key store, \
+                          but the key store is disabled")
+    }
+
     /// Returns the key store.
     ///
     /// If the key store is disabled, returns an error.
     pub fn key_store_or_else(&self) -> Result<&Mutex<keystore::Keystore>> {
-        self.sequoia.key_store_or_else()
+        self.sequoia.key_store_or_else().map_err(|err| {
+            if let Some(err) = err.downcast_ref::<sequoia::Error>() {
+                if let sequoia::Error::StateDisabled { .. } = err {
+                    return Self::no_key_store_err().into();
+                }
+            }
+            err
+        })
     }
 
     /// Returns the secret keys found in any specified keyrings.
