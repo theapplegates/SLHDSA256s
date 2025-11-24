@@ -41,6 +41,7 @@ impl std::ops::AddAssign for ImportStats {
             .for_each(|_| self.certs.inc_updated_certs());
         (0..other.certs.errors())
             .for_each(|_| self.certs.inc_errors());
+        self.keys += other.keys;
     }
 }
 
