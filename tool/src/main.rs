@@ -319,7 +319,20 @@ fn real_main() -> Result<()> {
 
     match commands::dispatch(sq, c, &matches) {
         Ok(()) => Ok(()),
-        Err(err) => {
+        Err(mut err) => {
+            // Map some errors.
+            if let Some(e) = err.downcast_ref::<sequoia::Error>() {
+                if let &sequoia::Error::StateDisabled { state, .. } = e {
+                    if state == "key store" {
+                        err = clap::Error::raw(
+                            clap::error::ErrorKind::ArgumentConflict,
+                            "Operation requires a key store, \
+                             but the key store is disabled").into();
+                    }
+                }
+            }
+
+
             use clap::error::ErrorFormatter;
 
             if err.is::<clap::Error>() {
