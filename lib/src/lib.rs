@@ -613,3 +613,53 @@ type WotStore
 pub fn ca_creation_time() -> SystemTime {
     SystemTime::UNIX_EPOCH + std::time::Duration::new(1014235320, 0)
 }
+
+/// `anyhow::Error` does not implement clone.
+///
+/// This does a best effort clone.
+fn clone_anyhow(err: &anyhow::Error) -> anyhow::Error
+{
+    let mut chain = err.chain().rev().collect::<Vec<_>>().into_iter();
+    let e = chain.next().expect("have an error");
+    // Try to clone error.
+    let mut e = if let Some(e) = e.downcast_ref::<openpgp::Error>() {
+        e.clone().into()
+    } else {
+        // Best effort.
+        anyhow::anyhow!(e.to_string())
+    };
+
+    for cause in chain {
+        e = e.context(cause.to_string());
+    }
+
+    e
+}
+
+// `std::error::Error` does not implement clone.
+//
+// This does a best effort clone.
+fn clone_error(err: &(dyn std::error::Error + 'static)) -> anyhow::Error
+{
+    let mut causes = Vec::new();
+    let mut err = Some(err);
+    while let Some(cause) = err {
+        err = cause.source();
+        causes.push(cause);
+    }
+
+    let root = causes.pop().expect("have one");
+    // Try to clone error.
+    let mut e = if let Some(e) = root.downcast_ref::<openpgp::Error>() {
+        e.clone().into()
+    } else {
+        // Best effort.
+        anyhow::anyhow!(root.to_string())
+    };
+
+    for cause in causes.into_iter().rev() {
+        e = e.context(cause.to_string());
+    }
+
+    e
+}
