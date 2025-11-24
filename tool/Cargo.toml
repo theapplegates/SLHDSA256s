@@ -31,7 +31,7 @@ clap = { version = "4", features = ["derive", "env", "string", "wrap_help"] }
 clap_lex = { version = "0.7", default-features = false }
 futures-util = "0.3"
 gethostname = { version = ">=0.4, <0.6" }
-indicatif = "0.17"
+indicatif = "0.18"
 reqwest = { version = ">=0.12, <0.13", features = ["hickory-dns", "stream"] }
 sequoia = { path = "../lib", default-features = false, features = ["clap"] }
 tempfile = "3.1"
