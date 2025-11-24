@@ -11,6 +11,7 @@ pub mod cert;
 pub mod decrypt;
 pub mod encrypt;
 pub mod hint;
+pub mod key;
 pub mod pluralize;
 pub mod sign;
 pub mod verify;
