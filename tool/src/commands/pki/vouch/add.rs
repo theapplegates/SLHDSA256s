@@ -6,6 +6,7 @@ use sequoia::types::TrustThreshold;
 use crate::Sq;
 use crate::cli::pki::vouch::add;
 use crate::commands::FileOrStdout;
+use crate::common::password;
 
 pub fn add(sq: Sq, mut c: add::Command)
     -> Result<()>
@@ -22,16 +23,40 @@ pub fn add(sq: Sq, mut c: add::Command)
         }
     }
 
+    let mut message_ = None;
+    let path_;
+    let output = if let Some(output) = c.output {
+        // And export it.
+        path_ = output.path().map(Clone::clone);
+        let message = output.create_pgp_safe(
+            &sq,
+            false, // Binary.
+            openpgp::armor::Kind::PublicKey,
+        )?;
+
+        message_ = Some(message);
+        Some((path_.as_deref(),
+              message_.as_mut().unwrap() as &mut dyn std::io::Write))
+    } else {
+        None
+    };
+
     let vc = cert.with_policy(sq.policy(), Some(sq.time()))?;
     let userids = c.userids.resolve(&vc)?;
+    let userids = userids
+        .into_iter()
+        .map(|u| u.userid().clone())
+        .collect::<Vec<_>>();
 
     let notations = c.signature_notations.parse()?;
     let expiration = sq.config()
         .resolve_pki_vouch_expiration(&c.expiration, c.expiration_source);
 
-    crate::common::pki::certify::certify(
+    let prompt = password::Prompt::new(&sq, true);
+
+    sequoia::pki::certify::certify(
         &mut std::io::stderr(),
-        &sq,
+        &sq.sequoia,
         true, // Always recreate.
         &certifier,
         &cert,
@@ -43,6 +68,12 @@ pub fn add(sq: Sq, mut c: add::Command)
         c.local,
         c.non_revocable,
         &notations[..],
-        c.output,
-        false)
+        output,
+        prompt)?;
+
+    if let Some(message) = message_ {
+        message.finalize()?;
+    }
+
+    Ok(())
 }

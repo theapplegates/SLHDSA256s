@@ -16,8 +16,9 @@ use openpgp::policy::HashAlgoSecurity;
 use openpgp::policy::Policy;
 use openpgp::types::RevocationStatus;
 
+use sequoia::pki::certify::diff_certification;
+
 use crate::Sq;
-use crate::common::pki::certify::diff_certification;
 use crate::common::pki::list::summarize_certification;
 use crate::common::ui::emit_cert_userid_indent;
 use crate::common::ui;

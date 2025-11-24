@@ -542,6 +542,8 @@ pub fn dispatch(
                     }
                 }
 
+                let prompt = password::Prompt::new(&sq, true);
+
                 // If the user provided `--own-key` or `--shared-key`,
                 // certify the user IDs using the local trust root.
                 // (If they didn't then already replayed the local
@@ -549,9 +551,9 @@ pub fn dispatch(
                 if command.own_key && have_userids {
                     // Mark all user IDs as authenticated, and mark
                     // the key as a trusted introducer.
-                    crate::common::pki::certify::certify(
+                    sequoia::pki::certify::certify(
                         o,
-                        &sq,
+                        &sq.sequoia,
                         false, // Recreate.
                         &trust_root,
                         &cert,
@@ -567,13 +569,13 @@ pub fn dispatch(
                         false, // Non-revocable.
                         &[][..], // Notations.
                         None, // Output.
-                        false, // Binary.
+                        prompt,
                     )?;
                 } else if command.shared_key && have_userids {
                     // Mark all user IDs as authenticated.
-                    crate::common::pki::certify::certify(
+                    sequoia::pki::certify::certify(
                         o,
-                        &sq,
+                        &sq.sequoia,
                         false, // Recreate.
                         &trust_root,
                         &cert,
@@ -589,7 +591,7 @@ pub fn dispatch(
                         false, // Non-revocable.
                         &[][..], // Notations.
                         None, // Output.
-                        false, // Binary.
+                        prompt,
                     )?;
                 }
 

@@ -12,6 +12,7 @@ use crate::common::NULL_POLICY;
 
 use crate::cli::pki::link;
 use crate::cli::types::Expiration;
+use crate::common::password;
 
 mod list;
 
@@ -36,7 +37,10 @@ pub fn add(sq: Sq, c: link::AddCommand)
         = sq.resolve_cert(&c.cert, TrustThreshold::Full)?;
 
     let vc = cert.with_policy(sq.policy(), Some(sq.time()))?;
-    let userids = c.userids.resolve(&vc)?;
+    let userids = c.userids.resolve(&vc)?
+        .into_iter()
+        .map(|u| u.userid().clone())
+        .collect::<Vec<_>>();
 
     let notations = c.signature_notations.parse()?;
 
@@ -58,9 +62,11 @@ pub fn add(sq: Sq, c: link::AddCommand)
         ]
     };
 
-    crate::common::pki::certify::certify(
+    let prompt = password::Prompt::new(&sq, true);
+
+    sequoia::pki::certify::certify(
         &mut std::io::stdout(),
-        &sq,
+        &sq.sequoia,
         c.recreate, // Recreate.
         &trust_root,
         &cert,
@@ -74,7 +80,10 @@ pub fn add(sq: Sq, c: link::AddCommand)
         false, // Non-revocable.
         &notations[..],
         None, // Output.
-        false) // Binary.
+        prompt,
+    )?;
+
+    Ok(())
 }
 
 pub fn authorize(sq: Sq, c: link::AuthorizeCommand)
@@ -87,13 +96,18 @@ pub fn authorize(sq: Sq, c: link::AuthorizeCommand)
         = sq.resolve_cert(&c.cert, TrustThreshold::Full)?;
 
     let vc = cert.with_policy(sq.policy(), Some(sq.time()))?;
-    let userids = c.userids.resolve(&vc)?;
+    let userids = c.userids.resolve(&vc)?
+        .into_iter()
+        .map(|u| u.userid().clone())
+        .collect::<Vec<_>>();
 
     let notations = c.signature_notations.parse()?;
 
-    crate::common::pki::certify::certify(
+    let prompt = password::Prompt::new(&sq, true);
+
+    sequoia::pki::certify::certify(
         &mut std::io::stdout(),
-        &sq,
+        &sq.sequoia,
         c.recreate, // Recreate.
         &trust_root,
         &cert,
@@ -107,7 +121,7 @@ pub fn authorize(sq: Sq, c: link::AuthorizeCommand)
         false, // Non-revocable.
         &notations[..],
         None, // Output.
-        false) // Binary.
+        prompt)
 }
 
 pub fn retract(sq: Sq, c: link::RetractCommand)
@@ -120,13 +134,18 @@ pub fn retract(sq: Sq, c: link::RetractCommand)
         = sq.resolve_cert(&c.cert, TrustThreshold::Full)?;
 
     let vc = cert.with_policy(NULL_POLICY, Some(sq.time()))?;
-    let userids = c.userids.resolve(&vc)?;
+    let userids = c.userids.resolve(&vc)?
+        .into_iter()
+        .map(|u| u.userid().clone())
+        .collect::<Vec<_>>();
 
     let notations = c.signature_notations.parse()?;
 
-    crate::common::pki::certify::certify(
+    let prompt = password::Prompt::new(&sq, true);
+
+    sequoia::pki::certify::certify(
         &mut std::io::stdout(),
-        &sq,
+        &sq.sequoia,
         c.recreate, // Recreate.
         &trust_root,
         &cert,
@@ -139,5 +158,5 @@ pub fn retract(sq: Sq, c: link::RetractCommand)
         false, // Non-revocable.
         &notations[..],
         None, // Output.
-        false) // Binary.
+        prompt)
 }

@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::path::Path;
 use std::time::Duration;
 use std::time::SystemTime;
 
@@ -7,7 +8,7 @@ use anyhow::Context;
 use chrono::DateTime;
 use chrono::Utc;
 
-use sequoia::openpgp;
+use sequoia_openpgp as openpgp;
 use openpgp::Cert;
 use openpgp::Result;
 use openpgp::packet::prelude::*;
@@ -17,19 +18,18 @@ use openpgp::serialize::Serialize;
 use openpgp::types::RevocationStatus;
 use openpgp::types::SignatureType;
 
-use sequoia::cert_store;
+use sequoia_cert_store as cert_store;
 use cert_store::StoreUpdate;
 use cert_store::store::UserIDQueryParams;
 
-use sequoia::provenance::active_certification;
-use sequoia::types::Convert;
-use sequoia::types::TrustAmount;
-
-use crate::Sq;
-use crate::cli::types::Expiration;
-use crate::cli::types::FileOrStdout;
-use crate::cli::types::userid_designator::ResolvedUserID;
-use crate::common::ui;
+use crate::Sequoia;
+use crate::config::Expiration;
+use crate::prompt;
+use crate::provenance::active_certification;
+use crate::transitional::output::cert::emit_cert_userid;
+use crate::types::Convert;
+use crate::types::Safe;
+use crate::types::TrustAmount;
 
 // Returns whether two certifications have different parameters.
 //
@@ -108,14 +108,14 @@ pub fn diff_certification(unless_quiet: &mut dyn std::io::Write,
                   "current certification");
         for (i, r) in a_regex.into_iter().enumerate() {
             wwriteln!(stream = unless_quiet, initial_indent = "       - ",
-                      "{}. {}", i + 1, ui::Safe(r));
+                      "{}. {}", i + 1, Safe(r));
         }
 
         wwriteln!(stream = unless_quiet, initial_indent = "     - ",
                   "new certification");
         for (i, r) in b_regex.into_iter().enumerate() {
             wwriteln!(stream = unless_quiet, initial_indent = "       - ",
-                      "{}. {}", i + 1, ui::Safe(r));
+                      "{}. {}", i + 1, Safe(r));
         }
     }
 
@@ -134,14 +134,14 @@ pub fn diff_certification(unless_quiet: &mut dyn std::io::Write,
                   "current certification");
         for (i, n) in a_notations.into_iter().enumerate() {
             wwriteln!(stream = unless_quiet, initial_indent = "       - ",
-                      "{}. {}", i + 1, ui::Safe(n));
+                      "{}. {}", i + 1, Safe(n));
         }
 
         wwriteln!(stream = unless_quiet, initial_indent = "     - ",
                   "updated certification");
         for (i, n) in b_notations.into_iter().enumerate() {
             wwriteln!(stream = unless_quiet, initial_indent = "       - ",
-                      "{}. {}", i + 1, ui::Safe(n));
+                      "{}. {}", i + 1, Safe(n));
         }
     }
 
@@ -161,28 +161,30 @@ pub fn diff_certification(unless_quiet: &mut dyn std::io::Write,
 ///
 /// If the trust amount is 0, the operation is interpreted as a
 /// retraction and the wording is changed accordingly.
-pub fn certify(o: &mut dyn std::io::Write,
-               sq: &Sq,
-               recreate: bool,
-               certifier: &Cert,
-               cert: &Cert,
-               userids: &[ResolvedUserID],
-               user_supplied_userids: bool,
-               templates: &[(TrustAmount<u8>, Expiration)],
-               trust_depth: u8,
-               domain: &[String],
-               regex: &[String],
-               local: bool,
-               non_revocable: bool,
-               notations: &[(bool, NotationData)],
-               output: Option<FileOrStdout>,
-               binary: bool)
+pub fn certify<P>(o: &mut dyn std::io::Write,
+                  sequoia: &Sequoia,
+                  recreate: bool,
+                  certifier: &Cert,
+                  cert: &Cert,
+                  userids: &[UserID],
+                  user_supplied_userids: bool,
+                  templates: &[(TrustAmount<u8>, Expiration)],
+                  trust_depth: u8,
+                  domain: &[String],
+                  regex: &[String],
+                  local: bool,
+                  non_revocable: bool,
+                  notations: &[(bool, NotationData)],
+                  output: Option<(Option<&Path>, &mut dyn std::io::Write)>,
+                  prompt: P)
     -> Result<()>
+where
+    P: prompt::Prompt
 {
     assert!(templates.len() > 0);
     assert!(userids.len() > 0);
 
-    let unless_quiet = if sq.quiet() {
+    let unless_quiet = if sequoia.config.quiet() {
         &mut std::io::sink()
     } else {
         o
@@ -190,13 +192,13 @@ pub fn certify(o: &mut dyn std::io::Write,
 
 
     if certifier.fingerprint() == cert.fingerprint() {
-        sq.hint(
+        sequoia.hint(
             format_args!("\
 The certificate to certify is the same as the certificate being certified. \
 If you are trying to add a user ID, try:"))
             .sq().arg("key").arg("userid").arg("add")
             .arg_value("--cert", cert.fingerprint())
-            .arg_value("--userid", userids[0].userid())
+            .arg_value("--userid", &userids[0])
             .done();
 
         return Err(
@@ -211,11 +213,12 @@ The certifier is the same as the certificate to certify."));
     }
 
     // Get the signer to certify with.
-    let mut signer = sq.get_certification_key(certifier, None)?;
+    let mut signer = sequoia.get_certification_key(
+        certifier, None, &prompt)?;
 
     let mut base
         = SignatureBuilder::new(SignatureType::GenericCertification)
-        .set_signature_creation_time(sq.time())?;
+        .set_signature_creation_time(sequoia.time())?;
 
     for domain in domain {
         if let Err(err) = UserIDQueryParams::is_domain(domain) {
@@ -283,15 +286,15 @@ The certifier is the same as the certificate to certify."));
         // Creation time.
         //
         // If we should make two certifications, then the first one
-        // should be at `sq.time() - 1`, and the second one at
-        // `sq.time()`.  That is, the first one is a second earlier.
+        // should be at `sequoia.time() - 1`, and the second one at
+        // `sequoia.time()`.  That is, the first one is a second earlier.
         let backdate = Duration::new((templates.len() - 1 - i) as u64, 0);
-        let ct = sq.time() - backdate;
+        let ct = sequoia.time() - backdate;
         builder = builder.set_signature_creation_time(ct)?;
 
         // Expiration.
         if let Some(validity) = expiration
-            .as_duration(DateTime::<Utc>::from(sq.time()))?
+            .as_duration(DateTime::<Utc>::from(sequoia.time()))?
         {
             builder = builder.set_signature_validity_period(validity)?;
         }
@@ -301,11 +304,11 @@ The certifier is the same as the certificate to certify."));
 
     // Get the active certification as of the reference time.
     let certifications = active_certification(
-            &sq.sequoia, &cert, userids.iter(),
+            &sequoia, &cert, userids.iter(),
             certifier.primary_key().key().role_as_unspecified())
         .into_iter()
         .map(|(userid, active_certification)| {
-            if let Some(ua) = cert.userids().find(|ua| ua.userid() == userid.userid()) {
+            if let Some(ua) = cert.userids().find(|ua| ua.userid() == userid) {
                 if retract {
                     // Check if we certified it.
                     if ! ua.certifications().any(|c| {
@@ -313,7 +316,7 @@ The certifier is the same as the certificate to certify."));
                             .any(|issuer| issuer.aliases(&certifier.key_handle()))
                     })
                     {
-                        ui::emit_cert_userid(unless_quiet, cert, userid.userid())?;
+                        emit_cert_userid(unless_quiet, cert, userid)?;
                         wwriteln!(stream = unless_quiet, initial_indent = "   - ",
                                   "this binding was never certified; \
                                    there is nothing to retract");
@@ -322,14 +325,14 @@ The certifier is the same as the certificate to certify."));
                             return Err(anyhow::anyhow!(
                                 "You never certified {} for {}, \
                                  there is nothing to retract.",
-                                ui::Safe(userid.userid()), cert.fingerprint()));
+                                Safe(userid), cert.fingerprint()));
                         } else {
-                            return Ok(vec![ Packet::from(userid.userid().clone()) ]);
+                            return Ok(vec![ Packet::from(userid.clone()) ]);
                         }
                     }
                 } else {
                     if let RevocationStatus::Revoked(_)
-                        = ua.revocation_status(sq.policy(), sq.time())
+                        = ua.revocation_status(sequoia.policy(), sequoia.time())
                     {
                         // It's revoked.
                         if user_supplied_userids {
@@ -337,7 +340,7 @@ The certifier is the same as the certificate to certify."));
                             // error.
                             return Err(anyhow::anyhow!(
                                 "Can't certify {} for {}, it's revoked",
-                                ui::Safe(userid.userid()), cert.fingerprint()));
+                                Safe(userid), cert.fingerprint()));
                         } else {
                             // We're just considering valid, self-signed
                             // user IDs.  Silently, skip it.
@@ -346,7 +349,7 @@ The certifier is the same as the certificate to certify."));
                     }
                 }
             } else if retract {
-                ui::emit_cert_userid(unless_quiet, cert, userid.userid())?;
+                emit_cert_userid(unless_quiet, cert, userid)?;
                 wwriteln!(stream = unless_quiet, initial_indent = "   - ",
                           "this binding was never certified; \
                            there is nothing to retract");
@@ -355,13 +358,13 @@ The certifier is the same as the certificate to certify."));
                     return Err(anyhow::anyhow!(
                         "You never certified {} for {}, \
                          there is nothing to retract.",
-                        ui::Safe(userid.userid()), cert.fingerprint()));
+                        Safe(userid), cert.fingerprint()));
                 } else {
                     // The user passed --all.  Don't error out if some
                     // user IDs were not linked.  Instead, return a
                     // signature packet to indicate that we processed
                     // something; just don't return a signature.
-                    return Ok(vec![ Packet::from(userid.userid().clone()) ]);
+                    return Ok(vec![ Packet::from(userid.clone()) ]);
                 }
             }
 
@@ -373,12 +376,12 @@ The certifier is the same as the certificate to certify."));
                 let retracted = matches!(active_certification.trust_signature(),
                                          Some((_depth, 0)));
                 if retracted {
-                    ui::emit_cert_userid(unless_quiet, cert, userid.userid())?;
+                    emit_cert_userid(unless_quiet, cert, userid)?;
                     wwriteln!(stream = unless_quiet, initial_indent = "   - ",
                               "a prior certification was retracted at {}",
                               active_certification_ct.convert());
                 } else {
-                    ui::emit_cert_userid(unless_quiet, cert, userid.userid())?;
+                    emit_cert_userid(unless_quiet, cert, userid)?;
                     wwriteln!(stream = unless_quiet, initial_indent = "   - ",
                               "was previously certified at {}",
                               active_certification_ct.convert());
@@ -387,7 +390,7 @@ The certifier is the same as the certificate to certify."));
                 let changed = diff_certification(
                     unless_quiet,
                     &active_certification,
-                    &builders[0], sq.time());
+                    &builders[0], sequoia.time());
 
                 if ! changed {
                     wwriteln!(stream = unless_quiet, initial_indent = "   - ",
@@ -398,7 +401,7 @@ The certifier is the same as the certificate to certify."));
                         // Return a signature packet to indicate that we
                         // processed something.  But don't return a
                         // signature.
-                        return Ok(vec![ Packet::from(userid.userid().clone()) ]);
+                        return Ok(vec![ Packet::from(userid.clone()) ]);
                     }
                 } else {
                     wwriteln!(stream = unless_quiet, initial_indent = "   - ",
@@ -406,7 +409,7 @@ The certifier is the same as the certificate to certify."));
                                creating a new certification");
                 }
             } else {
-                ui::emit_cert_userid(unless_quiet, cert, userid.userid())?;
+                emit_cert_userid(unless_quiet, cert, userid)?;
             }
 
             if retract {
@@ -422,10 +425,10 @@ The certifier is the same as the certificate to certify."));
                     builder.clone().sign_userid_binding(
                         &mut signer,
                         cert.primary_key().key(),
-                        userid.userid())
+                        userid)
                         .with_context(|| {
                             format!("Creating certification for {}",
-                                    ui::Safe(userid.userid()))
+                                    Safe(userid))
                         })
                         .map(Into::into)
                 })
@@ -433,7 +436,7 @@ The certifier is the same as the certificate to certify."));
 
             wwriteln!(stream = unless_quiet);
 
-            let mut packets = vec![ Packet::from(userid.userid().clone()) ];
+            let mut packets = vec![ Packet::from(userid.clone()) ];
             packets.append(&mut sigs);
             Ok(packets)
         })
@@ -462,20 +465,12 @@ The certifier is the same as the certificate to certify."));
 
     let cert = cert.clone().insert_packets(certifications)?.0;
 
-    if let Some(output) = output {
-        // And export it.
-        let path = output.path().map(Clone::clone);
-        let mut message = output.create_pgp_safe(
-            &sq,
-            binary,
-            sequoia::openpgp::armor::Kind::PublicKey,
-        )?;
-        cert.serialize(&mut message)?;
-        message.finalize()?;
+    if let Some((path, mut output)) = output {
+        cert.serialize(&mut output)?;
 
         if ! local {
             if let Some(path) = path {
-                sq.hint(format_args!(
+                sequoia.hint(format_args!(
                     "Updated certificate written to {}.  \
                      To make the update effective, it has to be published \
                      so that others can find it, for example using:",
@@ -484,21 +479,21 @@ The certifier is the same as the certificate to certify."));
                     .arg_value("--cert-file", path.display())
                     .done();
             } else {
-                sq.hint(format_args!(
+                sequoia.hint(format_args!(
                     "To make the update effective, it has to be published \
                      so that others can find it."));
             }
         }
     } else {
         // Import it.
-        let cert_store = sq.cert_store_or_else()?;
+        let cert_store = sequoia.cert_store_or_else()?;
 
         let fipr = cert.fingerprint();
         if let Err(err) = cert_store.update(Arc::new(cert.into())) {
             weprintln!("Error importing updated cert: {}", err);
             return Err(err);
         } else if ! local {
-            sq.hint(format_args!(
+            sequoia.hint(format_args!(
                 "Imported updated cert into the cert store.  \
                  To make the update effective, it has to be published \
                  so that others can find it, for example using:"))
@@ -510,3 +505,4 @@ The certifier is the same as the certificate to certify."));
 
     Ok(())
 }
+

@@ -305,12 +305,14 @@ pub fn generate(
                 let trust_root = sq.local_trust_root()?;
                 let trust_root = trust_root.to_cert()?;
 
+                let prompt = password::Prompt::new(&sq, true);
+
                 if command.own_key && have_userids {
                     // Mark all user IDs as authenticated, and mark
                     // the key as a trusted introducer.
-                    crate::common::pki::certify::certify(
+                    sequoia::pki::certify::certify(
                         &mut std::io::stderr(),
-                        &sq,
+                        &sq.sequoia,
                         false, // Recreate.
                         &trust_root,
                         &cert,
@@ -326,13 +328,13 @@ pub fn generate(
                         false, // Non-revocable.
                         &[][..], // Notations.
                         None, // Output.
-                        false, // Binary.
+                        prompt,
                     )?;
                 } else if command.shared_key && have_userids {
                     // Mark all user IDs as authenticated.
-                    crate::common::pki::certify::certify(
+                    sequoia::pki::certify::certify(
                         &mut std::io::stderr(),
-                        &sq,
+                        &sq.sequoia,
                         false, // Recreate.
                         &trust_root,
                         &cert,
@@ -348,7 +350,7 @@ pub fn generate(
                         false, // Non-revocable.
                         &[][..], // Notations.
                         None, // Output.
-                        false, // Binary.
+                        prompt,
                     )?;
                 }
             }
