@@ -3289,7 +3289,6 @@ impl<'a, 'b> writer::Stackable<'a, Cookie> for Encryptor<'a, 'b>
 #[cfg(test)]
 mod test {
     use std::io::Read;
-    use crate::parse::stream::VerifierBuilder;
     use crate::types::PublicKeyAlgorithm;
     use crate::{Packet, PacketPile, Profile, packet::CompressedData};
     use crate::parse::{Parse, PacketParserResult, PacketParser};
@@ -4563,8 +4562,8 @@ mod test {
 
         let (cert, _) = CertBuilder::new()
             .set_profile(Profile::RFC9580)?
-            .set_signing_algorithm(crypto::PublicKeyAlgorithm::ECDSA, Some(crypto::Curve::NistP256), None)
-            .set_encryption_algorithm(crypto::PublicKeyAlgorithm::MLKEM1024_X448, None, None)
+            .set_signing_algorithm(crypto::PublicKeyAlgorithm::ECDSA, crypto::Curve::NistP256, None)?
+            .set_encryption_algorithm(crypto::PublicKeyAlgorithm::RSAEncryptSign, None, 2048)?
             .add_transport_encryption_subkey()
             .add_signing_subkey()
             .generate()?;
@@ -4616,8 +4615,8 @@ mod test {
 
         let (cert, _) = CertBuilder::new()
             .set_profile(Profile::RFC9580)?
-            .set_signing_algorithm(crypto::PublicKeyAlgorithm::ECDSA, Some(crypto::Curve::NistP256), None)
-            .set_encryption_algorithm(crypto::PublicKeyAlgorithm::MLKEM1024_X448, None, None)
+            .set_signing_algorithm(crypto::PublicKeyAlgorithm::ECDSA, crypto::Curve::NistP256, None)?
+            .set_encryption_algorithm(crypto::PublicKeyAlgorithm::RSAEncryptSign, None, 2048)?
             .add_transport_encryption_subkey()
             .add_signing_subkey()
             .generate()?;

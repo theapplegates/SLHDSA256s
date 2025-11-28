@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::time;
 use std::marker::PhantomData;
 
@@ -183,82 +184,226 @@ impl CipherSuite {
     }
 }
 
-
 #[derive(Clone, Debug)]
-pub struct AlgorithmSpecifier {
-    algo: PublicKeyAlgorithm,
-    curve: Option<Curve>,
-    bits: usize,
+#[allow(non_camel_case_types)]
+enum PublicKeyAlgorithmSpecification {
+    RSAEncryptSign(usize),
+    ECDH(Curve),
+    ECDSA(Curve),
+    EdDSA(Curve),
+    X25519,
+    X448,
+    Ed25519,
+    Ed448,
+    MLDSA65_Ed25519,
+    MLDSA87_Ed448,
+    SLHDSA128s,
+    SLHDSA128f,
+    SLHDSA256s,
+    MLKEM768_X25519,
+    MLKEM1024_X448,
 }
 
-impl AlgorithmSpecifier {
-
-    pub fn is_supported(&self) -> Result<()> {
-        if !self.algo.is_supported() {
-            return Err(Error::UnsupportedPublicKeyAlgorithm(self.algo).into());
+use PublicKeyAlgorithmSpecification as PKAS;
+impl From<PublicKeyAlgorithmSpecification> for PublicKeyAlgorithm {
+    fn from(algo: PKAS) -> Self {
+        match algo {
+            PKAS::RSAEncryptSign(_) => PublicKeyAlgorithm::RSAEncryptSign,
+            PKAS::ECDH(_) => PublicKeyAlgorithm::ECDH,
+            PKAS::ECDSA(_) => PublicKeyAlgorithm::ECDSA,
+            PKAS::EdDSA(_) => PublicKeyAlgorithm::EdDSA,
+            PKAS::X25519 => PublicKeyAlgorithm::X25519,
+            PKAS::X448 => PublicKeyAlgorithm::X448,
+            PKAS::Ed25519 => PublicKeyAlgorithm::Ed25519,
+            PKAS::Ed448 => PublicKeyAlgorithm::Ed448,
+            PKAS::MLDSA65_Ed25519 => PublicKeyAlgorithm::MLDSA65_Ed25519,
+            PKAS::MLDSA87_Ed448 => PublicKeyAlgorithm::MLDSA87_Ed448,
+            PKAS::SLHDSA128s => PublicKeyAlgorithm::SLHDSA128s,
+            PKAS::SLHDSA128f => PublicKeyAlgorithm::SLHDSA128f,
+            PKAS::SLHDSA256s => PublicKeyAlgorithm::SLHDSA256s,
+            PKAS::MLKEM768_X25519 => PublicKeyAlgorithm::MLKEM768_X25519,
+            PKAS::MLKEM1024_X448 => PublicKeyAlgorithm::MLKEM1024_X448,
         }
-        match &self.curve {
-            Some(c) => {
-                if !c.is_supported() {
-                    return Err(Error::UnsupportedEllipticCurve(c.clone()).into());
+    }
+}
+
+impl TryFrom<PublicKeyAlgorithmSpecification> for Curve {
+    type Error = anyhow::Error;
+
+    fn try_from(algo: PKAS) -> Result<Self> {
+        match algo {
+            PKAS::ECDH(c) => Ok(c),
+            PKAS::ECDSA(c) => Ok(c),
+            PKAS::EdDSA(c) => Ok(c),
+            _ => Err(Error::InvalidArgument(
+                format!("Algorithm {} has no curve",
+                    PublicKeyAlgorithm::from(algo))
+                ).into())
+        }
+    }
+}
+
+impl TryFrom<PublicKeyAlgorithmSpecification> for usize {
+    type Error = anyhow::Error;
+
+    fn try_from(algo: PKAS) -> Result<Self> {
+        match algo {
+            PKAS::RSAEncryptSign(b) => Ok(b),
+            _ => Err(Error::InvalidArgument(
+                format!("Algorithm {} has no bits parameter",
+                    PublicKeyAlgorithm::from(algo))
+                ).into())
+
+        }
+    }
+}
+
+impl TryFrom<(PublicKeyAlgorithm, Option<Curve>, Option<usize>)>
+    for PublicKeyAlgorithmSpecification {
+
+    type Error = anyhow::Error;
+
+    #[allow(deprecated)]
+    fn try_from((algo, curve, bits): (PublicKeyAlgorithm, Option<Curve>, Option<usize>))
+        -> Result<Self> {
+
+        match algo {
+            PublicKeyAlgorithm::RSASign
+            | PublicKeyAlgorithm::RSAEncrypt
+            | PublicKeyAlgorithm::ElGamalEncrypt
+            | PublicKeyAlgorithm::ElGamalEncryptSign
+            | PublicKeyAlgorithm::DSA
+            => Err(Error::InvalidArgument(
+                format!("Algorithm is deprecated: {}", algo))
+                .into()),
+
+            PublicKeyAlgorithm::RSAEncryptSign => {
+                match bits {
+                    Some(2048) | Some(3072) | Some(4096) =>
+                        Ok(PublicKeyAlgorithmSpecification::RSAEncryptSign(bits.unwrap())),
+                    _ => Err(Error::InvalidArgument(
+                        format!("Algorithm {} has no bits parameter", algo)
+                        ).into())
                 }
             },
-            None => (),
+            PublicKeyAlgorithm::ECDH
+            | PublicKeyAlgorithm::ECDSA
+            | PublicKeyAlgorithm::EdDSA => {
+                if let Some(c) = curve {
+                    match algo {
+                        PublicKeyAlgorithm::ECDH =>
+                            Ok(PublicKeyAlgorithmSpecification::ECDH(c)),
+                        PublicKeyAlgorithm::ECDSA =>
+                            Ok(PublicKeyAlgorithmSpecification::ECDSA(c)),
+                        PublicKeyAlgorithm::EdDSA =>
+                            Ok(PublicKeyAlgorithmSpecification::EdDSA(c)),
+                        _ => unreachable!(),
+                    }
+                } else {
+                    Err(Error::InvalidArgument(
+                        format!("Algorithm {} has no curve",
+                            PublicKeyAlgorithm::from(algo))
+                        ).into())
+                }
+            },
+
+            PublicKeyAlgorithm::X25519 =>
+                Ok(PublicKeyAlgorithmSpecification::X25519),
+            PublicKeyAlgorithm::X448 =>
+                Ok(PublicKeyAlgorithmSpecification::X448),
+            PublicKeyAlgorithm::Ed25519 =>
+                Ok(PublicKeyAlgorithmSpecification::Ed25519),
+            PublicKeyAlgorithm::Ed448 =>
+                Ok(PublicKeyAlgorithmSpecification::Ed448),
+            PublicKeyAlgorithm::MLDSA65_Ed25519 =>
+                Ok(PublicKeyAlgorithmSpecification::MLDSA65_Ed25519),
+            PublicKeyAlgorithm::MLDSA87_Ed448 =>
+                Ok(PublicKeyAlgorithmSpecification::MLDSA87_Ed448),
+            PublicKeyAlgorithm::SLHDSA128s =>
+                Ok(PublicKeyAlgorithmSpecification::SLHDSA128s),
+            PublicKeyAlgorithm::SLHDSA128f =>
+                Ok(PublicKeyAlgorithmSpecification::SLHDSA128f),
+            PublicKeyAlgorithm::SLHDSA256s =>
+                Ok(PublicKeyAlgorithmSpecification::SLHDSA256s),
+            PublicKeyAlgorithm::MLKEM768_X25519 =>
+                Ok(PublicKeyAlgorithmSpecification::MLKEM768_X25519),
+            PublicKeyAlgorithm::MLKEM1024_X448 =>
+                Ok(PublicKeyAlgorithmSpecification::MLKEM1024_X448),
+
+            PublicKeyAlgorithm::Private(_)
+            | PublicKeyAlgorithm::Unknown(_)
+            => Err(Error::InvalidArgument(
+                format!("Cannot use {}", algo))
+                .into()),
+        }
+    }
+}
+
+impl PublicKeyAlgorithmSpecification {
+
+    pub fn is_supported(&self) -> Result<()> {
+        if !PublicKeyAlgorithm::from(self.clone()).is_supported() {
+            return Err(Error::UnsupportedPublicKeyAlgorithm(
+                PublicKeyAlgorithm::from(self.clone())
+            )
+            .into());
+        }
+        if let Ok(c) = Curve::try_from(self.clone()) {
+            if !c.is_supported() {
+                return Err(Error::UnsupportedEllipticCurve(c.clone()).into());
+            }
         }
         Ok(())
     }
 
-    /// Creates an AlgorithmSpecifier based on the encryption algorithm
-    /// specified in the CipherSuite.
     pub fn for_encryption(cs: CipherSuite) -> Self {
         match cs {
             CipherSuite::Cv25519 =>
-                AlgorithmSpecifier { algo: PublicKeyAlgorithm::ECDH, curve: Some(Curve::Cv25519), bits: 0 },
+                PublicKeyAlgorithmSpecification::ECDH(Curve::Cv25519),
             CipherSuite::RSA2k =>
-                AlgorithmSpecifier { algo: PublicKeyAlgorithm::RSAEncryptSign, curve: None, bits: 2048 },
+                PublicKeyAlgorithmSpecification::RSAEncryptSign(2048),
             CipherSuite::RSA3k =>
-                AlgorithmSpecifier { algo: PublicKeyAlgorithm::RSAEncryptSign, curve: None, bits: 3072 },
+                PublicKeyAlgorithmSpecification::RSAEncryptSign(3072),
             CipherSuite::RSA4k =>
-                AlgorithmSpecifier { algo: PublicKeyAlgorithm::RSAEncryptSign, curve: None, bits: 4096 },
+                PublicKeyAlgorithmSpecification::RSAEncryptSign(4096),
             CipherSuite::P256 =>
-                AlgorithmSpecifier { algo: PublicKeyAlgorithm::ECDH, curve: Some(Curve::NistP256), bits: 0 },
+                PublicKeyAlgorithmSpecification::ECDH(Curve::NistP256),
             CipherSuite::P384 =>
-                AlgorithmSpecifier { algo: PublicKeyAlgorithm::ECDH, curve: Some(Curve::NistP384), bits: 0 },
+                PublicKeyAlgorithmSpecification::ECDH(Curve::NistP384),
             CipherSuite::P521 =>
-                AlgorithmSpecifier { algo: PublicKeyAlgorithm::ECDH, curve: Some(Curve::NistP521), bits: 0 },
+                PublicKeyAlgorithmSpecification::ECDH(Curve::NistP521),
             CipherSuite::MLDSA65_Ed25519 =>
-                AlgorithmSpecifier { algo: PublicKeyAlgorithm::MLKEM768_X25519, curve: None, bits: 0 },
+                PublicKeyAlgorithmSpecification::MLKEM768_X25519,
             CipherSuite::MLDSA87_Ed448 =>
-                AlgorithmSpecifier { algo: PublicKeyAlgorithm::MLKEM1024_X448, curve: None, bits: 0 },
-        }
+                PublicKeyAlgorithmSpecification::MLKEM1024_X448,
+         }
     }
 
-    /// Creates an AlgorithmSpecifier based on the signing algorithm
-    /// specified in the CipherSuite.
     pub fn for_signing(cs: CipherSuite) -> Self {
         match cs {
             CipherSuite::Cv25519 =>
-                AlgorithmSpecifier { algo: PublicKeyAlgorithm::EdDSA, curve: Some(Curve::Ed25519), bits: 0 },
+                PublicKeyAlgorithmSpecification::EdDSA(Curve::Ed25519),
             CipherSuite::RSA2k =>
-                AlgorithmSpecifier { algo: PublicKeyAlgorithm::RSAEncryptSign, curve: None, bits: 2048 },
+                PublicKeyAlgorithmSpecification::RSAEncryptSign(2048),
             CipherSuite::RSA3k =>
-                AlgorithmSpecifier { algo: PublicKeyAlgorithm::RSAEncryptSign, curve: None, bits: 3072 },
+                PublicKeyAlgorithmSpecification::RSAEncryptSign(3072),
             CipherSuite::RSA4k =>
-                AlgorithmSpecifier { algo: PublicKeyAlgorithm::RSAEncryptSign, curve: None, bits: 4096 },
+                PublicKeyAlgorithmSpecification::RSAEncryptSign(4096),
             CipherSuite::P256 =>
-                AlgorithmSpecifier { algo: PublicKeyAlgorithm::EdDSA, curve: Some(Curve::NistP256), bits: 0 },
+                PublicKeyAlgorithmSpecification::EdDSA(Curve::NistP256),
             CipherSuite::P384 =>
-                AlgorithmSpecifier { algo: PublicKeyAlgorithm::EdDSA, curve: Some(Curve::NistP384), bits: 0 },
+                PublicKeyAlgorithmSpecification::EdDSA(Curve::NistP384),
             CipherSuite::P521 =>
-                AlgorithmSpecifier { algo: PublicKeyAlgorithm::EdDSA, curve: Some(Curve::NistP521), bits: 0 },
+                PublicKeyAlgorithmSpecification::EdDSA(Curve::NistP521),
             CipherSuite::MLDSA65_Ed25519 =>
-                AlgorithmSpecifier { algo: PublicKeyAlgorithm::MLDSA65_Ed25519, curve: None, bits: 0 },
+                PublicKeyAlgorithmSpecification::MLDSA65_Ed25519,
             CipherSuite::MLDSA87_Ed448 =>
-                AlgorithmSpecifier { algo: PublicKeyAlgorithm::MLDSA87_Ed448, curve: None, bits: 0 },
+                PublicKeyAlgorithmSpecification::MLDSA87_Ed448,
+
         }
     }
 
-    /// Generates a version 4 Key based on the AlgorithmSpecifier.
+    /// Generates an OpenPGP version 4 Key.
     /// Returns an Error on an invalid combination of flags, unsuitable or
     /// deprecated algorithms or a inconsistent algorithm/curve/bits combination.
     #[allow(deprecated)]
@@ -283,48 +428,34 @@ impl AlgorithmSpecifier {
                 .into());
         }
 
-        match (sign, self.algo) {
-            (_, PublicKeyAlgorithm::RSASign)
-            | (_, PublicKeyAlgorithm::RSAEncrypt)
-            | (_, PublicKeyAlgorithm::ElGamalEncrypt)
-            | (_, PublicKeyAlgorithm::ElGamalEncryptSign)
-            | (_, PublicKeyAlgorithm::DSA)
-            => Err(Error::InvalidArgument(format!("Algorithm is deprecated: {}", self.algo)).into()),
-
-            (_, PublicKeyAlgorithm::RSAEncryptSign) => {
-                match self.bits {
-                    2048 | 3072 | 4096 => Key4::generate_rsa(self.bits),
-                    _ => Err(Error::InvalidArgument(format!("Invalid value for bits specified ({})", self.bits)).into())
+        match (sign, self) {
+            (_, PublicKeyAlgorithmSpecification::RSAEncryptSign(bits)) => {
+                match bits {
+                    2048 | 3072 | 4096 => Key4::generate_rsa(*bits),
+                    _ => Err(Error::InvalidArgument(
+                        format!("Invalid value for bits specified ({})", bits))
+                        .into())
                 }
             },
+            (false, PublicKeyAlgorithmSpecification::ECDH(c)) =>
+                Key4::generate_ecc(false, c.clone()),
+            (true, PublicKeyAlgorithmSpecification::EdDSA(c))
+            | (true, PublicKeyAlgorithmSpecification::ECDSA(c)) =>
+                Key4::generate_ecc(true, c.clone()),
 
-            (false, PublicKeyAlgorithm::ECDH) => {
-                if let Some(c) = self.curve.clone() {
-                    Key4::generate_ecc(false, c)
-                } else {
-                    Err(Error::InvalidArgument(format!("Using algorithm {} without a curve", self.algo)).into())
-                }
-            },
-            (true, PublicKeyAlgorithm::EdDSA)
-            | (true, PublicKeyAlgorithm::ECDSA) => {
-                if let Some(c) = self.curve.clone() {
-                    Key4::generate_ecc(true, c)
-                } else {
-                    Err(Error::InvalidArgument(format!("Using algorithm {} without a curve", self.algo)).into())
-                }
-            },
-
-            _ => Err(Error::InvalidOperation(format!("Cannot use {} for {} as a v4 key",
-                self.algo,
+            _ => Err(Error::InvalidOperation(
+                format!("Cannot use {} for {} as a v4 key",
+                    PublicKeyAlgorithm::from(self.clone()
+                ),
                 if sign { "signing" } else { "encryption" }
                 )).into()),
         }
+
     }
 
-    /// Generates a version 6 Key based on the AlgorithmSpecifier.
+    /// Generates an OpenPGP version 6 Key.
     /// Returns an Error on an invalid combination of flags, unsuitable or
     /// deprecated algorithms or a inconsistent algorithm/curve/bits combination.
-    #[allow(deprecated)]
     fn generate_v6_key<K>(&self, flags: K)
         -> Result<Key6<KeySecretParts, UnspecifiedRole>>
         where K: AsRef<KeyFlags>,
@@ -346,56 +477,37 @@ impl AlgorithmSpecifier {
                 .into());
         }
 
-        match (sign, self.algo) {
-            (_, PublicKeyAlgorithm::RSASign)
-            | (_, PublicKeyAlgorithm::RSAEncrypt)
-            | (_, PublicKeyAlgorithm::ElGamalEncrypt)
-            | (_, PublicKeyAlgorithm::ElGamalEncryptSign)
-            | (_, PublicKeyAlgorithm::DSA)
-            => Err(Error::InvalidArgument(format!("Algorithm is deprecated: {}", self.algo)).into()),
-
-            (_, PublicKeyAlgorithm::RSAEncryptSign) => {
-                match self.bits {
-                    2048 | 3072 | 4096 => Key6::generate_rsa(self.bits),
-                    _ => Err(Error::InvalidArgument(format!("Invalid value for bits specified ({})", self.bits)).into())
+        match (sign, self) {
+            (_, PublicKeyAlgorithmSpecification::RSAEncryptSign(bits)) => {
+                match bits {
+                    2048 | 3072 | 4096 => Key6::generate_rsa(*bits),
+                    _ => Err(Error::InvalidArgument(format!("Invalid value for bits specified ({})", bits)).into())
                 }
             },
+            (false, PublicKeyAlgorithmSpecification::ECDH(c)) =>
+                Key6::generate_ecc(false, c.clone()),
+            (true, PublicKeyAlgorithmSpecification::EdDSA(c))
+            | (true, PublicKeyAlgorithmSpecification::ECDSA(c)) =>
+                Key6::generate_ecc(true, c.clone()),
 
-            (false, PublicKeyAlgorithm::ECDH) => {
-                if let Some(c) = self.curve.clone() {
-                    Key6::generate_ecc(false, c)
-                } else {
-                    Err(Error::InvalidArgument(format!("Using algorithm {} without a curve", self.algo)).into())
-                }
-            },
+            (false, PublicKeyAlgorithmSpecification::MLKEM768_X25519) => Key6::generate_mlkem768_x25519(),
+            (true, PublicKeyAlgorithmSpecification::MLDSA65_Ed25519) => Key6::generate_mldsa65_ed25519(),
 
-            (true, PublicKeyAlgorithm::EdDSA)
-            | (true, PublicKeyAlgorithm::ECDSA) => {
-                if let Some(c) = self.curve.clone() {
-                    Key6::generate_ecc(true, c)
-                } else {
-                    Err(Error::InvalidArgument(format!("Using algorithm {} without a curve", self.algo)).into())
-                }
-            },
+            (false, PublicKeyAlgorithmSpecification::MLKEM1024_X448) => Key6::generate_mlkem1024_x448(),
+            (true, PublicKeyAlgorithmSpecification::MLDSA87_Ed448) => Key6::generate_mldsa87_ed448(),
 
-            (false, PublicKeyAlgorithm::MLKEM768_X25519) => Key6::generate_mlkem768_x25519(),
-            (true, PublicKeyAlgorithm::MLDSA65_Ed25519) => Key6::generate_mldsa65_ed25519(),
+            (true, PublicKeyAlgorithmSpecification::SLHDSA128s) => Key6::generate_slhdsa128s(),
+            (true, PublicKeyAlgorithmSpecification::SLHDSA128f) => Key6::generate_slhdsa128f(),
+            (true, PublicKeyAlgorithmSpecification::SLHDSA256s) => Key6::generate_slhdsa256s(),
 
-            (false, PublicKeyAlgorithm::MLKEM1024_X448) => Key6::generate_mlkem1024_x448(),
-            (true, PublicKeyAlgorithm::MLDSA87_Ed448) => Key6::generate_mldsa87_ed448(),
+            (false, PublicKeyAlgorithmSpecification::X25519) => Key6::generate_x25519(),
+            (true, PublicKeyAlgorithmSpecification::Ed25519) => Key6::generate_ed25519(),
 
-            (true, PublicKeyAlgorithm::SLHDSA128s) => Key6::generate_slhdsa128s(),
-            (true, PublicKeyAlgorithm::SLHDSA128f) => Key6::generate_slhdsa128f(),
-            (true, PublicKeyAlgorithm::SLHDSA256s) => Key6::generate_slhdsa256s(),
-
-            (false, PublicKeyAlgorithm::X25519) => Key6::generate_x25519(),
-            (true, PublicKeyAlgorithm::Ed25519) => Key6::generate_ed25519(),
-
-            (false, PublicKeyAlgorithm::X448) => Key6::generate_x448(),
-            (true, PublicKeyAlgorithm::Ed448) => Key6::generate_ed448(),
+            (false, PublicKeyAlgorithmSpecification::X448) => Key6::generate_x448(),
+            (true, PublicKeyAlgorithmSpecification::Ed448) => Key6::generate_ed448(),
 
             _ => Err(Error::InvalidOperation(format!("Cannot use {} for {} as a v6 key",
-                self.algo,
+                PublicKeyAlgorithm::from(self.clone()),
                 if sign { "signing" } else { "encryption" }
                 )).into()),
 
@@ -404,17 +516,17 @@ impl AlgorithmSpecifier {
 }
 
 #[derive(Clone, Debug)]
-pub struct AlgorithmBundle {
-    encryption: AlgorithmSpecifier,
-    signing: AlgorithmSpecifier,
+struct AlgorithmBundle {
+    encryption: PublicKeyAlgorithmSpecification,
+    signing: PublicKeyAlgorithmSpecification,
 }
 assert_send_and_sync!(AlgorithmBundle);
 
 impl From<CipherSuite> for AlgorithmBundle {
     fn from(cs: CipherSuite) -> Self {
         Self {
-            encryption: AlgorithmSpecifier::for_encryption(cs),
-            signing: AlgorithmSpecifier::for_signing(cs),
+            encryption: PublicKeyAlgorithmSpecification::for_encryption(cs),
+            signing: PublicKeyAlgorithmSpecification::for_signing(cs),
         }
     }
 }
@@ -431,7 +543,11 @@ impl AlgorithmBundle {
         else { Ok(()) }
     }
 
-    /// Generates a Key.
+    /// Generates a Key according to the passed [`KeyFlags`] and [`Profile`].
+    /// Returns an Error for invalid combinations of [`KeyFlags`].
+    ///
+    /// [`KeyFlags`]: crate::type::KeyFlags
+    /// [`Profile`]: crate::Profile
     fn generate_key<K>(&self, flags: K, profile: Profile)
         -> Result<Key<KeySecretParts, UnspecifiedRole>>
         where K: AsRef<KeyFlags>,
@@ -1765,17 +1881,23 @@ impl CertBuilder<'_> {
     ///
     /// let (alice, _) =
     ///     CertBuilder::general_purpose(Some("alice@example.org"))
-    ///         .set_encryption_algorithm(PublicKeyAlgorithm::RSAEncryptSign, None, Some(2048))
+    ///         .set_encryption_algorithm(PublicKeyAlgorithm::RSAEncryptSign, None, Some(2048))?
     ///         .generate()?;
     /// # Ok(()) }
     /// ```
-    pub fn set_encryption_algorithm(mut self, algo: PublicKeyAlgorithm, curve: Option<Curve>, bits: Option<usize>) -> Self {
-        self.algo_bundle.encryption = AlgorithmSpecifier {
-            algo,
-            curve,
-            bits: bits.unwrap_or(0)
-        };
-        self
+    pub fn set_encryption_algorithm(
+        mut self,
+        algo: PublicKeyAlgorithm,
+        curve: impl Into<Option<Curve>>,
+        bits: impl Into<Option<usize>>) -> Result<Self> {
+
+        match (algo, curve.into(), bits.into()).try_into() {
+            Ok(specification) => {
+                self.algo_bundle.encryption = specification;
+                Ok(self)
+            },
+            Err(e) => Err(e)
+        }
     }
 
     /// Set the algorithm used for signing
@@ -1789,17 +1911,23 @@ impl CertBuilder<'_> {
     ///
     /// let (alice, _) =
     ///     CertBuilder::general_purpose(Some("alice@example.org"))
-    ///         .set_signing_algorithm(PublicKeyAlgorithm::EdDSA, Some(Curve::NistP521), None)
+    ///         .set_signing_algorithm(PublicKeyAlgorithm::EdDSA, Some(Curve::NistP521), None)?
     ///         .generate()?;
     /// # Ok(()) }
     /// ```
-    pub fn set_signing_algorithm(mut self, algo: PublicKeyAlgorithm, curve: Option<Curve>, bits: Option<usize>) -> Self {
-        self.algo_bundle.signing = AlgorithmSpecifier {
-            algo,
-            curve,
-            bits: bits.unwrap_or(0)
-        };
-        self
+    pub fn set_signing_algorithm(
+        mut self,
+        algo: PublicKeyAlgorithm,
+        curve: impl Into<Option<Curve>>,
+        bits: impl Into<Option<usize>>) -> Result<Self> {
+
+        match (algo, curve.into(), bits.into()).try_into() {
+            Ok(specification) => {
+                self.algo_bundle.signing = specification;
+                Ok(self)
+            },
+            Err(e) => Err(e)
+        }
     }
 
     /// Generates a certificate.
@@ -2564,14 +2692,14 @@ mod tests {
         use crate::policy::StandardPolicy;
         let policy = StandardPolicy::new();
 
-        let algo = AlgorithmBundle::from(CipherSuite::MLDSA65_Ed25519);
+        let algo = AlgorithmBundle::from(CipherSuite::RSA2k);
         let key = algo.generate_key(KeyFlags::empty().set_storage_encryption(), Profile::RFC9580)?;
-        assert_eq!(key.pk_algo(), PublicKeyAlgorithm::MLKEM768_X25519);
+        assert_eq!(key.pk_algo(), PublicKeyAlgorithm::RSAEncryptSign);
 
         let (cert, _) = CertBuilder::new()
             .set_profile(crate::Profile::RFC9580).unwrap()
-            .set_signing_algorithm(PublicKeyAlgorithm::Ed448, None, Some(2048))
-            .set_encryption_algorithm(PublicKeyAlgorithm::MLKEM768_X25519, None, None)
+            .set_signing_algorithm(PublicKeyAlgorithm::RSAEncryptSign, None, 2048)?
+            .set_encryption_algorithm(PublicKeyAlgorithm::ECDH, Curve::NistP256, None)?
             .add_transport_encryption_subkey()
             .add_signing_subkey()
             .generate()?;
@@ -2582,12 +2710,12 @@ mod tests {
             .for_transport_encryption()
             .nth(0).unwrap()
             .key()
-            .pk_algo(), PublicKeyAlgorithm::MLKEM768_X25519);
+            .pk_algo(), PublicKeyAlgorithm::ECDH);
         assert_eq!(vc.keys()
             .for_signing()
             .nth(0).unwrap()
             .key()
-            .pk_algo(), PublicKeyAlgorithm::Ed448);
+            .pk_algo(), PublicKeyAlgorithm::RSAEncryptSign);
 
         Ok(())
     }
