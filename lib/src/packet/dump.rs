@@ -20,6 +20,7 @@ use self::openpgp::parse::{
     map::Map,
     stream::DecryptionHelper,
 };
+use self::openpgp::types::Duration;
 
 use crate::Sequoia;
 use crate::prompt::Prompt;
@@ -903,13 +904,17 @@ impl<'a> PacketDumper<'a> {
                 write!(output, "{}    Signature creation time: {}", i,
                        (*t).convert())?,
             SignatureExpirationTime(t) =>
-                write!(output, "{}    Signature expiration time: {} ({})",
-                       i, t.convert(),
-                       if let Some(creation) = sig.signature_creation_time() {
-                           (creation + (*t).into()).convert().to_string()
-                       } else {
-                           " (no Signature Creation Time subpacket)".into()
-                       })?,
+                if t == &Duration::seconds(0) {
+                    write!(output, "{}    Signature expiration time: never", i)?
+                } else {
+                    write!(output, "{}    Signature expiration time: {} ({})",
+                        i, t.convert(),
+                        if let Some(creation) = sig.signature_creation_time() {
+                            (creation + (*t).into()).convert().to_string()
+                        } else {
+                            " (no Signature Creation Time subpacket)".into()
+                        })?
+                },
             ExportableCertification(e) =>
                 write!(output, "{}    Exportable certification: {}", i, e)?,
             TrustSignature{level, trust} =>
