@@ -1,10 +1,17 @@
-/// Common file handling support.
+//! Common file handling support.
 
+use std::fs::OpenOptions;
 use std::io;
+use std::io::Read;
+use std::io::Seek;
+use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 
 use tempfile::NamedTempFile;
+
+use sequoia_openpgp as openpgp;
+use openpgp::crypto::mem::Protected;
 
 use crate::Result;
 
@@ -20,6 +27,8 @@ use crate::Result;
 pub struct PartFileWriter {
     path: PathBuf,
     sink: Option<NamedTempFile>,
+    // If true, copy the temporary file instead of renaming it.
+    copy: bool,
 }
 
 impl io::Write for PartFileWriter {
@@ -73,14 +82,32 @@ impl PartFileWriter {
             },
         }
 
-        let sink = sink
+        // Try to create tempfile in parent, if that fails use the
+        // default OS location (mostly /tmp).
+        let mut copy = false;
+        let sink = match sink
             .prefix(file_name)
             .suffix(".part")
-            .tempfile_in(parent)?;
+            .tempfile_in(parent) {
+                Ok(s) => s,
+                Err(_) => {
+                    // It seems that we have limited possibilities in
+                    // `parent`, choose the default location for temp
+                    // files and use copy for persisting as it is less
+                    // invasive.  This also catches the case where we
+                    // crossed filesystem boundaries.
+                    copy = true;
+                    sink
+                        .prefix(file_name)
+                        .suffix(".part")
+                        .tempfile()?
+                },
+            };
 
         Ok(PartFileWriter {
             path,
             sink: Some(sink),
+            copy,
         })
     }
 
@@ -91,10 +118,51 @@ impl PartFileWriter {
             anyhow::anyhow!("file already persisted")))
     }
 
+    const DEFAULT_BUF_SIZE: usize = 64 * 1024;
+
     /// Persists the file under its final name.
-    pub fn persist(&mut self) -> Result<()> {
-        if let Some(file) = self.sink.take() {
-            file.persist(&self.path)?;
+    pub fn persist(&mut self) -> io::Result<()> {
+        if let Some(mut file) = self.sink.take() {
+            if self.copy {
+                file.rewind()?;
+
+                let mut open_options = OpenOptions::new();
+                open_options.create(true)
+                    .write(true)
+                    .truncate(true);
+
+                platform! {
+                    unix => {
+                        use std::os::unix::fs::OpenOptionsExt;
+
+                        open_options.custom_flags(libc::O_NOFOLLOW);
+                    },
+                    windows => {
+                        use std::fs::OpenOptions;
+                        use std::os::windows::prelude::*;
+
+                        // Do not allow others to read or modify this
+                        // file while we have it open for writing.
+                        open_options.share_mode(0);
+                    },
+                }
+
+                let mut target = open_options.open(&self.path)?;
+
+                // We use read()/write() instead of std::io::copy so
+                // that we can zero the internal buffer.
+                let mut buffer: Protected = [0; Self::DEFAULT_BUF_SIZE].into();
+
+                while let Ok(len) = file.read(buffer.as_mut()) {
+                    if len == 0 {
+                        break;
+                    }
+                    target.write_all(&buffer[0..len])?;
+                }
+                target.flush()?;
+            } else {
+                file.persist(&self.path)?;
+            }
         }
         Ok(())
     }

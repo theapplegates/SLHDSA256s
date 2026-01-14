@@ -5,6 +5,19 @@
 * Changes in 1.3.2
 ** New functionality
    - Add `sq toc`, which recursively lists all commands.
+   - When directing `sq` to write to a file that already exists, the
+     user had to specify `--overwrite`.  This is no longer required
+     for special files (character devices, block devices, FIFOs and
+     Unix domain sockets).
+   - When writing to a file, `sq` would first write to a temporary
+     file in the same directory to avoid writing anything if the
+     command fails.  If the command succeeds, it would move the file
+     into place.  This would fail when writing to special files
+     (character devices, block devices, FIFOs and Unix domain sockets)
+     like `/dev/null` and when the directory is not writable.  In
+     these cases, `sq` now writes to a temporary file in the user's
+     temporary directory (often under `/tmp`) and then copies the
+     file.
 
 * Changes in 1.3.1
   - This is a bugfix release, fixing and improving displayed hints,

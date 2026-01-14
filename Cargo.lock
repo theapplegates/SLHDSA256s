@@ -3646,6 +3646,7 @@ dependencies = [
  "dirs 5.0.1",
  "filetime",
  "humantime",
+ "libc",
  "once_cell",
  "regex",
  "rusqlite",

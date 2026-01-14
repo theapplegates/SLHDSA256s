@@ -1,8 +1,11 @@
-/// Common file handling support.
+//! Common file handling support.
 
 use std::{
-    io::{self, Write, stdout},
+    fs, io::{self, stdout, Write}
 };
+
+#[cfg(unix)]
+use std::os::unix::fs::FileTypeExt;
 
 use anyhow::{Context, Result};
 
@@ -110,6 +113,25 @@ impl FileOrStdout {
                         .context("Failed to create output file")?,
                 ))
             } else {
+                // If path points to a special file (char device,
+                // block device, fifo, socket) use it, even if
+                // `overwrite` is `false`.
+                #[cfg(unix)]
+                if let Ok(p) = fs::metadata(path) {
+                    if p.file_type().is_char_device()
+                        || p.file_type().is_block_device()
+                        || p.file_type().is_fifo()
+                        || p.file_type().is_socket()
+                    {
+                        return Ok(Box::new(
+                            PartFileWriter::create(path)
+                                .with_context(|| {
+                                    format!("Failed to open special file {}",
+                                            path.display())
+                                })?,
+                        ))
+                    }
+                }
                 Err(anyhow::anyhow!(
                     "File {} exists, use \"sq --overwrite ...\" to overwrite",
                     path.display(),
