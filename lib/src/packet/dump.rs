@@ -926,8 +926,12 @@ impl<'a> PacketDumper<'a> {
             Revocable(r) =>
                 write!(output, "{}    Revocable: {}", i, r)?,
             KeyExpirationTime(t) =>
-                write!(output, "{}    Key expiration time: {}", i,
-                       t.convert())?,
+                if t == &Duration::seconds(0) {
+                    write!(output, "{}    Key expiration time: never", i)?
+                } else {
+                    write!(output, "{}    Key expiration time: {}", i,
+                           t.convert())?
+                }
             PreferredSymmetricAlgorithms(ref c) =>
                 write!(output, "{}    Symmetric algo preferences: {}", i,
                        c.iter().map(|c| format!("{:?}", c))
