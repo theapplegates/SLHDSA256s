@@ -276,19 +276,17 @@ impl OutputType for ConciseHumanReadableOutputNetwork<'_> {
             false
         };
 
-        let vc = self.current_cert.as_ref().map(|cert| {
-            cert.with_policy(self.sq.policy(), self.sq.time())
-        });
-
         if show_cert {
             if let Some(cert) = self.current_cert.as_ref() {
                 let mut extra_info = Vec::new();
+
+                let vc = cert.with_policy(self.sq.policy(), self.sq.time());
 
                 // To derive a valid cert, we need a valid binding
                 // signature.  But even if we don't have that we may still
                 // have a valid revocation certificate.  So be a bit more
                 // careful.
-                let rs = if let Some(Ok(ref vc)) = vc {
+                let rs = if let Ok(ref vc) = vc {
                     vc.revocation_status()
                 } else {
                     cert.revocation_status(self.sq.policy(), self.sq.time())
@@ -321,7 +319,7 @@ impl OutputType for ConciseHumanReadableOutputNetwork<'_> {
                 }
 
                 match &vc {
-                    Some(Ok(vc)) => {
+                    Ok(vc) => {
                         if let Some(t) = vc.primary_key().key_expiration_time() {
                             if t < SystemTime::now() {
                                 extra_info.push(
@@ -336,12 +334,11 @@ impl OutputType for ConciseHumanReadableOutputNetwork<'_> {
                             }
                         }
                     }
-                    Some(Err(err)) => {
+                    Err(err) => {
                         extra_info.push(
                             format!("not valid: {}",
                                     crate::one_line_error_chain(err)));
                     }
-                    None => (),
                 }
 
                 if ! first_shown {
