@@ -449,7 +449,16 @@ impl<'a> Builder<'a> {
         // Map a key handle to the named certificates.
         let resolve_key_handle = |kh: &KeyHandle| -> Vec<Fingerprint> {
             match kh {
-                KeyHandle::Fingerprint(fpr) => vec![ fpr.clone() ],
+                KeyHandle::Fingerprint(fpr) => {
+                    if cert_store.lookup_by_cert_fpr(&fpr).is_ok() {
+                        vec![ fpr.clone() ]
+                    } else {
+                        // We don't error out here: at the end of this
+                        // function we check that all queries matched at
+                        // least one certificate.
+                        vec![]
+                    }
+                },
                 KeyHandle::KeyID(_) => {
                     if let Ok(certs) = cert_store.lookup_by_cert(&kh) {
                         certs.into_iter().map(|c| c.fingerprint()).collect()
@@ -816,7 +825,8 @@ impl<'a> Builder<'a> {
                     // ... as long as the certificate is valid...
                     let cert = match check_cert(&fingerprint) {
                         Err(err) => {
-                            t!("Skipping {}: {}", fingerprint, err);
+                            t!("Skipping {}: certificate not valid: {}",
+                               fingerprint, err);
                             bindings_unusable += 1;
                             lints.push((Some(err), true, &i));
                             continue;
@@ -928,6 +938,7 @@ impl<'a> Builder<'a> {
             let query = &queries[i];
 
             unsatisfied.push(query.clone());
+            t!("Query {:?} is unsatisified", query);
 
             if ! report {
                 continue;

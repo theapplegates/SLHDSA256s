@@ -1,5 +1,7 @@
 use sequoia::openpgp;
 use openpgp::Cert;
+use openpgp::Fingerprint;
+use openpgp::KeyID;
 use openpgp::cert::amalgamation::ValidateAmalgamation;
 use openpgp::parse::Parse;
 use openpgp::types::RevocationStatus;
@@ -515,4 +517,39 @@ fn list_revoked_userid() {
     }
 
     assert!(saw_revoked);
+}
+
+/// Check that listing a missing certificate fails.
+#[test]
+fn list_missing() {
+    let sq = Sq::new();
+
+    let fpr = "6EFC2689882874C31E4FC4EC4D66CB0FEBA5DAFF";
+    let keyid = KeyID::from(fpr.parse::<Fingerprint>().expect("valid fpr"))
+        .to_string();
+
+    for id in &[
+        fpr, // Fignerprint
+        &keyid, // Key ID
+        "alice@example.org", // E-mail address.
+        "@example.org", // Domain.
+        "example.org", // String
+    ] {
+        eprintln!("Listing {}", id);
+
+        assert!(sq.cert_list_maybe(&[
+            id
+        ]).is_err());
+
+        assert!(sq.cert_list_maybe(&[
+            "--gossip",
+            id,
+        ]).is_err());
+
+        assert!(sq.cert_list_maybe(&[
+            "--gossip",
+            "--unusable",
+            id,
+        ]).is_err());
+    }
 }
