@@ -14,29 +14,26 @@ variables:
   SEQUOIA_CRYPTO_POLICY: ""
 
 
-docker-build-push:
-  # Official docker image.
-  image: docker:stable
+container-build-push:
+  # Official OCI container image.
+  image: quay.io/podman/stable
   stage: build
-  services:
-    - docker:dind
   tags:
     - docker
     - self-hosted
   before_script:
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - echo "$CI_JOB_TOKEN" | podman login $CI_REGISTRY --username gitlab-ci-token --password-stdin
   script:
-    - cd tool
     - >
-      docker build
+      podman build
       --no-cache
-      --file Containerfile
+      --file tool/Containerfile
       --target sq
       --tag "$IMAGE":latest
       .
     # smoke test
-    - docker run "$IMAGE":latest --help
-    - docker push "$IMAGE":latest
+    - podman run "$IMAGE":latest --help
+    - podman push "$IMAGE":latest
   after_script: []
   only:
     refs:
@@ -47,7 +44,6 @@ docker-build-push:
   variables:
     CI_REGISTRY: "registry.gitlab.com"
     IMAGE: "$CI_REGISTRY/sequoia-pgp/sequoia-sq"
-    DOCKER_HOST: tcp://docker:2376
 
 pages:
   stage: build
